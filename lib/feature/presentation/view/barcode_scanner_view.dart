@@ -30,27 +30,21 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
         // Fetch food item from API
         FoodItemModel foodItem = await foodApi.fetchFoodByBarcode(barcode);
 
-        // Save food item to shared preferences
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-
-        // Convert the FoodItemModel to a JSON string
-        String foodItemJson = jsonEncode(
-          foodItem.toJson(),
-        ); // Assuming toJson() method exists in FoodItemModel
         if (foodItem != null) {
           final food = await foodItem;
 
           // Choose the category (for now, you can hardcode it as 'Breakfast')
-          String category =
-              'Breakfast'; // This can be dynamic, based on the meal selected
+          String category = 'Breakfast';
 
           // Save the food item to SharedPreferences
           await FoodPreferences.saveFoodItem(category, food);
           print('Food item saved: ' + food.name);
         }
-        // Navigate to the results screen or return to the previous screen
-        Navigator.pop(context);
-        // Save the JSON string under a key like "scanned_food_items"
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => FoodDetailsScreen(foodItem: foodItem),
+          ),
+        );
       } catch (error) {
         print('❌ Error fetching food data: $error');
       }

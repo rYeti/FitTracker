@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class FoodItemModel {
   final String name;
@@ -49,8 +50,7 @@ class FoodPreferences {
     foodList ??= [];
 
     // Add the new food item to the list (serialize it into a JSON string)
-    foodList.add(foodItem.toJson() as String);
-
+    foodList.add(jsonEncode(foodItem.toJson()));
     // Save the updated list back to SharedPreferences
     await prefs.setStringList(category, foodList);
   }

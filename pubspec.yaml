@@ -38,6 +38,7 @@ dependencies:
   # API and Networking
   dio: ^5.8.0
 
+  fl_chart: ^0.70.2
   # Local Database
   drift: ^2.15.0
   sqlite3_flutter_libs: ^0.5.0

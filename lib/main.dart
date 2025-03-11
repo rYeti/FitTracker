@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'core/di/service_locator.dart';
-import 'feature/presentation/view/barcode_scanner_view.dart';
+import 'feature/gym_tracking/view/gym_tracking_screen.dart';
+import 'feature/presentation/view/food_tracking_screen.dart';
 
 void main() {
   setupLocator();
@@ -12,30 +13,45 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: HomeScreen());
+    return MaterialApp(home: MainScreen());
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key});
+
+  @override
+  _MainScreenState createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  int _selectedIndex = 0;
+
+  final List<Widget> _screens = [FoodTrackingScreen(), GymTrackingScreen()];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Fitness App')),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () async {
-            final scannedBarcode = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const BarcodeScannerView(),
-              ),
-            );
-            print('Scanned barcode: $scannedBarcode');
-          },
-          child: const Text('Scan Barcode'),
-        ),
+      body: _screens[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.restaurant, color: Colors.black),
+            label: "Food",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.fitness_center),
+            label: "Gym",
+          ),
+        ],
       ),
     );
   }
