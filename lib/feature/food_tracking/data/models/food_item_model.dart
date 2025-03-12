@@ -22,6 +22,7 @@ class FoodItemModel {
       'calories': calories,
       'protein': protein,
       'carbs': carbs,
+      'fat': fat,
     };
   }
 

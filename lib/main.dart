@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'core/di/service_locator.dart';
 import 'feature/gym_tracking/view/gym_tracking_screen.dart';
 import 'feature/presentation/view/food_tracking_screen.dart';
+import 'feature/presentation/view/nutrition_progress_dashboard.dart';
 
 void main() {
   setupLocator();
@@ -13,27 +14,26 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: MainScreen());
+    return MaterialApp(home: HomeScreen());
   }
 }
 
-class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  _MainScreenState createState() => _MainScreenState();
+  _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = [FoodTrackingScreen(), GymTrackingScreen()];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
+  final List<Widget> _screens = [
+    const FoodTrackingScreen(),
+    // Gym tracking screen will go here later
+    const NutritionProgressDashboard(),
+    // More screens can be added here
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -41,15 +41,20 @@ class _MainScreenState extends State<MainScreen> {
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.restaurant, color: Colors.black),
-            label: "Food",
-          ),
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        items: [
+          BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Food'),
           BottomNavigationBarItem(
             icon: Icon(Icons.fitness_center),
-            label: "Gym",
+            label: 'Gym',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.insert_chart),
+            label: 'Progress',
           ),
         ],
       ),

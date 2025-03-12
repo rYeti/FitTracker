@@ -1,11 +1,10 @@
-import 'dart:convert';
+// lib/feature/presentation/view/food_add_screen.dart
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:dio/dio.dart';
-import '../../food_tracking/data/data_sources/food_api.dart';
-import '../../../../core/network/api_client.dart';
 import '../../food_tracking/data/models/food_item_model.dart';
+import '../../food_tracking/data/repositories/nutrition_repository.dart';
 import 'barcode_scanner_view.dart';
+import 'food_search_screen.dart';
+import 'food_detail_view.dart';
 
 class FoodAddScreen extends StatefulWidget {
   final String category;
@@ -17,7 +16,9 @@ class FoodAddScreen extends StatefulWidget {
 }
 
 class _FoodAddScreenState extends State<FoodAddScreen> {
-  List<FoodItemModel> foodItems = [];
+  final NutritionRepository _repository = NutritionRepository();
+  List<FoodItemModel> _foodItems = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -26,87 +27,263 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
   }
 
   Future<void> _loadFoodItems() async {
-    final prefs = await SharedPreferences.getInstance();
-    List<String>? foodList = prefs.getStringList(widget.category);
+    setState(() => _isLoading = true);
 
-    if (foodList != null) {
-      setState(() {
-        foodItems =
-            foodList
-                .map(
-                  (item) => FoodItemModel.fromJson(jsonDecode(item)),
-                ) // Decode JSON
-                .toList();
-      });
-    }
-  }
+    final items = await _repository.getFoodItemsForCategory(widget.category);
 
-  Future<void> _saveFoodItem(FoodItemModel foodItem) async {
-    final prefs = await SharedPreferences.getInstance();
-    List<String> foodList = prefs.getStringList(widget.category) ?? [];
-
-    // Convert food item to JSON string before saving
-    foodList.add(jsonEncode(foodItem.toJson()));
-
-    await prefs.setStringList(widget.category, foodList);
-
-    // Refresh the UI
-    _loadFoodItems();
-  }
-
-  Future<void> _scanBarcode() async {
-    final FoodApi foodApi = FoodApi(ApiClient(Dio()));
-    final String? scannedBarcode = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const BarcodeScannerView()),
-    );
-
-    if (scannedBarcode != null) {
-      // Fetch food data from API (make sure this function exists in your BarcodeScannerView)
-      FoodItemModel? foodItem = await foodApi.fetchFoodByBarcode(
-        scannedBarcode,
-      );
-
-      if (foodItem != null) {
-        _saveFoodItem(foodItem); // Save the scanned food item
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Food not found.")));
-      }
-    }
+    setState(() {
+      _foodItems = items;
+      _isLoading = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Add Food to ${widget.category}")),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Ensures spacing
-        children: [
-          Expanded(
-            child: ListView.builder(
-              itemCount: foodItems.length,
-              itemBuilder: (context, index) {
-                final food = foodItems[index];
-                return ListTile(
-                  title: Text(food.name),
-                  subtitle: Text("${food.calories} kcal"),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(
-              25,
-            ), // Add some padding around the button
-            child: ElevatedButton(
-              onPressed: _scanBarcode,
-              child: const Text("Scan Barcode"),
-            ),
-          ),
-        ],
+      appBar: AppBar(title: Text("${widget.category} Foods")),
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                children: [
+                  Expanded(
+                    child:
+                        _foodItems.isEmpty
+                            ? Center(
+                              child: Text(
+                                'No foods added to ${widget.category} yet',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            )
+                            : ListView.builder(
+                              itemCount: _foodItems.length,
+                              itemBuilder: (context, index) {
+                                final food = _foodItems[index];
+                                return ListTile(
+                                  title: Text(food.name),
+                                  subtitle: Text("${food.calories} kcal"),
+                                  trailing: Text(
+                                    "P: ${food.protein}g | C: ${food.carbs}g | F: ${food.fat}g",
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder:
+                                            (context) => FoodDetailsScreen(
+                                              foodItem: food,
+                                            ),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.camera_alt),
+                            label: const Text("Scan Barcode"),
+                            onPressed: _scanBarcode,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.search),
+                            label: const Text("Search Foods"),
+                            onPressed: _searchFoods,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      left: 16.0,
+                      right: 16.0,
+                      bottom: 24.0,
+                    ),
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.add),
+                      label: const Text("Add Custom Food"),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(50),
+                      ),
+                      onPressed: _addCustomFood,
+                    ),
+                  ),
+                ],
+              ),
+    );
+  }
+
+  Future<void> _scanBarcode() async {
+    final FoodItemModel? scannedFood = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const BarcodeScannerView()),
+    );
+
+    if (scannedFood != null) {
+      await _repository.addFoodToMeal(widget.category, scannedFood);
+      _loadFoodItems();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${scannedFood.name} added to ${widget.category}'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _searchFoods() async {
+    final FoodItemModel? selectedFood = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FoodSearchScreen(category: widget.category),
       ),
     );
+
+    if (selectedFood != null) {
+      await _repository.addFoodToMeal(widget.category, selectedFood);
+      _loadFoodItems();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${selectedFood.name} added to ${widget.category}'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _addCustomFood() async {
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController();
+    final caloriesController = TextEditingController();
+    final proteinController = TextEditingController();
+    final carbsController = TextEditingController();
+    final fatController = TextEditingController();
+
+    final FoodItemModel? result = await showDialog<FoodItemModel>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Add Custom Food'),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: 'Food Name'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a name';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: caloriesController,
+                    decoration: const InputDecoration(labelText: 'Calories'),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter calories';
+                      }
+                      if (int.tryParse(value) == null) {
+                        return 'Please enter a valid number';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: proteinController,
+                    decoration: const InputDecoration(labelText: 'Protein (g)'),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter protein content';
+                      }
+                      if (int.tryParse(value) == null) {
+                        return 'Please enter a valid number';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: carbsController,
+                    decoration: const InputDecoration(labelText: 'Carbs (g)'),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter carbs content';
+                      }
+                      if (int.tryParse(value) == null) {
+                        return 'Please enter a valid number';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: fatController,
+                    decoration: const InputDecoration(labelText: 'Fat (g)'),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter fat content';
+                      }
+                      if (double.tryParse(value) == null) {
+                        return 'Please enter a valid number';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  final food = FoodItemModel(
+                    name: nameController.text,
+                    calories: int.parse(caloriesController.text),
+                    protein: int.parse(proteinController.text),
+                    carbs: int.parse(carbsController.text),
+                    fat: double.parse(fatController.text),
+                  );
+                  Navigator.of(context).pop(food);
+                }
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result != null) {
+      await _repository.addFoodToMeal(widget.category, result);
+      _loadFoodItems();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${result.name} added to ${widget.category}')),
+      );
+    }
   }
 }
