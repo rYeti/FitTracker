@@ -2,8 +2,8 @@
 class DailyNutrition {
   final DateTime date;
   final int totalCalories;
-  final int totalProtein;
-  final int totalCarbs;
+  final double totalProtein;
+  final double totalCarbs;
   final double totalFat;
   final Map<String, List<String>>
   meals; // Category -> List of serialized food items
@@ -32,8 +32,8 @@ class DailyNutrition {
   DailyNutrition copyWith({
     DateTime? date,
     int? totalCalories,
-    int? totalProtein,
-    int? totalCarbs,
+    double? totalProtein,
+    double? totalCarbs,
     double? totalFat,
     Map<String, List<String>>? meals,
   }) {
@@ -67,7 +67,9 @@ class DailyNutrition {
       totalProtein: json['totalProtein'],
       totalCarbs: json['totalCarbs'],
       totalFat: json['totalFat'],
-      meals: Map<String, List<String>>.from(json['meals']),
+      meals: (json['meals'] as Map<String, dynamic>).map(
+        (key, value) => MapEntry(key, List<String>.from(value)),
+      ),
     );
   }
 }

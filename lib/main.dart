@@ -33,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Gym tracking screen will go here later
     const NutritionProgressDashboard(),
     // More screens can be added here
+    const GymTrackingScreen(),
   ];
 
   @override

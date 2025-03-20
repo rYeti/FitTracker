@@ -4,8 +4,8 @@ import 'dart:convert';
 class FoodItemModel {
   final String name;
   final int calories;
-  final int protein;
-  final int carbs;
+  final double protein;
+  final double carbs;
   final double fat;
 
   FoodItemModel({
@@ -27,12 +27,24 @@ class FoodItemModel {
   }
 
   factory FoodItemModel.fromJson(Map<String, dynamic> json) {
+    // Check if it's the first type (simpler JSON)
+    if (json.containsKey('name') && json.containsKey('calories')) {
+      return FoodItemModel(
+        name: json['name'] ?? 'Unknown',
+        calories: json['calories'] ?? 0,
+        protein: json['protein']?.toDouble() ?? 0.0,
+        carbs: json['carbs']?.toDouble() ?? 0.0,
+        fat: json['fat']?.toDouble() ?? 0.0,
+      );
+    }
+
+    // If it's the second type (nested "nutriments")
     return FoodItemModel(
-      name: json['product_name'] ?? 'Unknown',
-      calories: json['nutriments']['energy-kcal'] ?? 0,
-      protein: json['nutriments']['proteins'] ?? 0,
-      carbs: json['nutriments']['carbohydrates'] ?? 0,
-      fat: json['nutriments']['fat'] ?? 0,
+      name: json['product_name'] ?? json['brands'] ?? 'Unknown',
+      calories: json['nutriments']?['energy-kcal']?.toInt() ?? 0,
+      protein: json['nutriments']?['proteins']?.toDouble() ?? 0.0,
+      carbs: json['nutriments']?['carbohydrates']?.toDouble() ?? 0.0,
+      fat: json['nutriments']?['fat']?.toDouble() ?? 0.0,
     );
   }
 }

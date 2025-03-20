@@ -148,10 +148,7 @@ class _NutritionProgressDashboardState
                       barWidth: 3,
                       isStrokeCapRound: true,
                       dotData: FlDotData(show: true),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        color: Colors.blue.withOpacity(0.2),
-                      ),
+                      belowBarData: BarAreaData(show: true, color: Colors.blue),
                     ),
                   ],
                 ),
