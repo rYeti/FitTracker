@@ -263,9 +263,9 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                   final food = FoodItemModel(
                     name: nameController.text,
                     calories: int.parse(caloriesController.text),
-                    protein: double.parse(proteinController.text),
-                    carbs: double.parse(carbsController.text),
-                    fat: double.parse(fatController.text),
+                    protein: int.parse(proteinController.text),
+                    carbs: int.parse(carbsController.text),
+                    fat: int.parse(fatController.text),
                   );
                   Navigator.of(context).pop(food);
                 }

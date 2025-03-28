@@ -33,6 +33,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
             _buildNutritionCard(),
             const SizedBox(height: 24),
             _buildAddToMealSection(),
+            _buildPortionMarcroCalc(Colors.red),
           ],
         ),
       ),
@@ -93,6 +94,13 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPortionMarcroCalc(Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      child: Row(children: [TextField(keyboardType: TextInputType.number)]),
     );
   }
 

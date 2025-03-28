@@ -4,9 +4,9 @@ import 'dart:convert';
 class FoodItemModel {
   final String name;
   final int calories;
-  final double protein;
-  final double carbs;
-  final double fat;
+  final int protein;
+  final int carbs;
+  final int fat;
 
   FoodItemModel({
     required this.name,
@@ -31,20 +31,19 @@ class FoodItemModel {
     if (json.containsKey('name') && json.containsKey('calories')) {
       return FoodItemModel(
         name: json['name'] ?? 'Unknown',
-        calories: json['calories'] ?? 0,
-        protein: json['protein']?.toDouble() ?? 0.0,
-        carbs: json['carbs']?.toDouble() ?? 0.0,
-        fat: json['fat']?.toDouble() ?? 0.0,
+        calories: (json['calories'] as num?)?.toInt() ?? 0,
+        protein: (json['protein'] as num?)?.round() ?? 0,
+        carbs: (json['carbs'] as num?)?.round() ?? 0,
+        fat: (json['fat'] as num?)?.round() ?? 0,
       );
     }
 
-    // If it's the second type (nested "nutriments")
     return FoodItemModel(
       name: json['product_name'] ?? json['brands'] ?? 'Unknown',
-      calories: json['nutriments']?['energy-kcal']?.toInt() ?? 0,
-      protein: json['nutriments']?['proteins']?.toDouble() ?? 0.0,
-      carbs: json['nutriments']?['carbohydrates']?.toDouble() ?? 0.0,
-      fat: json['nutriments']?['fat']?.toDouble() ?? 0.0,
+      calories: (json['nutriments']?['energy-kcal'] as num?)?.toInt() ?? 0,
+      protein: (json['nutriments']?['proteins_100g'] as num?)?.round() ?? 0,
+      carbs: (json['nutriments']?['carbohydrates_100g'] as num?)?.round() ?? 0,
+      fat: (json['nutriments']?['fat_100g'] as num?)?.round() ?? 0,
     );
   }
 }

@@ -2,9 +2,9 @@
 class DailyNutrition {
   final DateTime date;
   final int totalCalories;
-  final double totalProtein;
-  final double totalCarbs;
-  final double totalFat;
+  final int totalProtein;
+  final int totalCarbs;
+  final int totalFat;
   final Map<String, List<String>>
   meals; // Category -> List of serialized food items
 
@@ -32,9 +32,9 @@ class DailyNutrition {
   DailyNutrition copyWith({
     DateTime? date,
     int? totalCalories,
-    double? totalProtein,
-    double? totalCarbs,
-    double? totalFat,
+    int? totalProtein,
+    int? totalCarbs,
+    int? totalFat,
     Map<String, List<String>>? meals,
   }) {
     return DailyNutrition(
