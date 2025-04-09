@@ -1,5 +1,4 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import '../../../../core/entities/food_item.dart';
 
 class FoodItemModel {
   final String name;
@@ -26,6 +25,26 @@ class FoodItemModel {
     };
   }
 
+  FoodItem toEntity() {
+    return FoodItem(
+      name: name,
+      calories: calories,
+      protein: protein,
+      carbs: carbs,
+      fat: fat,
+    );
+  }
+
+  factory FoodItemModel.fromEntity(FoodItem entity) {
+    return FoodItemModel(
+      name: entity.name,
+      calories: entity.calories,
+      protein: entity.protein,
+      carbs: entity.carbs,
+      fat: entity.fat,
+    );
+  }
+
   factory FoodItemModel.fromJson(Map<String, dynamic> json) {
     // Check if it's the first type (simpler JSON)
     if (json.containsKey('name') && json.containsKey('calories')) {
@@ -45,25 +64,5 @@ class FoodItemModel {
       carbs: (json['nutriments']?['carbohydrates_100g'] as num?)?.round() ?? 0,
       fat: (json['nutriments']?['fat_100g'] as num?)?.round() ?? 0,
     );
-  }
-}
-
-class FoodPreferences {
-  static Future<void> saveFoodItem(
-    String category,
-    FoodItemModel foodItem,
-  ) async {
-    final prefs = await SharedPreferences.getInstance();
-
-    // Retrieve the current list of food items for this category
-    List<String>? foodList = prefs.getStringList(category);
-
-    // If no list exists, create an empty list
-    foodList ??= [];
-
-    // Add the new food item to the list (serialize it into a JSON string)
-    foodList.add(jsonEncode(foodItem.toJson()));
-    // Save the updated list back to SharedPreferences
-    await prefs.setStringList(category, foodList);
   }
 }

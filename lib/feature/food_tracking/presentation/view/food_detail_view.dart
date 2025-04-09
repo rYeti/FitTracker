@@ -1,7 +1,7 @@
 // lib/feature/presentation/view/food_detail_view.dart
 import 'package:flutter/material.dart';
-import '../../food_tracking/data/models/food_item_model.dart';
-import '../../food_tracking/data/repositories/nutrition_repository.dart';
+import '../../data/models/food_item_model.dart';
+import '../../data/repositories/nutrition_repository.dart';
 
 class FoodDetailsScreen extends StatefulWidget {
   final FoodItemModel foodItem;

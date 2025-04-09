@@ -1,7 +1,7 @@
 // lib/feature/presentation/view/food_search_screen.dart
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import '../../food_tracking/data/models/food_item_model.dart';
+import '../../data/models/food_item_model.dart';
 
 class FoodSearchScreen extends StatefulWidget {
   final String category;

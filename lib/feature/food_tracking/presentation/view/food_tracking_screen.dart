@@ -2,9 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import '../../food_tracking/data/models/daily_nutrition_model.dart';
-import '../../food_tracking/data/models/food_item_model.dart';
-import '../../food_tracking/data/repositories/nutrition_repository.dart';
+import '../../data/models/daily_nutrition_model.dart';
+import '../../data/models/food_item_model.dart';
+import '../../data/repositories/nutrition_repository.dart';
 import 'barcode_scanner_view.dart';
 import 'food_add_screen.dart';
 

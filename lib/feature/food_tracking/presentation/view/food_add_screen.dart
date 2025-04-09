@@ -1,7 +1,7 @@
 // lib/feature/presentation/view/food_add_screen.dart
 import 'package:flutter/material.dart';
-import '../../food_tracking/data/models/food_item_model.dart';
-import '../../food_tracking/data/repositories/nutrition_repository.dart';
+import '../../data/models/food_item_model.dart';
+import '../../data/repositories/nutrition_repository.dart';
 import 'barcode_scanner_view.dart';
 import 'food_search_screen.dart';
 import 'food_detail_view.dart';

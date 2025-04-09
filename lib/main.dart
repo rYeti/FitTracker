@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'core/di/service_locator.dart';
-import 'feature/gym_tracking/view/gym_tracking_screen.dart';
-import 'feature/presentation/view/food_tracking_screen.dart';
-import 'feature/presentation/view/nutrition_progress_dashboard.dart';
+import 'feature/gym_tracking/presentation/view/gym_tracking_screen.dart';
+import 'feature/food_tracking/presentation/view/food_tracking_screen.dart';
+import 'feature/food_tracking/presentation/view/nutrition_progress_dashboard.dart';
 
 void main() {
   setupLocator();

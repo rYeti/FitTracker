@@ -1,13 +1,13 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:fittnes_tracker/feature/presentation/view/food_detail_view.dart';
+import 'package:fittnes_tracker/feature/food_tracking/presentation/view/food_detail_view.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../food_tracking/data/models/food_item_model.dart';
-import '../../food_tracking/data/data_sources/food_api.dart';
-import '../../../../core/network/api_client.dart';
+import '../../data/models/food_item_model.dart';
+import '../../data/data_sources/food_api.dart';
+import '../../../../../core/network/api_client.dart';
 
 class BarcodeScannerView extends StatefulWidget {
   const BarcodeScannerView({super.key});
