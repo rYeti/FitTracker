@@ -73,6 +73,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                                         builder:
                                             (context) => FoodDetailsScreen(
                                               foodItem: food,
+                                              category: widget.category,
                                             ),
                                       ),
                                     );

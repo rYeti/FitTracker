@@ -1,4 +1,6 @@
 // lib/feature/presentation/view/food_search_screen.dart
+import 'package:fittnes_tracker/feature/food_tracking/presentation/view/food_detail_view.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../data/models/food_item_model.dart';
@@ -99,10 +101,16 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> {
   }
 
   void _selectFoodItem(Map<String, dynamic> productData) {
-    // Convert to FoodItemModel
     final foodItem = FoodItemModel.fromJson(productData);
-
-    // Return to previous screen with selected food
-    Navigator.pop(context, foodItem);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => FoodDetailsScreen(
+              foodItem: foodItem,
+              category: widget.category,
+            ),
+      ),
+    );
   }
 }

@@ -58,6 +58,38 @@ class NutritionRepository {
     await saveTodayNutrition(updatedNutrition);
   }
 
+  // Remove a food item from a specific meal category
+  Future<void> removeFoodFromMeal(
+    String category,
+    FoodItemModel foodItem,
+  ) async {
+    final nutrition = await getTodayNutrition();
+
+    // Get current meals
+    final meals = Map<String, List<String>>.from(nutrition.meals);
+
+    // Check if category exists and has items
+    if (!meals.containsKey(category) || meals[category]!.isEmpty) {
+      return;
+    }
+
+    // Find and remove the food item
+    final foodJson = jsonEncode(foodItem.toJson());
+    meals[category]!.remove(foodJson);
+
+    // Update totals
+    final updatedNutrition = nutrition.copyWith(
+      totalCalories: nutrition.totalCalories - foodItem.calories,
+      totalProtein: nutrition.totalProtein - foodItem.protein,
+      totalCarbs: nutrition.totalCarbs - foodItem.carbs,
+      totalFat: nutrition.totalFat - foodItem.fat,
+      meals: meals,
+    );
+
+    // Save updated nutrition
+    await saveTodayNutrition(updatedNutrition);
+  }
+
   // Get all food items for a meal category
   Future<List<FoodItemModel>> getFoodItemsForCategory(String category) async {
     final nutrition = await getTodayNutrition();

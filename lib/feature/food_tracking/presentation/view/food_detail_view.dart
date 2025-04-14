@@ -5,8 +5,13 @@ import '../../data/repositories/nutrition_repository.dart';
 
 class FoodDetailsScreen extends StatefulWidget {
   final FoodItemModel foodItem;
+  final String category;
 
-  const FoodDetailsScreen({super.key, required this.foodItem});
+  const FoodDetailsScreen({
+    super.key,
+    required this.foodItem,
+    required this.category,
+  });
 
   @override
   State<FoodDetailsScreen> createState() => _FoodDetailsScreenState();
@@ -15,26 +20,40 @@ class FoodDetailsScreen extends StatefulWidget {
 class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
   final NutritionRepository _repository = NutritionRepository();
   String _selectedCategory = 'Breakfast';
+  final double _quantity = 100.0;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Food Details')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.foodItem.name,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            _buildNutritionCard(),
-            const SizedBox(height: 24),
-            _buildAddToMealSection(),
-            _buildPortionMarcroCalc(Colors.red),
-          ],
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Food Name
+              Text(
+                widget.foodItem.name,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Original Nutrition Card
+              _buildNutritionCard(),
+              const SizedBox(height: 16),
+
+              // Portion Size and Calculated Values Card
+              _buildPortionMarcroCalc(),
+              const SizedBox(height: 16),
+
+              // Add to Meal Section
+              _buildAddToMealSection(),
+            ],
+          ),
         ),
       ),
     );
@@ -97,10 +116,20 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
     );
   }
 
-  Widget _buildPortionMarcroCalc(Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16.0),
-      child: Row(children: [TextField(keyboardType: TextInputType.number)]),
+  Widget _buildPortionMarcroCalc() {
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
+        child: Column(
+          children: [
+            TextField(
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Gramm'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -113,26 +142,10 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          value: _selectedCategory,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            labelText: 'Meal Category',
-          ),
-          items:
-              ['Breakfast', 'Lunch', 'Dinner', 'Snacks']
-                  .map(
-                    (category) => DropdownMenuItem(
-                      value: category,
-                      child: Text(category),
-                    ),
-                  )
-                  .toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedCategory = value!;
-            });
-          },
+        // Show the selected category
+        Text(
+          'Meal Category: ${widget.category}',
+          style: const TextStyle(fontSize: 16),
         ),
         const SizedBox(height: 16),
         ElevatedButton(
@@ -140,18 +153,16 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
             padding: const EdgeInsets.symmetric(vertical: 16),
           ),
           onPressed: () async {
-            await _repository.addFoodToMeal(_selectedCategory, widget.foodItem);
-
+            await _repository.addFoodToMeal(widget.category, widget.foodItem);
             // Show confirmation
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  'Added ${widget.foodItem.name} to $_selectedCategory',
+                  'Added ${widget.foodItem.name} to ${widget.category}',
                 ),
                 backgroundColor: Colors.green,
               ),
             );
-
             // Navigate back
             Navigator.pop(context);
           },
