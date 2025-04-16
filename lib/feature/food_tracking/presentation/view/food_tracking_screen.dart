@@ -79,6 +79,8 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
                 const SizedBox(height: 24),
                 _buildMacroChart(),
                 const SizedBox(height: 24),
+                _buildWeeklyProgress(),
+                const SizedBox(height: 24),
                 _buildMealsList(),
               ],
             ),
@@ -91,8 +93,14 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
           FloatingActionButton(
             heroTag: 'quick_add',
             mini: true,
-            onPressed: () {
-              // TODO: Show quick add menu
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const BarcodeScannerView(),
+                ),
+              );
+              _loadNutritionData();
             },
             child: const Icon(Icons.add),
           ),
@@ -344,15 +352,25 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ExpansionTile(
         title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            Text(category, style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text(
-              '$totalCalories kcal',
-              style: const TextStyle(
-                color: Colors.blue,
-                fontWeight: FontWeight.bold,
-              ),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.add),
+              label: const Text('Add Food'),
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FoodAddScreen(category: category),
+                  ),
+                );
+                _loadNutritionData();
+              },
+            ),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.fastfood),
+              label: const Text('Templates'),
+              onPressed: () => _showMealTemplates(category),
             ),
           ],
         ),
@@ -399,6 +417,123 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildWeeklyProgress() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Weekly Progress',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 200,
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: _dailyCalorieGoal * 1.2,
+                  titlesData: FlTitlesData(
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+                          return Text(days[value.toInt() % 7]);
+                        },
+                      ),
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  barGroups: [
+                    _createBarGroup(0, 1800),
+                    _createBarGroup(1, 1650),
+                    _createBarGroup(2, 2100),
+                    _createBarGroup(3, 1950),
+                    _createBarGroup(4, 1850),
+                    _createBarGroup(5, 2300),
+                    _createBarGroup(
+                      6,
+                      _todayNutrition!.totalCalories.toDouble(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  BarChartGroupData _createBarGroup(int x, double y) {
+    return BarChartGroupData(
+      x: x,
+      barRods: [
+        BarChartRodData(
+          toY: y,
+          color: y > _dailyCalorieGoal ? Colors.red : Colors.blue,
+          width: 20,
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ],
+    );
+  }
+
+  void _showMealTemplates(String category) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text('$category Templates'),
+              subtitle: const Text('Quick add your favorite meals'),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.breakfast_dining),
+              title: const Text('Oatmeal with Fruit'),
+              subtitle: const Text('350 kcal | P: 12g | C: 60g | F: 8g'),
+              onTap: () {
+                // Add template meal
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.lunch_dining),
+              title: const Text('Chicken Salad'),
+              subtitle: const Text('450 kcal | P: 35g | C: 20g | F: 25g'),
+              onTap: () {
+                // Add template meal
+                Navigator.pop(context);
+              },
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+            const SizedBox(height: 20),
+          ],
+        );
+      },
     );
   }
 }
