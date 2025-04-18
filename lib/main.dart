@@ -3,6 +3,7 @@ import 'core/di/service_locator.dart';
 import 'feature/gym_tracking/presentation/view/gym_tracking_screen.dart';
 import 'feature/food_tracking/presentation/view/food_tracking_screen.dart';
 import 'feature/food_tracking/presentation/view/nutrition_progress_dashboard.dart';
+import 'feature/dashboard/view/dashboard_screen.dart';
 
 void main() {
   setupLocator();
@@ -36,6 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
+    const DashboardScreen(),
     const FoodTrackingScreen(),
     // Gym tracking screen will go here later
     const NutritionProgressDashboard(),
@@ -47,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _screens[_selectedIndex],
-      backgroundColor: const Color(0xFF90DEC9),
+      backgroundColor: const Color.fromARGB(255, 143, 221, 200),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
@@ -56,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         },
         items: [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Dashboard'),
           BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Food'),
           BottomNavigationBarItem(
             icon: Icon(Icons.fitness_center),

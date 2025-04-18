@@ -58,38 +58,6 @@ class NutritionRepository {
     await saveTodayNutrition(updatedNutrition);
   }
 
-  // Remove a food item from a specific meal category
-  Future<void> removeFoodFromMeal(
-    String category,
-    FoodItemModel foodItem,
-  ) async {
-    final nutrition = await getTodayNutrition();
-
-    // Get current meals
-    final meals = Map<String, List<String>>.from(nutrition.meals);
-
-    // Check if category exists and has items
-    if (!meals.containsKey(category) || meals[category]!.isEmpty) {
-      return;
-    }
-
-    // Find and remove the food item
-    final foodJson = jsonEncode(foodItem.toJson());
-    meals[category]!.remove(foodJson);
-
-    // Update totals
-    final updatedNutrition = nutrition.copyWith(
-      totalCalories: nutrition.totalCalories - foodItem.calories,
-      totalProtein: nutrition.totalProtein - foodItem.protein,
-      totalCarbs: nutrition.totalCarbs - foodItem.carbs,
-      totalFat: nutrition.totalFat - foodItem.fat,
-      meals: meals,
-    );
-
-    // Save updated nutrition
-    await saveTodayNutrition(updatedNutrition);
-  }
-
   // Get all food items for a meal category
   Future<List<FoodItemModel>> getFoodItemsForCategory(String category) async {
     final nutrition = await getTodayNutrition();
@@ -127,5 +95,33 @@ class NutritionRepository {
   // Format date as YYYY-MM-DD for storage keys
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> removeFoodFromMeal(String category, FoodItemModel food) async {
+    final nutrition = await getTodayNutrition();
+
+    // Get current meals
+    final meals = Map<String, List<String>>.from(nutrition.meals);
+
+    // Check if category exists and has items
+    if (!meals.containsKey(category) || meals[category]!.isEmpty) {
+      return;
+    }
+
+    // Find and remove the food item
+    final foodJson = jsonEncode(food.toJson());
+    meals[category]!.remove(foodJson);
+
+    // Update totals
+    final updatedNutrition = nutrition.copyWith(
+      totalCalories: nutrition.totalCalories - food.calories,
+      totalProtein: nutrition.totalProtein - food.protein,
+      totalCarbs: nutrition.totalCarbs - food.carbs,
+      totalFat: nutrition.totalFat - food.fat,
+      meals: meals,
+    );
+
+    // Save updated nutrition
+    await saveTodayNutrition(updatedNutrition);
   }
 }
