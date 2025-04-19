@@ -1,13 +1,12 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../core/providers/theme_provider.dart';
+import '../../../core/providers/user_goals_provider.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
-
-  Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: Text('Dashboard')));
-  }
 
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
@@ -19,16 +18,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _LoadDashboardData();
+    _loadDashboardData();
   }
 
   @override
   Widget build(BuildContext context) {
-    // ... existing code
+    final theme = Theme.of(context);
+    final goalsProvider = Provider.of<UserGoalsProvider>(context);
+    
     return Scaffold(
-      // ... existing code
       body: RefreshIndicator(
-        onRefresh: _LoadDashboardData,
+        onRefresh: _loadDashboardData,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Padding(
@@ -36,11 +36,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildStackGreeting(),
+                _buildStackGreeting(theme, goalsProvider),
                 const SizedBox(height: 16),
-                _todayWorkout(),
+                _todayWorkout(theme),
                 const SizedBox(height: 16),
-                // ... rest of your widgets
+                _buildWeightProgress(theme, goalsProvider),
               ],
             ),
           ),
@@ -49,65 +49,263 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Future<void> _LoadDashboardData() async {
+  Future<void> _loadDashboardData() async {
     setState(() => _isLoading = true);
-
-    setState(() {
-      _isLoading = false;
-    });
+    await Future.delayed(const Duration(seconds: 1));
+    setState(() => _isLoading = false);
   }
 
-  Widget _buildStackGreeting() {
+  Widget _buildStackGreeting(ThemeData theme, UserGoalsProvider goalsProvider) {
     return Stack(
       children: [
         Container(
-          margin: EdgeInsets.only(top: 12), // Space for the avatar overlap
-          padding: EdgeInsets.fromLTRB(16, 24, 16, 16),
+          margin: const EdgeInsets.only(top: 12),
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: theme.shadowColor.withOpacity(0.1),
                 blurRadius: 8,
-                offset: Offset(0, 3),
+                offset: const Offset(0, 3),
               ),
             ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(height: 20), // Space for avatar overlap
-              Text(
-                'Hi, Alex',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Hi, Alex',
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Training with Coach Mike',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Provider.of<ThemeProvider>(context).themeMode == ThemeMode.light
+                          ? Icons.dark_mode
+                          : Icons.light_mode,
+                    ),
+                    onPressed: () {
+                      Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
+                    },
+                  ),
+                ],
               ),
-              Text(
-                'Training with Coach Mike',
-                style: TextStyle(color: Colors.grey[600]),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildQuickStat(
+                    theme,
+                    Icons.local_fire_department,
+                    '350',
+                    'Calories',
+                    Colors.orange,
+                  ),
+                  _buildQuickStat(
+                    theme,
+                    Icons.fitness_center,
+                    '3/5',
+                    'Workouts',
+                    Colors.blue,
+                  ),
+                  _buildQuickStat(
+                    theme,
+                    Icons.timer,
+                    '45m',
+                    'Avg. Time',
+                    Colors.green,
+                  ),
+                ],
               ),
+              const SizedBox(height: 16),
+              _buildCaloriesProgress(theme, goalsProvider),
             ],
           ),
         ),
         Positioned(
           left: 24,
           top: 0,
-          child: CircleAvatar(
-            backgroundColor: Colors.blue.shade100,
-            radius: 24,
-            child: Icon(Icons.person, color: Colors.blue.shade800),
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: theme.colorScheme.surface,
+                width: 3,
+              ),
+            ),
+            child: CircleAvatar(
+              backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
+              radius: 24,
+              child: Icon(
+                Icons.person,
+                color: theme.colorScheme.primary,
+              ),
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _todayWorkout() {
+  Widget _buildCaloriesProgress(ThemeData theme, UserGoalsProvider goalsProvider) {
+    final currentCalories = 2100; // This should come from your nutrition data
+    final progress = currentCalories / goalsProvider.dailyCalorieGoal;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Daily Calories',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              '$currentCalories / ${goalsProvider.dailyCalorieGoal}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.7),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        LinearProgressIndicator(
+          value: progress,
+          backgroundColor: theme.colorScheme.surfaceVariant,
+          valueColor: AlwaysStoppedAnimation<Color>(
+            progress > 1.0 ? Colors.red : Colors.green,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeightProgress(ThemeData theme, UserGoalsProvider goalsProvider) {
+    final progress = goalsProvider.getWeightProgress();
+    
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Text('Today Workout'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Weight Progress',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${goalsProvider.startingWeight} kg',
+                  style: theme.textTheme.bodySmall,
+                ),
+                Text(
+                  '${goalsProvider.currentWeight} kg',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                Text(
+                  '${goalsProvider.goalWeight} kg',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            LinearProgressIndicator(
+              value: progress,
+              backgroundColor: theme.colorScheme.surfaceVariant,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                theme.colorScheme.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickStat(
+    ThemeData theme,
+    IconData icon,
+    String value,
+    String label,
+    Color color,
+  ) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            icon,
+            color: color,
+            size: 24,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface.withOpacity(0.7),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _todayWorkout(ThemeData theme) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Today\'s Workout',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            // TODO: Add workout details
+          ],
+        ),
       ),
     );
   }

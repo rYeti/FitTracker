@@ -1,23 +1,24 @@
-import 'package:dio/dio.dart';
-import 'package:fittnes_tracker/feature/food_tracking/presentation/view/food_detail_view.dart';
+import 'package:fittnes_tracker/feature/food_tracking/data/repositories/shared_prefs_food_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../../data/models/food_item_model.dart';
 import '../../data/data_sources/food_api.dart';
-import '../../../../../core/network/api_client.dart';
-import '../../data/repositories/shared_prefs_food_repository.dart';
+import '../../data/models/food_item_model.dart';
+import '../../../../core/network/api_client.dart';
+import 'food_detail_view.dart';
 
 class BarcodeScannerView extends StatefulWidget {
   const BarcodeScannerView({super.key});
 
   @override
-  State<BarcodeScannerView> createState() => _BarcodeScannerViewState();
+  _BarcodeScannerViewState createState() => _BarcodeScannerViewState();
 }
 
 /// This widget is responsible for scanning barcodes using the mobile camera.
 class _BarcodeScannerViewState extends State<BarcodeScannerView> {
   final MobileScannerController scannerController = MobileScannerController();
-  final FoodApi foodApi = FoodApi(ApiClient(Dio()));
+  final FoodApi foodApi = FoodApi(
+    ApiClient(baseUrl: 'https://world.openfoodfacts.org/api/v2/'),
+  );
 
   void _onBarcodeDetected(BarcodeCapture capture) async {
     final barcode = capture.barcodes.first.rawValue;

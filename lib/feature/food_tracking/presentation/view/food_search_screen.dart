@@ -1,6 +1,5 @@
 // lib/feature/presentation/view/food_search_screen.dart
 import 'package:fittnes_tracker/feature/food_tracking/presentation/view/food_detail_view.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../data/models/food_item_model.dart';
