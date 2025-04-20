@@ -344,78 +344,191 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
     );
   }
 
-  Widget _buildMealCard(String category, List<FoodItemModel> foods) {
+  Widget _buildMealCardold(String category, List<FoodItemModel> foods) {
     final totalCalories = foods.fold(0, (sum, food) => sum + food.calories);
 
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ExpansionTile(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            ElevatedButton.icon(
-              icon: const Icon(Icons.add),
-              label: const Text('Add Food'),
-              onPressed: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FoodAddScreen(category: category),
-                  ),
-                );
-                _loadNutritionData();
-              },
-            ),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.fastfood),
-              label: const Text('Templates'),
-              onPressed: () => _showMealTemplates(category),
-            ),
-          ],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (foods.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text(
-                'No foods added yet',
-                style: TextStyle(color: Colors.grey),
-              ),
-            )
-          else
-            ...foods.map((food) {
-              return ListTile(
-                title: Text(food.name),
-                subtitle: Text(
-                  '${food.calories} kcal | P: ${food.protein}g | C: ${food.carbs}g | F: ${food.fat}g',
+          // Category Title
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                category,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline),
+              ),
+              Text(
+                '$totalCalories kcal',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+
+          const Divider(height: 1),
+          ExpansionTile(
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Food'),
                   onPressed: () async {
-                    await _repository.removeFoodFromMeal(category, food);
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => FoodAddScreen(category: category),
+                      ),
+                    );
                     _loadNutritionData();
                   },
                 ),
-              );
-            }),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: ElevatedButton.icon(
-              icon: const Icon(Icons.add),
-              label: const Text('Add Food'),
-              onPressed: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FoodAddScreen(category: category),
-                  ),
-                );
-                _loadNutritionData();
-              },
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.fastfood),
+                  label: const Text('Templates'),
+                  onPressed: () => _showMealTemplates(category),
+                ),
+              ],
             ),
+            children: [
+              if (foods.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'No foods added yet',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                )
+              else
+                ...foods.map((food) {
+                  return ListTile(
+                    title: Text(food.name),
+                    subtitle: Text(
+                      '${food.calories} kcal | P: ${food.protein}g | C: ${food.carbs}g | F: ${food.fat}g',
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () async {
+                        await _repository.removeFoodFromMeal(category, food);
+                        _loadNutritionData();
+                      },
+                    ),
+                  );
+                }),
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMealCard(String category, List<FoodItemModel> foods) {
+    final totalCalories = foods.fold(0, (sum, food) => sum + food.calories);
+
+    return Card(
+      color: Colors.white,
+      elevation: 0,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade300),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Row: Meal Name and Calories
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  category,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  '$totalCalories kcal',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Divider(height: 0.5),
+
+            // Buttons Row
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton.icon(
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add Food'),
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => FoodAddScreen(category: category),
+                        ),
+                      );
+                      _loadNutritionData();
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton.icon(
+                    icon: const Icon(Icons.list_alt, size: 18),
+                    label: const Text('Templates'),
+                    onPressed: () => _showMealTemplates(category),
+                  ),
+                ],
+              ),
+            ),
+
+            // Meal Items
+            if (foods.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12.0),
+                child: Text(
+                  'No foods added yet',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              )
+            else
+              Column(
+                children:
+                    foods.map((food) {
+                      return ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(food.name),
+                        subtitle: Text(
+                          '${food.calories} kcal · P: ${food.protein}g · C: ${food.carbs}g · F: ${food.fat}g',
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: () async {
+                            await _repository.removeFoodFromMeal(
+                              category,
+                              food,
+                            );
+                            _loadNutritionData();
+                          },
+                        ),
+                      );
+                    }).toList(),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -441,13 +554,13 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
                   alignment: BarChartAlignment.spaceAround,
                   maxY: _dailyCalorieGoal * 1.2,
                   titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
+                    leftTitles: const AxisTitles(
                       sideTitles: SideTitles(showTitles: false),
                     ),
-                    rightTitles: AxisTitles(
+                    rightTitles: const AxisTitles(
                       sideTitles: SideTitles(showTitles: false),
                     ),
-                    topTitles: AxisTitles(
+                    topTitles: const AxisTitles(
                       sideTitles: SideTitles(showTitles: false),
                     ),
                     bottomTitles: AxisTitles(
