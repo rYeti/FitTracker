@@ -13,7 +13,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   setupLocator();
   final prefs = await SharedPreferences.getInstance();
-  
+
   runApp(
     MultiProvider(
       providers: [
@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-    
+
     return MaterialApp(
       theme: themeProvider.lightTheme,
       darkTheme: themeProvider.darkTheme,
@@ -63,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       body: _screens[_selectedIndex],
       backgroundColor: theme.colorScheme.background,
