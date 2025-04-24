@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import '../../data/models/daily_nutrition_model.dart';
 import '../../data/models/food_item_model.dart';
 import '../../data/repositories/nutrition_repository.dart';
-import 'barcode_scanner_view.dart';
 import 'food_add_screen.dart';
 
 class FoodTrackingScreen extends StatefulWidget {
@@ -86,39 +85,6 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
             ),
           ),
         ),
-      ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            heroTag: 'quick_add',
-            mini: true,
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const BarcodeScannerView(),
-                ),
-              );
-              _loadNutritionData();
-            },
-            child: const Icon(Icons.add),
-          ),
-          const SizedBox(height: 8),
-          FloatingActionButton(
-            heroTag: 'scan',
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const BarcodeScannerView(),
-                ),
-              );
-              _loadNutritionData();
-            },
-            child: const Icon(Icons.camera_alt),
-          ),
-        ],
       ),
     );
   }
@@ -380,11 +346,10 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
                   icon: const Icon(Icons.add),
                   label: const Text('Add Food'),
                   onPressed: () async {
-                    await Navigator.push(
+                    await Navigator.pushNamed(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => FoodAddScreen(category: category),
-                      ),
+                      '/add-food',
+                      arguments: {'category': category},
                     );
                     _loadNutritionData();
                   },
@@ -432,13 +397,9 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
     final totalCalories = foods.fold(0, (sum, food) => sum + food.calories);
 
     return Card(
-      color: Colors.white,
-      elevation: 0,
+      elevation: 4,
       margin: const EdgeInsets.symmetric(vertical: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade300),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         child: Column(

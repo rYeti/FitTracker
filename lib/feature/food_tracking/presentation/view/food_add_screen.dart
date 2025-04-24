@@ -30,6 +30,8 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
     setState(() => _isLoading = true);
 
     final items = await _repository.getFoodItemsForCategory(widget.category);
+    debugPrint('Fetched items: ${items.length}');
+    debugPrint('Loaded food add screen for category: ${widget.category}');
 
     setState(() {
       _foodItems = items;
@@ -39,88 +41,90 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("${widget.category} Foods")),
-      body:
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
-                children: [
-                  Expanded(
-                    child:
-                        _foodItems.isEmpty
-                            ? Center(
-                              child: Text(
-                                'No foods added to ${widget.category} yet',
-                                style: TextStyle(color: Colors.grey),
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(title: Text("${widget.category} Foods")),
+        body:
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : Column(
+                  children: [
+                    Expanded(
+                      child:
+                          _foodItems.isEmpty
+                              ? Center(
+                                child: Text(
+                                  'No foods added to ${widget.category} yet',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              )
+                              : ListView.builder(
+                                itemCount: _foodItems.length,
+                                itemBuilder: (context, index) {
+                                  final food = _foodItems[index];
+                                  return ListTile(
+                                    title: Text(food.name),
+                                    subtitle: Text("${food.calories} kcal"),
+                                    trailing: Text(
+                                      "P: ${food.protein}g | C: ${food.carbs}g | F: ${food.fat}g",
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (context) => FoodDetailsScreen(
+                                                foodItem: food,
+                                                category: widget.category,
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
                               ),
-                            )
-                            : ListView.builder(
-                              itemCount: _foodItems.length,
-                              itemBuilder: (context, index) {
-                                final food = _foodItems[index];
-                                return ListTile(
-                                  title: Text(food.name),
-                                  subtitle: Text("${food.calories} kcal"),
-                                  trailing: Text(
-                                    "P: ${food.protein}g | C: ${food.carbs}g | F: ${food.fat}g",
-                                    style: TextStyle(fontSize: 12),
-                                  ),
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder:
-                                            (context) => FoodDetailsScreen(
-                                              foodItem: food,
-                                              category: widget.category,
-                                            ),
-                                      ),
-                                    );
-                                  },
-                                );
-                              },
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.camera_alt),
+                              label: const Text("Scan Barcode"),
+                              onPressed: _scanBarcode,
                             ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.camera_alt),
-                            label: const Text("Scan Barcode"),
-                            onPressed: _scanBarcode,
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.search),
-                            label: const Text("Search Foods"),
-                            onPressed: _searchFoods,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.search),
+                              label: const Text("Search Foods"),
+                              onPressed: _searchFoods,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      left: 16.0,
-                      right: 16.0,
-                      bottom: 24.0,
-                    ),
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.add),
-                      label: const Text("Add Custom Food"),
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(50),
+                        ],
                       ),
-                      onPressed: _addCustomFood,
                     ),
-                  ),
-                ],
-              ),
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        left: 16.0,
+                        right: 16.0,
+                        bottom: 24.0,
+                      ),
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.add),
+                        label: const Text("Add Custom Food"),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(50),
+                        ),
+                        onPressed: _addCustomFood,
+                      ),
+                    ),
+                  ],
+                ),
+      ),
     );
   }
 

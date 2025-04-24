@@ -43,19 +43,21 @@ class _NutritionProgressDashboardState
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Nutrition Progress')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildCaloriesChart(),
-            const SizedBox(height: 24),
-            _buildMacronutrientChart(),
-            const SizedBox(height: 24),
-            _buildMacroPercentageComparison(),
-          ],
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Nutrition Progress')),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildCaloriesChart(),
+              const SizedBox(height: 24),
+              _buildMacronutrientChart(),
+              const SizedBox(height: 24),
+              _buildMacroPercentageComparison(),
+            ],
+          ),
         ),
       ),
     );

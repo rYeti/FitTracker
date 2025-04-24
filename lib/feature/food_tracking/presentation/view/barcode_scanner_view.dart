@@ -1,10 +1,12 @@
 import 'package:fittnes_tracker/feature/food_tracking/data/repositories/shared_prefs_food_repository.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../data/data_sources/food_api.dart';
 import '../../data/models/food_item_model.dart';
 import '../../../../core/network/api_client.dart';
 import 'food_detail_view.dart';
+import 'dart:io' show Platform; // put inside a conditional import if needed
 
 class BarcodeScannerView extends StatefulWidget {
   const BarcodeScannerView({super.key});
@@ -15,49 +17,73 @@ class BarcodeScannerView extends StatefulWidget {
 
 /// This widget is responsible for scanning barcodes using the mobile camera.
 class _BarcodeScannerViewState extends State<BarcodeScannerView> {
+  bool _isHandlingBarcode = false;
+
   final MobileScannerController scannerController = MobileScannerController();
   final FoodApi foodApi = FoodApi(
     ApiClient(baseUrl: 'https://world.openfoodfacts.org/api/v2/'),
   );
 
   void _onBarcodeDetected(BarcodeCapture capture) async {
+    if (_isHandlingBarcode) return; // Prevent multiple triggers
+    _isHandlingBarcode = true;
+
     final barcode = capture.barcodes.first.rawValue;
 
     if (barcode != null) {
-      print('✅ Scanned barcode: $barcode');
+      if (kDebugMode) {
+        print('✅ Scanned barcode: $barcode');
+      }
 
       try {
-        // Fetch food item from API
         FoodItemModel foodItem = await foodApi.fetchFoodByBarcode(barcode);
-
-        final food = await foodItem;
-
-        // Choose the category (for now, you can hardcode it as 'Breakfast')
         String category = 'Breakfast';
+        await FoodPreferences.saveFoodItem(category, foodItem);
 
-        // Save the food item to SharedPreferences
-        await FoodPreferences.saveFoodItem(category, food);
-        print('Food item saved: ' + food.name);
-        Navigator.of(context).push(
+        if (kDebugMode) {
+          print('Food item saved: ${foodItem.name}');
+        }
+
+        if (!mounted) return;
+        await Navigator.of(context).push(
           MaterialPageRoute(
             builder:
                 (context) =>
                     FoodDetailsScreen(foodItem: foodItem, category: category),
           ),
         );
+
+        // ✅ Allow scanning again once user returns
+        _isHandlingBarcode = false;
       } catch (error) {
-        print('❌ Error fetching food data: $error');
+        if (kDebugMode) {
+          print('❌ Error fetching food data: $error');
+        }
+        _isHandlingBarcode = false; // Allow re-scan on error
       }
+    } else {
+      _isHandlingBarcode = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Scan Barcode')),
-      body: MobileScanner(
-        controller: scannerController,
-        onDetect: _onBarcodeDetected,
+    if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Scan Barcode')),
+        body: const Center(
+          child: Text('Barcode scanning is only supported on mobile devices.'),
+        ),
+      );
+    }
+
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Scan Barcode')),
+        body: MobileScanner(
+          controller: scannerController,
+          onDetect: _onBarcodeDetected,
+        ),
       ),
     );
   }

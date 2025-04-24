@@ -20,45 +20,47 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Add Food to ${widget.category}')),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                labelText: 'Search for food',
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: _performSearch,
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(title: Text('Add Food to ${widget.category}')),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  labelText: 'Search for food',
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.search),
+                    onPressed: _performSearch,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
                 ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
+                onSubmitted: (_) => _performSearch(),
               ),
-              onSubmitted: (_) => _performSearch(),
             ),
-          ),
-          _isSearching
-              ? const Center(child: CircularProgressIndicator())
-              : Expanded(
-                child: ListView.builder(
-                  itemCount: _searchResults.length,
-                  itemBuilder: (context, index) {
-                    final result = _searchResults[index];
-                    return ListTile(
-                      title: Text(result['product_name'] ?? 'Unknown'),
-                      subtitle: Text(result['brands'] ?? 'Generic'),
-                      onTap: () {
-                        _selectFoodItem(result);
-                      },
-                    );
-                  },
+            _isSearching
+                ? const Center(child: CircularProgressIndicator())
+                : Expanded(
+                  child: ListView.builder(
+                    itemCount: _searchResults.length,
+                    itemBuilder: (context, index) {
+                      final result = _searchResults[index];
+                      return ListTile(
+                        title: Text(result['product_name'] ?? 'Unknown'),
+                        subtitle: Text(result['brands'] ?? 'Generic'),
+                        onTap: () {
+                          _selectFoodItem(result);
+                        },
+                      );
+                    },
+                  ),
                 ),
-              ),
-        ],
+          ],
+        ),
       ),
     );
   }

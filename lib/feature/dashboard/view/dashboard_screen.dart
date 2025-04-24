@@ -1,9 +1,10 @@
-import 'dart:ui';
-
+import 'package:fittnes_tracker/feature/food_tracking/presentation/view/food_add_screen.dart';
+import 'package:fittnes_tracker/feature/food_tracking/presentation/view/food_tracking_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/providers/user_goals_provider.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -25,7 +26,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final goalsProvider = Provider.of<UserGoalsProvider>(context);
-    
+
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _loadDashboardData,
@@ -45,6 +46,75 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
         ),
+      ),
+      floatingActionButton: SpeedDial(
+        animatedIcon: AnimatedIcons.menu_close,
+        spacing: 12,
+        spaceBetweenChildren: 8,
+        overlayOpacity: 0.3,
+        overlayColor: Colors.black,
+        icon: Icons.add,
+        activeIcon: Icons.close,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+        children: [
+          SpeedDialChild(
+            child: const Icon(Icons.restaurant),
+            backgroundColor: Colors.orange,
+            label: 'Add Breakfast',
+            onTap: () async {
+              await Navigator.pushNamed(
+                context,
+                '/add-food',
+                arguments: {'category': 'Breakfast'},
+              );
+            },
+          ),
+          SpeedDialChild(
+            child: const Icon(Icons.monitor_weight),
+            backgroundColor: Colors.orangeAccent,
+            label: 'Add Lunch',
+            onTap: () async {
+              await Navigator.pushNamed(
+                context,
+                '/add-food',
+                arguments: {'category': 'Lunch'},
+              );
+            },
+          ),
+          SpeedDialChild(
+            child: const Icon(Icons.monitor_weight),
+            backgroundColor: Colors.orangeAccent,
+            label: 'Add Dinner',
+            onTap: () async {
+              await Navigator.pushNamed(
+                context,
+                '/add-food',
+                arguments: {'category': 'Dinner'},
+              );
+            },
+          ),
+          SpeedDialChild(
+            child: const Icon(Icons.monitor_weight),
+            backgroundColor: Colors.orangeAccent,
+            label: 'Add Snack',
+            onTap: () async {
+              await Navigator.pushNamed(
+                context,
+                '/add-food',
+                arguments: {'category': 'Snack'},
+              );
+            },
+          ),
+          SpeedDialChild(
+            child: const Icon(Icons.monitor_weight),
+            backgroundColor: Colors.green,
+            label: 'Add Weight',
+            onTap: () {
+              // TODO: Navigate to Add Weight screen
+            },
+          ),
+        ],
       ),
     );
   }
@@ -99,12 +169,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   IconButton(
                     icon: Icon(
-                      Provider.of<ThemeProvider>(context).themeMode == ThemeMode.light
+                      Provider.of<ThemeProvider>(context).themeMode ==
+                              ThemeMode.light
                           ? Icons.dark_mode
                           : Icons.light_mode,
                     ),
                     onPressed: () {
-                      Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
+                      Provider.of<ThemeProvider>(
+                        context,
+                        listen: false,
+                      ).toggleTheme();
                     },
                   ),
                 ],
@@ -147,18 +221,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                color: theme.colorScheme.surface,
-                width: 3,
-              ),
+              border: Border.all(color: theme.colorScheme.surface, width: 3),
             ),
             child: CircleAvatar(
               backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
               radius: 24,
-              child: Icon(
-                Icons.person,
-                color: theme.colorScheme.primary,
-              ),
+              child: Icon(Icons.person, color: theme.colorScheme.primary),
             ),
           ),
         ),
@@ -166,10 +234,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildCaloriesProgress(ThemeData theme, UserGoalsProvider goalsProvider) {
+  Widget _buildCaloriesProgress(
+    ThemeData theme,
+    UserGoalsProvider goalsProvider,
+  ) {
     final currentCalories = 2100; // This should come from your nutrition data
     final progress = currentCalories / goalsProvider.dailyCalorieGoal;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -202,9 +273,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildWeightProgress(ThemeData theme, UserGoalsProvider goalsProvider) {
+  Widget _buildWeightProgress(
+    ThemeData theme,
+    UserGoalsProvider goalsProvider,
+  ) {
     final progress = goalsProvider.getWeightProgress();
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -267,11 +341,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             color: color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(
-            icon,
-            color: color,
-            size: 24,
-          ),
+          child: Icon(icon, color: color, size: 24),
         ),
         const SizedBox(height: 8),
         Text(
