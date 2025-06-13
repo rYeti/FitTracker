@@ -11,16 +11,17 @@ class UserGoalsProvider with ChangeNotifier {
   static const String _currentWeightKey = 'current_weight';
 
   // Default values
-  static const int _defaultDailyCalorieGoal = 2000;
+  int _calorieGoal = 2000;
   static const double _defaultGoalWeight = 80.0;
   static const double _defaultStartingWeight = 90.0;
   static const double _defaultCurrentWeight = 85.0;
+  int get calorieGoal => _calorieGoal;
 
   UserGoalsProvider(this._prefs);
 
   // Getters with default values
   int get dailyCalorieGoal =>
-      _prefs.getInt(_dailyCalorieGoalKey) ?? _defaultDailyCalorieGoal;
+      _prefs.getInt(_dailyCalorieGoalKey) ?? _calorieGoal;
   double get goalWeight =>
       _prefs.getDouble(_goalWeightKey) ?? _defaultGoalWeight;
   double get startingWeight =>
@@ -31,6 +32,19 @@ class UserGoalsProvider with ChangeNotifier {
   // Setters
   Future<void> setDailyCalorieGoal(int goal) async {
     await _prefs.setInt(_dailyCalorieGoalKey, goal);
+    notifyListeners();
+  }
+
+  Future<void> loadCalorieGoal() async {
+    final prefs = await SharedPreferences.getInstance();
+    _calorieGoal = prefs.getInt('dailyCalorieGoal') ?? 2000;
+    notifyListeners();
+  }
+
+  Future<void> saveCalorieGoal(int goal) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('dailyCalorieGoal', goal);
+    _calorieGoal = goal;
     notifyListeners();
   }
 

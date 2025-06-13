@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/daily_nutrition_model.dart';
 import '../models/food_item_model.dart';
+import '../models/user_settings_model.dart';
 
 class NutritionRepository {
   static const String _dailyNutritionKey = 'daily_nutrition';
@@ -123,5 +124,11 @@ class NutritionRepository {
 
     // Save updated nutrition
     await saveTodayNutrition(updatedNutrition);
+  }
+
+  Future<UserSettings> getUserSettings() async {
+    // Simulate fetching user settings from a backend or local storage
+    await Future.delayed(const Duration(seconds: 1)); // Simulated delay
+    return UserSettings(dailyCalorieGoal: 2200); // Example dynamic value
   }
 }

@@ -1,7 +1,9 @@
 // lib/feature/presentation/view/food_tracking_screen.dart
+import 'package:fittnes_tracker/core/providers/user_goals_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../data/models/daily_nutrition_model.dart';
 import '../../data/models/food_item_model.dart';
 import '../../data/repositories/nutrition_repository.dart';
@@ -19,7 +21,7 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
   DailyNutrition? _todayNutrition;
   Map<String, List<FoodItemModel>> _mealFoods = {};
   bool _isLoading = true;
-  final double _dailyCalorieGoal = 2000; // This should come from user settings
+  double _dailyCalorieGoal = 2000;
 
   @override
   void initState() {
@@ -29,18 +31,35 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
 
   Future<void> _loadNutritionData() async {
     setState(() => _isLoading = true);
-    final nutrition = await _repository.getTodayNutrition();
-    final mealFoods = <String, List<FoodItemModel>>{};
+    try {
+      final userSettings = await _repository.getUserSettings();
+      final nutrition = await _repository.getTodayNutrition();
+      final mealCategories = [
+        'Breakfast',
+        'Lunch',
+        'Dinner',
+        'Snacks',
+      ]; // Hardcoded categories
+      final mealFoods = <String, List<FoodItemModel>>{};
 
-    for (final category in ['Breakfast', 'Lunch', 'Dinner', 'Snacks']) {
-      mealFoods[category] = await _repository.getFoodItemsForCategory(category);
+      for (final category in mealCategories) {
+        mealFoods[category] = await _repository.getFoodItemsForCategory(
+          category,
+        );
+      }
+
+      setState(() {
+        _dailyCalorieGoal = userSettings.dailyCalorieGoal;
+        _todayNutrition = nutrition;
+        _mealFoods = mealFoods;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to load data: $e')));
+    } finally {
+      setState(() => _isLoading = false);
     }
-
-    setState(() {
-      _todayNutrition = nutrition;
-      _mealFoods = mealFoods;
-      _isLoading = false;
-    });
   }
 
   @override
@@ -60,7 +79,7 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
-              // TODO: Navigate to settings
+              Navigator.pushNamed(context, '/settings');
             },
           ),
         ],
@@ -91,7 +110,8 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
 
   Widget _buildDailySummary() {
     final dateFormat = DateFormat('EEEE, MMMM d');
-    final progress = _todayNutrition!.totalCalories / _dailyCalorieGoal;
+    final calorieGoal = Provider.of<UserGoalsProvider>(context).calorieGoal;
+    final progress = _todayNutrition!.totalCalories / calorieGoal;
 
     return Card(
       elevation: 4,
@@ -121,7 +141,7 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '${_todayNutrition!.totalCalories} / $_dailyCalorieGoal kcal',
+                    '${_todayNutrition!.totalCalories} / $calorieGoal kcal',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

@@ -8,8 +8,8 @@ import 'feature/gym_tracking/presentation/view/gym_tracking_screen.dart';
 import 'feature/food_tracking/presentation/view/food_tracking_screen.dart';
 import 'feature/food_tracking/presentation/view/nutrition_progress_dashboard.dart';
 import 'feature/dashboard/view/dashboard_screen.dart';
-import 'feature/food_tracking/presentation/view/barcode_scanner_view.dart';
 import 'feature/food_tracking/presentation/view/food_add_screen.dart';
+import 'feature/settings/settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,9 +35,7 @@ class MyApp extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(
-      // Debug mode
       debugShowCheckedModeBanner: false,
-      // showSemanticsDebugger: true,
       theme: themeProvider.lightTheme,
       darkTheme: themeProvider.darkTheme,
       themeMode: themeProvider.themeMode,
@@ -51,9 +49,12 @@ class MyApp extends StatelessWidget {
           );
         }
 
-        // Add other named routes if needed
         if (settings.name == '/dashboard') {
           return MaterialPageRoute(builder: (_) => const DashboardScreen());
+        }
+
+        if (settings.name == '/settings') {
+          return MaterialPageRoute(builder: (_) => const SettingsScreen());
         }
 
         return MaterialPageRoute(builder: (_) => const HomeScreen());
@@ -77,6 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const FoodTrackingScreen(),
     const GymTrackingScreen(), // Move gym here
     const NutritionProgressDashboard(), // Progress last
+    const SettingsScreen(),
   ];
 
   @override
