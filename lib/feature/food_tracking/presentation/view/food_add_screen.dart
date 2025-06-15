@@ -5,6 +5,7 @@ import '../../data/repositories/nutrition_repository.dart';
 import 'barcode_scanner_view.dart';
 import 'food_search_screen.dart';
 import 'food_detail_view.dart';
+import '../../../lib/core/app_database.dart';
 
 class FoodAddScreen extends StatefulWidget {
   final String category;
@@ -41,89 +42,40 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        appBar: AppBar(title: Text("${widget.category} Foods")),
-        body:
-            _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : Column(
-                  children: [
-                    Expanded(
-                      child:
-                          _foodItems.isEmpty
-                              ? Center(
-                                child: Text(
-                                  'No foods added to ${widget.category} yet',
-                                  style: TextStyle(color: Colors.grey),
-                                ),
-                              )
-                              : ListView.builder(
-                                itemCount: _foodItems.length,
-                                itemBuilder: (context, index) {
-                                  final food = _foodItems[index];
-                                  return ListTile(
-                                    title: Text(food.name),
-                                    subtitle: Text("${food.calories} kcal"),
-                                    trailing: Text(
-                                      "P: ${food.protein}g | C: ${food.carbs}g | F: ${food.fat}g",
-                                      style: TextStyle(fontSize: 12),
-                                    ),
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder:
-                                              (context) => FoodDetailsScreen(
-                                                foodItem: food,
-                                                category: widget.category,
-                                              ),
-                                        ),
-                                      );
-                                    },
-                                  );
-                                },
-                              ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.camera_alt),
-                              label: const Text("Scan Barcode"),
-                              onPressed: _scanBarcode,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.search),
-                              label: const Text("Search Foods"),
-                              onPressed: _searchFoods,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        left: 16.0,
-                        right: 16.0,
-                        bottom: 24.0,
-                      ),
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.add),
-                        label: const Text("Add Custom Food"),
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(50),
-                        ),
-                        onPressed: _addCustomFood,
-                      ),
-                    ),
-                  ],
+    final db = AppDatabase(); // Initialize the database
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Food Tracker')),
+      body: StreamBuilder<List<FoodItemData>>(
+        stream: db.foodItemDao.watchAllFoodItems(), // Listen for changes
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final foodItems = snapshot.data!;
+          return ListView.builder(
+            itemCount: foodItems.length,
+            itemBuilder: (context, index) {
+              final item = foodItems[index];
+              return ListTile(
+                title: Text(item.name),
+                subtitle: Text(
+                  '${item.calories} kcal | P: ${item.protein}g | C: ${item.carbs}g | F: ${item.fat}g',
                 ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () async {
+                    await db.foodItemDao.deleteFoodItem(item); // Delete item
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${item.name} deleted!')),
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -263,16 +215,23 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 if (formKey.currentState!.validate()) {
-                  final food = FoodItemModel(
+                  final food = FoodItemCompanion.insert(
                     name: nameController.text,
                     calories: int.parse(caloriesController.text),
                     protein: int.parse(proteinController.text),
                     carbs: int.parse(carbsController.text),
                     fat: int.parse(fatController.text),
                   );
-                  Navigator.of(context).pop(food);
+
+                  final db = AppDatabase(); // Initialize the database
+                  await db.foodItemDao.insertFoodItem(food); // Save the food item
+
+                  Navigator.of(context).pop(); // Close the screen
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${food.name.value} added successfully!')),
+                  );
                 }
               },
               child: const Text('Add'),
