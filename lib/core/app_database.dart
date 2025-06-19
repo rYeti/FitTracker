@@ -1,21 +1,41 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
+import 'package:drift/web.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 
-part 'database.g.dart';
+part 'app_database.g.dart';
 
-@DriftDatabase(tables: [Users, FoodItem, Meals, Workouts, ExerciseEntries], daos: [FoodItemDao])
+@DriftDatabase(tables: [FoodItem], daos: [FoodItemDao])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase(): super(_openConnection());
-  @override int get schemaVersion => 1;
+  AppDatabase() : super(_openConnection());
 
   @override
-  MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) => m.createAll(),
-    onUpgrade: (m, from, to) {},
-  );
+  int get schemaVersion => 1;
+}
+
+LazyDatabase _openConnection() {
+  if (kIsWeb) {
+    // Use IndexedDB for web
+    return LazyDatabase(() async {
+      return WebDatabase('fittracker');
+    });
+  } else if (Platform.isAndroid ||
+      Platform.isIOS ||
+      Platform.isLinux ||
+      Platform.isMacOS ||
+      Platform.isWindows) {
+    // Use NativeDatabase for other platforms
+    return LazyDatabase(() async {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File(p.join(dir.path, 'fittracker.sqlite'));
+      return NativeDatabase(file);
+    });
+  } else {
+    throw UnsupportedError('Unsupported platform');
+  }
 }
 
 class FoodItem extends Table {
@@ -30,7 +50,8 @@ class FoodItem extends Table {
 }
 
 @DriftAccessor(tables: [FoodItem])
-class FoodItemDao extends DatabaseAccessor<AppDatabase> with _$FoodItemDaoMixin {
+class FoodItemDao extends DatabaseAccessor<AppDatabase>
+    with _$FoodItemDaoMixin {
   FoodItemDao(AppDatabase db) : super(db);
 
   Future<List<FoodItemData>> getAllFoodItems() => select(foodItem).get();
@@ -40,21 +61,4 @@ class FoodItemDao extends DatabaseAccessor<AppDatabase> with _$FoodItemDaoMixin 
 
   Future<int> deleteFoodItem(Insertable<FoodItemData> item) =>
       delete(foodItem).delete(item);
-}
-
-Future<void> saveFoodItem(FoodItemCompanion food) async {
-  try {
-    final db = AppDatabase();
-    await db.foodItemDao.insertFoodItem(food);
-  } catch (e) {
-    throw Failure('Failed to save food item: ${e.toString()}');
-  }
-}
-
-LazyDatabase _openConnection() {
-  return LazyDatabase(() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dir.path, 'fittracker.sqlite'));
-    return NativeDatabase.createInBackground(file);
-  });
 }

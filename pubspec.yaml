@@ -46,6 +46,7 @@ dependencies:
   # Local Database
   drift: ^2.27.0
   sqlite3_flutter_libs: ^0.5.0
+  sqlite3: ^2.7.6
 
   # Barcode Scanner
   mobile_scanner: ^3.5.0
@@ -62,6 +63,7 @@ dependencies:
   intl: ^0.20.2
 
   flutter_speed_dial: ^7.0.0
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:
@@ -72,9 +74,10 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
+  drift_dev: ^2.27.0
   flutter_lints: ^3.0.1
   build_runner: ^2.4.8
-  retrofit_generator: ^8.0.6
+  retrofit_generator: 9.2.0
   json_serializable: ^6.7.1
 
 # For information on the generic Dart part of this file, see the
