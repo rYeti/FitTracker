@@ -20,7 +20,7 @@ class FoodItem extends Table {
   IntColumn get carbs => integer()();
   IntColumn get fat => integer()();
 
-  @overridex
+  @override
   Set<Column> get primaryKey => {name};
 }
 
