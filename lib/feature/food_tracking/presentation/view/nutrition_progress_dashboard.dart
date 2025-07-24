@@ -28,11 +28,12 @@ class _NutritionProgressDashboardState
     setState(() => _isLoading = true);
 
     // Get last 7 days of data
-    final history = await _repository.getNutritionHistory(7);
+    final history = await _repository.getNutritionHistory();
 
     setState(() {
       // Sort from oldest to newest for graphs
-      _nutritionHistory = history..sort((a, b) => a.date.compareTo(b.date));
+      _nutritionHistory = List.from(history)
+        ..sort((a, b) => a.date.compareTo(b.date));
       _isLoading = false;
     });
   }

@@ -1,68 +1,47 @@
-import '../../../../core/entities/food_item.dart';
+import 'package:fittnes_tracker/core/app_database.dart';
+import 'package:drift/drift.dart';
 
 class FoodItemModel {
+  final int? id;
   final String name;
   final int calories;
   final int protein;
   final int carbs;
   final int fat;
+  final int gramm; // If you use gramm in your table
 
   FoodItemModel({
+    this.id,
     required this.name,
     required this.calories,
     required this.protein,
     required this.carbs,
     required this.fat,
+    required this.gramm,
   });
 
-  Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'calories': calories,
-      'protein': protein,
-      'carbs': carbs,
-      'fat': fat,
-    };
-  }
-
-  FoodItem toEntity() {
-    return FoodItem(
-      name: name,
-      calories: calories,
-      protein: protein,
-      carbs: carbs,
-      fat: fat,
+  // Convert from Drift's FoodItemData
+  factory FoodItemModel.fromData(FoodItemData data) {
+    return FoodItemModel(
+      id: data.id,
+      name: data.name,
+      calories: data.calories,
+      protein: data.protein,
+      carbs: data.carbs,
+      fat: data.fat,
+      gramm: data.gramm,
     );
   }
 
-  factory FoodItemModel.fromEntity(FoodItem entity) {
-    return FoodItemModel(
-      name: entity.name,
-      calories: entity.calories,
-      protein: entity.protein,
-      carbs: entity.carbs,
-      fat: entity.fat,
-    );
-  }
-
-  factory FoodItemModel.fromJson(Map<String, dynamic> json) {
-    // Check if it's the first type (simpler JSON)
-    if (json.containsKey('name') && json.containsKey('calories')) {
-      return FoodItemModel(
-        name: json['name'] ?? 'Unknown',
-        calories: (json['calories'] as num?)?.toInt() ?? 0,
-        protein: (json['protein'] as num?)?.round() ?? 0,
-        carbs: (json['carbs'] as num?)?.round() ?? 0,
-        fat: (json['fat'] as num?)?.round() ?? 0,
-      );
-    }
-
-    return FoodItemModel(
-      name: json['product_name'] ?? json['brands'] ?? 'Unknown',
-      calories: (json['nutriments']?['energy-kcal'] as num?)?.toInt() ?? 0,
-      protein: (json['nutriments']?['proteins_100g'] as num?)?.round() ?? 0,
-      carbs: (json['nutriments']?['carbohydrates_100g'] as num?)?.round() ?? 0,
-      fat: (json['nutriments']?['fat_100g'] as num?)?.round() ?? 0,
+  // Convert to Drift's FoodItemCompanion for inserts/updates
+  FoodItemCompanion toCompanion() {
+    return FoodItemCompanion(
+      name: Value(name),
+      calories: Value(calories),
+      protein: Value(protein),
+      carbs: Value(carbs),
+      fat: Value(fat),
+      gramm: Value(gramm),
     );
   }
 }

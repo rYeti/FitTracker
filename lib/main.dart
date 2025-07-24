@@ -76,9 +76,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _screens = [
     const DashboardScreen(),
     const FoodTrackingScreen(),
-    const GymTrackingScreen(), // Move gym here
-    const NutritionProgressDashboard(), // Progress last
-    const SettingsScreen(),
+    const GymTrackingScreen(),
+    const NutritionProgressDashboard(),
   ];
 
   @override

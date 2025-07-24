@@ -14,7 +14,16 @@ class FoodApi {
     if (response.statusCode != 200) {
       throw Exception('Failed to fetch food item');
     }
-    return FoodItemModel.fromJson(response.data['product']);
+    final product = response.data['product'];
+    return FoodItemModel(
+      id: product['id'] ?? 0,
+      name: product['product_name'] ?? product['brands'] ?? 'Unknown',
+      calories: (product['nutriments']?['energy-kcal'] as num?)?.toInt() ?? 0,
+      protein: (product['nutriments']?['proteins_100g'] as num?)?.round() ?? 0,
+      carbs:
+          (product['nutriments']?['carbohydrates_100g'] as num?)?.round() ?? 0,
+      fat: (product['nutriments']?['fat_100g'] as num?)?.round() ?? 0,
+      gramm: 100, // Default to 100g if not present
+    );
   }
-  
 }

@@ -1,4 +1,3 @@
-import 'package:fittnes_tracker/feature/food_tracking/data/repositories/shared_prefs_food_repository.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -38,10 +37,9 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
       try {
         FoodItemModel foodItem = await foodApi.fetchFoodByBarcode(barcode);
         String category = 'Breakfast';
-        await FoodPreferences.saveFoodItem(category, foodItem);
 
         if (kDebugMode) {
-          print('Food item saved: ${foodItem.name}');
+          print('Food item fetched: ${foodItem.name}');
         }
 
         if (!mounted) return;

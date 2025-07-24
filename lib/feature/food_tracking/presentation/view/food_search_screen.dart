@@ -102,7 +102,20 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> {
   }
 
   void _selectFoodItem(Map<String, dynamic> productData) {
-    final foodItem = FoodItemModel.fromJson(productData);
+    final foodItem = FoodItemModel(
+      id: productData['id'] ?? 0,
+      name: productData['product_name'] ?? productData['brands'] ?? 'Unknown',
+      calories:
+          (productData['nutriments']?['energy-kcal_100g'] as num?)?.toInt() ??
+          0,
+      protein:
+          (productData['nutriments']?['proteins_100g'] as num?)?.round() ?? 0,
+      carbs:
+          (productData['nutriments']?['carbohydrates_100g'] as num?)?.round() ??
+          0,
+      fat: (productData['nutriments']?['fat_100g'] as num?)?.round() ?? 0,
+      gramm: 100, // Default to 100g if not present
+    );
     Navigator.push(
       context,
       MaterialPageRoute(

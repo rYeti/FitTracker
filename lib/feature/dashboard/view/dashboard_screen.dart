@@ -1,5 +1,3 @@
-import 'package:fittnes_tracker/feature/food_tracking/presentation/view/food_add_screen.dart';
-import 'package:fittnes_tracker/feature/food_tracking/presentation/view/food_tracking_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/theme_provider.dart';
@@ -14,8 +12,6 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  bool _isLoading = true;
-
   @override
   void initState() {
     super.initState();
@@ -120,9 +116,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _loadDashboardData() async {
-    setState(() => _isLoading = true);
     await Future.delayed(const Duration(seconds: 1));
-    setState(() => _isLoading = false);
   }
 
   Widget _buildStackGreeting(ThemeData theme, UserGoalsProvider goalsProvider) {

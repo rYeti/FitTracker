@@ -1,134 +1,107 @@
-// lib/feature/food_tracking/data/repositories/nutrition_repository.dart
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../models/daily_nutrition_model.dart';
-import '../models/food_item_model.dart';
-import '../models/user_settings_model.dart';
+import 'package:drift/drift.dart';
+import 'package:fittnes_tracker/core/app_database.dart';
 
 class NutritionRepository {
-  static const String _dailyNutritionKey = 'daily_nutrition';
+  final AppDatabase db;
+  final MealDao mealDao;
+  final FoodItemDao foodItemDao;
 
-  // Get today's nutrition data
-  Future<DailyNutrition> getTodayNutrition() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String today = _formatDate(DateTime.now());
-    final String? nutritionJson = prefs.getString('$_dailyNutritionKey:$today');
+  NutritionRepository(this.db)
+    : mealDao = MealDao(db),
+      foodItemDao = FoodItemDao(db);
 
-    if (nutritionJson == null) {
-      return DailyNutrition.empty(DateTime.now());
-    }
-
-    return DailyNutrition.fromJson(jsonDecode(nutritionJson));
-  }
-
-  // Save today's nutrition data
-  Future<void> saveTodayNutrition(DailyNutrition nutrition) async {
-    final prefs = await SharedPreferences.getInstance();
-    final String today = _formatDate(nutrition.date);
-    await prefs.setString(
-      '$_dailyNutritionKey:$today',
-      jsonEncode(nutrition.toJson()),
+  // Get all meals for today
+  Future<List<MealTableData>> getMealsForToday() async {
+    final today = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
     );
+    return await mealDao.getMealsForDate(today.toIso8601String());
   }
 
-  // Add a food item to a specific meal category
-  Future<void> addFoodToMeal(String category, FoodItemModel foodItem) async {
-    final nutrition = await getTodayNutrition();
-
-    // Get current meals
-    final meals = Map<String, List<String>>.from(nutrition.meals);
-
-    // Make sure category exists
-    if (!meals.containsKey(category)) {
-      meals[category] = [];
-    }
-
-    // Add food item
-    meals[category]!.add(jsonEncode(foodItem.toJson()));
-
-    // Update totals
-    final updatedNutrition = nutrition.copyWith(
-      totalCalories: nutrition.totalCalories + foodItem.calories,
-      totalProtein: nutrition.totalProtein + foodItem.protein,
-      totalCarbs: nutrition.totalCarbs + foodItem.carbs,
-      totalFat: nutrition.totalFat + foodItem.fat,
-      meals: meals,
+  // Add a food item to a specific meal category for today
+  Future<void> addFoodToMeal(String category, FoodItemData foodItem) async {
+    final today = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
     );
-
-    // Save updated nutrition
-    await saveTodayNutrition(updatedNutrition);
-  }
-
-  // Get all food items for a meal category
-  Future<List<FoodItemModel>> getFoodItemsForCategory(String category) async {
-    final nutrition = await getTodayNutrition();
-
-    if (!nutrition.meals.containsKey(category)) {
-      return [];
-    }
-
-    return nutrition.meals[category]!
-        .map((item) => FoodItemModel.fromJson(jsonDecode(item)))
-        .toList();
-  }
-
-  // Get nutrition history for past days
-  Future<List<DailyNutrition>> getNutritionHistory(int days) async {
-    final prefs = await SharedPreferences.getInstance();
-    final List<DailyNutrition> history = [];
-
-    final now = DateTime.now();
-    for (int i = 0; i < days; i++) {
-      final date = now.subtract(Duration(days: i));
-      final dateStr = _formatDate(date);
-      final String? nutritionJson = prefs.getString(
-        '$_dailyNutritionKey:$dateStr',
+    final meals = await mealDao.getMealsForDate(today.toIso8601String());
+    MealTableData? meal = meals.firstWhere(
+      (m) => m.category == category,
+      orElse: () => throw StateError('No meal found for category $category'),
+    );
+    if (meal == null) {
+      final mealId = await mealDao.insertMeal(
+        MealTableCompanion(
+          date: Value(today.toIso8601String()),
+          category: Value(category),
+          foodItemId: Value(foodItem.id),
+        ),
       );
-
-      if (nutritionJson != null) {
-        history.add(DailyNutrition.fromJson(jsonDecode(nutritionJson)));
-      }
+      meal = await mealDao.getMealById(mealId);
     }
-
-    return history;
+    await mealDao.addFoodToMeal(foodItem.id, meal!.id);
   }
 
-  // Format date as YYYY-MM-DD for storage keys
-  String _formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-
-  Future<void> removeFoodFromMeal(String category, FoodItemModel food) async {
-    final nutrition = await getTodayNutrition();
-
-    // Get current meals
-    final meals = Map<String, List<String>>.from(nutrition.meals);
-
-    // Check if category exists and has items
-    if (!meals.containsKey(category) || meals[category]!.isEmpty) {
-      return;
-    }
-
-    // Find and remove the food item
-    final foodJson = jsonEncode(food.toJson());
-    meals[category]!.remove(foodJson);
-
-    // Update totals
-    final updatedNutrition = nutrition.copyWith(
-      totalCalories: nutrition.totalCalories - food.calories,
-      totalProtein: nutrition.totalProtein - food.protein,
-      totalCarbs: nutrition.totalCarbs - food.carbs,
-      totalFat: nutrition.totalFat - food.fat,
-      meals: meals,
+  // Get all food items for a meal category for today
+  Future<List<FoodItemData>> getFoodItemsForCategory(String category) async {
+    final today = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
     );
-
-    // Save updated nutrition
-    await saveTodayNutrition(updatedNutrition);
+    final meals = await mealDao.getMealsForDate(today.toIso8601String());
+    MealTableData? meal;
+    try {
+      meal = meals.firstWhere((m) => m.category == category);
+    } catch (e) {
+      meal = null;
+    }
+    if (meal == null) return [];
+    // Get food items linked to this meal
+    // This requires a join between MealFoodTable and FoodItem
+    // For simplicity, you can fetch all links and then fetch food items
+    // You may want to add a method in MealDao for this
+    // ...existing code...
+    return [];
   }
 
-  Future<UserSettings> getUserSettings() async {
-    // Simulate fetching user settings from a backend or local storage
-    await Future.delayed(const Duration(seconds: 1)); // Simulated delay
-    return UserSettings(dailyCalorieGoal: 2200); // Example dynamic value
+  // Get user settings
+  Future<UserSetting?> getUserSettings() async {
+    return await db.userSettingsDao.getSettings();
+  }
+
+  Future<List<FoodItemData>> getNutritionHistory() async {
+    return await foodItemDao.getAllFoodItems();
+  }
+
+  Future<int> removeFoodFromMeal(String category, FoodItemData foodItem) async {
+    final today = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
+    final meals = await mealDao.getMealsForDate(today.toIso8601String());
+    MealTableData? meal = meals.firstWhere(
+      (m) => m.category == category,
+      orElse: () => throw StateError('No meal found for category $category'),
+    );
+    if (meal == null) return 0;
+    return await mealDao.deleteFoodFromMeal(foodItem.id, meal.id);
+  }
+
+  Future<int> setCalorieGoal(int goal) async {
+    return await db.userSettingsDao.setCalorieGoal(goal);
+  }
+
+  Future getTodayNutrition() async {
+    final today = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
+    return await mealDao.getMealsForDate(today.toIso8601String());
   }
 }

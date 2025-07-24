@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../../data/models/food_item_model.dart';
 import '../../data/repositories/nutrition_repository.dart';
+import 'package:fittnes_tracker/core/app_database.dart';
 
 class FoodDetailsScreen extends StatefulWidget {
   final FoodItemModel foodItem;
@@ -18,7 +19,8 @@ class FoodDetailsScreen extends StatefulWidget {
 }
 
 class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
-  final NutritionRepository _repository = NutritionRepository();
+  late final AppDatabase db;
+  late final NutritionRepository _repository;
   final TextEditingController _quantityController = TextEditingController(
     text: "100",
   );
@@ -33,6 +35,8 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    db = AppDatabase();
+    _repository = NutritionRepository(db);
     _calculateNutrition();
   }
 
@@ -202,17 +206,23 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
             padding: const EdgeInsets.symmetric(vertical: 16),
           ),
           onPressed: () async {
-            // Create a copy with adjusted values
-            final adjustedFoodItem = FoodItemModel(
-              name: widget.foodItem.name,
-              calories: _calculatedCalories.round(),
-              protein: _calculatedProtein.round(),
-              carbs: _calculatedCarbs.round(),
-              fat: _calculatedFat.round(),
+            // You should fetch the FoodItemData from the DB, not create a new one with only macros
+            // If you want to add a custom portion, you should store the grams and macros in a separate table or as part of the meal entry
+            // For now, just add the food item by its ID and let the repository handle the macros
+            // If FoodItemModel does not have an id, you need to fetch the FoodItemData from the DB by name
+            // For now, assume id is present. If not, you must update FoodItemModel to include id
+            await _repository.addFoodToMeal(
+              widget.category,
+              FoodItemData(
+                id: widget.foodItem.id ?? 0,
+                name: widget.foodItem.name,
+                calories: _calculatedCalories.round(),
+                protein: _calculatedProtein.round(),
+                carbs: _calculatedCarbs.round(),
+                fat: _calculatedFat.round(),
+                gramm: _quantity.round(),
+              ),
             );
-
-            await _repository.addFoodToMeal(widget.category, adjustedFoodItem);
-            // Show confirmation
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
@@ -221,7 +231,6 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                 backgroundColor: Colors.green,
               ),
             );
-            // Navigate back
             Navigator.pop(context);
           },
           child: const Text('Add to Log', style: TextStyle(fontSize: 16)),
