@@ -87,7 +87,7 @@ class UserSettingsDao extends DatabaseAccessor<AppDatabase>
 class MealDao extends DatabaseAccessor<AppDatabase> with _$MealDaoMixin {
   MealDao(AppDatabase db) : super(db);
 
-  Future<List<MealTableData>> getMealsForDate(String date) {
+  Future<List<MealTableData>> getMealsForDate(DateTime date) {
     return (select(mealTable)..where((tbl) => tbl.date.equals(date))).get();
   }
 

@@ -17,7 +17,7 @@ class NutritionRepository {
       DateTime.now().month,
       DateTime.now().day,
     );
-    return await mealDao.getMealsForDate(today.toIso8601String());
+    return await mealDao.getMealsForDate(today);
   }
 
   // Add a food item to a specific meal category for today
@@ -27,7 +27,7 @@ class NutritionRepository {
       DateTime.now().month,
       DateTime.now().day,
     );
-    final meals = await mealDao.getMealsForDate(today.toIso8601String());
+    final meals = await mealDao.getMealsForDate(today);
     MealTableData? meal = meals.firstWhere(
       (m) => m.category == category,
       orElse: () => throw StateError('No meal found for category $category'),
@@ -35,7 +35,7 @@ class NutritionRepository {
     if (meal == null) {
       final mealId = await mealDao.insertMeal(
         MealTableCompanion(
-          date: Value(today.toIso8601String()),
+          date: Value(today),
           category: Value(category),
           foodItemId: Value(foodItem.id),
         ),
@@ -52,7 +52,7 @@ class NutritionRepository {
       DateTime.now().month,
       DateTime.now().day,
     );
-    final meals = await mealDao.getMealsForDate(today.toIso8601String());
+    final meals = await mealDao.getMealsForDate(today);
     MealTableData? meal;
     try {
       meal = meals.firstWhere((m) => m.category == category);
@@ -60,10 +60,6 @@ class NutritionRepository {
       meal = null;
     }
     if (meal == null) return [];
-    // Get food items linked to this meal
-    // This requires a join between MealFoodTable and FoodItem
-    // For simplicity, you can fetch all links and then fetch food items
-    // You may want to add a method in MealDao for this
     // ...existing code...
     return [];
   }
@@ -83,12 +79,12 @@ class NutritionRepository {
       DateTime.now().month,
       DateTime.now().day,
     );
-    final meals = await mealDao.getMealsForDate(today.toIso8601String());
+    final meals = await mealDao.getMealsForDate(today);
     MealTableData? meal = meals.firstWhere(
       (m) => m.category == category,
       orElse: () => throw StateError('No meal found for category $category'),
     );
-    if (meal == null) return 0;
+    // meal will never be null here due to firstWhere with orElse
     return await mealDao.deleteFoodFromMeal(foodItem.id, meal.id);
   }
 
@@ -102,6 +98,6 @@ class NutritionRepository {
       DateTime.now().month,
       DateTime.now().day,
     );
-    return await mealDao.getMealsForDate(today.toIso8601String());
+    return await mealDao.getMealsForDate(today);
   }
 }

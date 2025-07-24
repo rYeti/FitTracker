@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/daily_nutrition_model.dart';
 import '../../data/repositories/nutrition_repository.dart';
+import 'package:fittnes_tracker/core/app_database.dart';
 
 class NutritionProgressDashboard extends StatefulWidget {
   const NutritionProgressDashboard({super.key});
@@ -14,13 +15,16 @@ class NutritionProgressDashboard extends StatefulWidget {
 
 class _NutritionProgressDashboardState
     extends State<NutritionProgressDashboard> {
-  final NutritionRepository _repository = NutritionRepository();
+  late final NutritionRepository _repository;
+  late final AppDatabase db;
   List<DailyNutrition> _nutritionHistory = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    db = AppDatabase();
+    _repository = NutritionRepository(db);
     _loadNutritionHistory();
   }
 

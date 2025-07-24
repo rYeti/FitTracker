@@ -1,65 +1,48 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class UserGoalsProvider with ChangeNotifier {
-  final SharedPreferences _prefs;
-
-  // Keys for SharedPreferences
-  static const String _dailyCalorieGoalKey = 'daily_calorie_goal';
-  static const String _goalWeightKey = 'goal_weight';
-  static const String _startingWeightKey = 'starting_weight';
-  static const String _currentWeightKey = 'current_weight';
-
   // Default values
   int _calorieGoal = 2000;
-  static const double _defaultGoalWeight = 80.0;
-  static const double _defaultStartingWeight = 90.0;
-  static const double _defaultCurrentWeight = 85.0;
+  double _goalWeight = 80.0;
+  double _startingWeight = 90.0;
+  double _currentWeight = 85.0;
+
   int get calorieGoal => _calorieGoal;
+  double get dailyCalorieGoal => _calorieGoal.toDouble();
+  double get goalWeight => _goalWeight;
+  double get startingWeight => _startingWeight;
+  double get currentWeight => _currentWeight;
 
-  UserGoalsProvider(this._prefs);
-
-  // Getters with default values
-  int get dailyCalorieGoal =>
-      _prefs.getInt(_dailyCalorieGoalKey) ?? _calorieGoal;
-  double get goalWeight =>
-      _prefs.getDouble(_goalWeightKey) ?? _defaultGoalWeight;
-  double get startingWeight =>
-      _prefs.getDouble(_startingWeightKey) ?? _defaultStartingWeight;
-  double get currentWeight =>
-      _prefs.getDouble(_currentWeightKey) ?? _defaultCurrentWeight;
+  UserGoalsProvider();
 
   // Setters
   Future<void> setDailyCalorieGoal(int goal) async {
-    await _prefs.setInt(_dailyCalorieGoalKey, goal);
+    _calorieGoal = goal;
     notifyListeners();
   }
 
   Future<void> loadCalorieGoal() async {
-    final prefs = await SharedPreferences.getInstance();
-    _calorieGoal = prefs.getInt('dailyCalorieGoal') ?? 2000;
+    // No-op for now
     notifyListeners();
   }
 
   Future<void> saveCalorieGoal(int goal) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('dailyCalorieGoal', goal);
     _calorieGoal = goal;
     notifyListeners();
   }
 
   Future<void> setGoalWeight(double weight) async {
-    await _prefs.setDouble(_goalWeightKey, weight);
+    _goalWeight = weight;
     notifyListeners();
   }
 
   Future<void> setStartingWeight(double weight) async {
-    await _prefs.setDouble(_startingWeightKey, weight);
+    _startingWeight = weight;
     notifyListeners();
   }
 
   Future<void> setCurrentWeight(double weight) async {
-    await _prefs.setDouble(_currentWeightKey, weight);
+    _currentWeight = weight;
     notifyListeners();
   }
 
