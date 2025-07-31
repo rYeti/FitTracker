@@ -100,7 +100,7 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
                 const SizedBox(height: 24),
                 _buildMacroChart(),
                 const SizedBox(height: 24),
-                _buildWeeklyProgress(),
+                // _buildWeeklyProgress(),
                 const SizedBox(height: 24),
                 _buildMealsList(),
               ],
@@ -472,85 +472,85 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
     );
   }
 
-  Widget _buildWeeklyProgress() {
-    // For now, keep the static data for previous days, but use today's totalCalories for the last bar
-    int todayCalories = 0;
-    _mealFoods.forEach((_, foods) {
-      for (final food in foods) {
-        todayCalories += food.calories;
-      }
-    });
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Weekly Progress',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: _dailyCalorieGoal * 1.2,
-                  titlesData: FlTitlesData(
-                    leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-                          return Text(days[value.toInt() % 7]);
-                        },
-                      ),
-                    ),
-                  ),
-                  borderData: FlBorderData(show: false),
-                  barGroups: [
-                    _createBarGroup(0, 1800),
-                    _createBarGroup(1, 1650),
-                    _createBarGroup(2, 2100),
-                    _createBarGroup(3, 1950),
-                    _createBarGroup(4, 1850),
-                    _createBarGroup(5, 2300),
-                    _createBarGroup(6, todayCalories.toDouble()),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // Widget _buildWeeklyProgress() {
+  //   // For now, keep the static data for previous days, but use today's totalCalories for the last bar
+  //   int todayCalories = 0;
+  //   _mealFoods.forEach((_, foods) {
+  //     for (final food in foods) {
+  //       todayCalories += food.calories;
+  //     }
+  //   });
+  //   return Card(
+  //     elevation: 4,
+  //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+  //     child: Padding(
+  //       padding: const EdgeInsets.all(16.0),
+  //       child: Column(
+  //         crossAxisAlignment: CrossAxisAlignment.start,
+  //         children: [
+  //           const Text(
+  //             'Weekly Progress',
+  //             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+  //           ),
+  //           const SizedBox(height: 16),
+  //           SizedBox(
+  //             height: 200,
+  //             child: BarChart(
+  //               BarChartData(
+  //                 alignment: BarChartAlignment.spaceAround,
+  //                 maxY: _dailyCalorieGoal * 1.2,
+  //                 titlesData: FlTitlesData(
+  //                   leftTitles: const AxisTitles(
+  //                     sideTitles: SideTitles(showTitles: false),
+  //                   ),
+  //                   rightTitles: const AxisTitles(
+  //                     sideTitles: SideTitles(showTitles: false),
+  //                   ),
+  //                   topTitles: const AxisTitles(
+  //                     sideTitles: SideTitles(showTitles: false),
+  //                   ),
+  //                   bottomTitles: AxisTitles(
+  //                     sideTitles: SideTitles(
+  //                       showTitles: true,
+  //                       getTitlesWidget: (value, meta) {
+  //                         const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  //                         return Text(days[value.toInt() % 7]);
+  //                       },
+  //                     ),
+  //                   ),
+  //                 ),
+  //                 borderData: FlBorderData(show: false),
+  //                 barGroups: [
+  //                   _createBarGroup(0, 1800),
+  //                   _createBarGroup(1, 1650),
+  //                   _createBarGroup(2, 2100),
+  //                   _createBarGroup(3, 1950),
+  //                   _createBarGroup(4, 1850),
+  //                   _createBarGroup(5, 2300),
+  //                   _createBarGroup(6, todayCalories.toDouble()),
+  //                 ],
+  //               ),
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
-  BarChartGroupData _createBarGroup(int x, double y) {
-    return BarChartGroupData(
-      x: x,
-      barRods: [
-        BarChartRodData(
-          toY: y,
-          color: y > _dailyCalorieGoal ? Colors.red : Colors.blue,
-          width: 20,
-          borderRadius: BorderRadius.circular(4),
-        ),
-      ],
-    );
-  }
+  // BarChartGroupData _createBarGroup(int x, double y) {
+  //   return BarChartGroupData(
+  //     x: x,
+  //     barRods: [
+  //       BarChartRodData(
+  //         toY: y,
+  //         color: y > _dailyCalorieGoal ? Colors.red : Colors.blue,
+  //         width: 20,
+  //         borderRadius: BorderRadius.circular(4),
+  //       ),
+  //     ],
+  //   );
+  // }
 
   void _showMealTemplates(String category) {
     showModalBottomSheet(

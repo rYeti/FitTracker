@@ -1,3 +1,4 @@
+import 'package:fittnes_tracker/core/app_database.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/di/service_locator.dart';
@@ -13,11 +14,12 @@ import 'feature/settings/settings_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   setupLocator();
-
+  final db = AppDatabase();
+    
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider(db)),
         ChangeNotifierProvider(create: (_) => UserGoalsProvider()),
       ],
       child: const MyApp(),

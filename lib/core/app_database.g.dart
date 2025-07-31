@@ -478,8 +478,20 @@ class $UserSettingsTable extends UserSettings
     requiredDuringInsert: false,
     defaultValue: const Constant(2000),
   );
+  static const VerificationMeta _themeModeMeta = const VerificationMeta(
+    'themeMode',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, dailyCalorieGoal];
+  late final GeneratedColumn<String> themeMode = GeneratedColumn<String>(
+    'theme_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('light'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, dailyCalorieGoal, themeMode];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -504,6 +516,12 @@ class $UserSettingsTable extends UserSettings
         ),
       );
     }
+    if (data.containsKey('theme_mode')) {
+      context.handle(
+        _themeModeMeta,
+        themeMode.isAcceptableOrUnknown(data['theme_mode']!, _themeModeMeta),
+      );
+    }
     return context;
   }
 
@@ -523,6 +541,11 @@ class $UserSettingsTable extends UserSettings
             DriftSqlType.int,
             data['${effectivePrefix}daily_calorie_goal'],
           )!,
+      themeMode:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}theme_mode'],
+          )!,
     );
   }
 
@@ -535,12 +558,18 @@ class $UserSettingsTable extends UserSettings
 class UserSetting extends DataClass implements Insertable<UserSetting> {
   final int id;
   final int dailyCalorieGoal;
-  const UserSetting({required this.id, required this.dailyCalorieGoal});
+  final String themeMode;
+  const UserSetting({
+    required this.id,
+    required this.dailyCalorieGoal,
+    required this.themeMode,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['daily_calorie_goal'] = Variable<int>(dailyCalorieGoal);
+    map['theme_mode'] = Variable<String>(themeMode);
     return map;
   }
 
@@ -548,6 +577,7 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
     return UserSettingsCompanion(
       id: Value(id),
       dailyCalorieGoal: Value(dailyCalorieGoal),
+      themeMode: Value(themeMode),
     );
   }
 
@@ -559,6 +589,7 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
     return UserSetting(
       id: serializer.fromJson<int>(json['id']),
       dailyCalorieGoal: serializer.fromJson<int>(json['dailyCalorieGoal']),
+      themeMode: serializer.fromJson<String>(json['themeMode']),
     );
   }
   @override
@@ -567,13 +598,16 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'dailyCalorieGoal': serializer.toJson<int>(dailyCalorieGoal),
+      'themeMode': serializer.toJson<String>(themeMode),
     };
   }
 
-  UserSetting copyWith({int? id, int? dailyCalorieGoal}) => UserSetting(
-    id: id ?? this.id,
-    dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
-  );
+  UserSetting copyWith({int? id, int? dailyCalorieGoal, String? themeMode}) =>
+      UserSetting(
+        id: id ?? this.id,
+        dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
+        themeMode: themeMode ?? this.themeMode,
+      );
   UserSetting copyWithCompanion(UserSettingsCompanion data) {
     return UserSetting(
       id: data.id.present ? data.id.value : this.id,
@@ -581,6 +615,7 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
           data.dailyCalorieGoal.present
               ? data.dailyCalorieGoal.value
               : this.dailyCalorieGoal,
+      themeMode: data.themeMode.present ? data.themeMode.value : this.themeMode,
     );
   }
 
@@ -588,49 +623,58 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
   String toString() {
     return (StringBuffer('UserSetting(')
           ..write('id: $id, ')
-          ..write('dailyCalorieGoal: $dailyCalorieGoal')
+          ..write('dailyCalorieGoal: $dailyCalorieGoal, ')
+          ..write('themeMode: $themeMode')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, dailyCalorieGoal);
+  int get hashCode => Object.hash(id, dailyCalorieGoal, themeMode);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is UserSetting &&
           other.id == this.id &&
-          other.dailyCalorieGoal == this.dailyCalorieGoal);
+          other.dailyCalorieGoal == this.dailyCalorieGoal &&
+          other.themeMode == this.themeMode);
 }
 
 class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
   final Value<int> id;
   final Value<int> dailyCalorieGoal;
+  final Value<String> themeMode;
   const UserSettingsCompanion({
     this.id = const Value.absent(),
     this.dailyCalorieGoal = const Value.absent(),
+    this.themeMode = const Value.absent(),
   });
   UserSettingsCompanion.insert({
     this.id = const Value.absent(),
     this.dailyCalorieGoal = const Value.absent(),
+    this.themeMode = const Value.absent(),
   });
   static Insertable<UserSetting> custom({
     Expression<int>? id,
     Expression<int>? dailyCalorieGoal,
+    Expression<String>? themeMode,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (dailyCalorieGoal != null) 'daily_calorie_goal': dailyCalorieGoal,
+      if (themeMode != null) 'theme_mode': themeMode,
     });
   }
 
   UserSettingsCompanion copyWith({
     Value<int>? id,
     Value<int>? dailyCalorieGoal,
+    Value<String>? themeMode,
   }) {
     return UserSettingsCompanion(
       id: id ?? this.id,
       dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
+      themeMode: themeMode ?? this.themeMode,
     );
   }
 
@@ -643,6 +687,9 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
     if (dailyCalorieGoal.present) {
       map['daily_calorie_goal'] = Variable<int>(dailyCalorieGoal.value);
     }
+    if (themeMode.present) {
+      map['theme_mode'] = Variable<String>(themeMode.value);
+    }
     return map;
   }
 
@@ -650,7 +697,8 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
   String toString() {
     return (StringBuffer('UserSettingsCompanion(')
           ..write('id: $id, ')
-          ..write('dailyCalorieGoal: $dailyCalorieGoal')
+          ..write('dailyCalorieGoal: $dailyCalorieGoal, ')
+          ..write('themeMode: $themeMode')
           ..write(')'))
         .toString();
   }
@@ -1595,11 +1643,13 @@ typedef $$UserSettingsTableCreateCompanionBuilder =
     UserSettingsCompanion Function({
       Value<int> id,
       Value<int> dailyCalorieGoal,
+      Value<String> themeMode,
     });
 typedef $$UserSettingsTableUpdateCompanionBuilder =
     UserSettingsCompanion Function({
       Value<int> id,
       Value<int> dailyCalorieGoal,
+      Value<String> themeMode,
     });
 
 class $$UserSettingsTableFilterComposer
@@ -1618,6 +1668,11 @@ class $$UserSettingsTableFilterComposer
 
   ColumnFilters<int> get dailyCalorieGoal => $composableBuilder(
     column: $table.dailyCalorieGoal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get themeMode => $composableBuilder(
+    column: $table.themeMode,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1640,6 +1695,11 @@ class $$UserSettingsTableOrderingComposer
     column: $table.dailyCalorieGoal,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get themeMode => $composableBuilder(
+    column: $table.themeMode,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$UserSettingsTableAnnotationComposer
@@ -1658,6 +1718,9 @@ class $$UserSettingsTableAnnotationComposer
     column: $table.dailyCalorieGoal,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get themeMode =>
+      $composableBuilder(column: $table.themeMode, builder: (column) => column);
 }
 
 class $$UserSettingsTableTableManager
@@ -1694,17 +1757,21 @@ class $$UserSettingsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<int> dailyCalorieGoal = const Value.absent(),
+                Value<String> themeMode = const Value.absent(),
               }) => UserSettingsCompanion(
                 id: id,
                 dailyCalorieGoal: dailyCalorieGoal,
+                themeMode: themeMode,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 Value<int> dailyCalorieGoal = const Value.absent(),
+                Value<String> themeMode = const Value.absent(),
               }) => UserSettingsCompanion.insert(
                 id: id,
                 dailyCalorieGoal: dailyCalorieGoal,
+                themeMode: themeMode,
               ),
           withReferenceMapper:
               (p0) =>

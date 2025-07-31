@@ -13,7 +13,16 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(connect());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from == 1) {
+        await m.addColumn(userSettings, userSettings.themeMode);
+      }
+    },
+  );
 }
 
 class FoodItem extends Table {
@@ -30,6 +39,7 @@ class UserSettings extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get dailyCalorieGoal =>
       integer().withDefault(const Constant(2000))();
+  TextColumn get themeMode => text().withDefault(const Constant('light'))();
 }
 
 class MealTable extends Table {
@@ -81,6 +91,19 @@ class UserSettingsDao extends DatabaseAccessor<AppDatabase>
       return success ? 1 : 0;
     }
   }
+
+  Future<void> updateThemeMode(String mode) async {
+    final settings = await getSettings();
+    if (settings == null) {
+      await into(
+        userSettings,
+      ).insert(UserSettingsCompanion.insert(themeMode: Value(mode)));
+    } else {
+      await (update(userSettings)..where(
+        (tbl) => tbl.id.equals(settings.id),
+      )).write(settings.copyWith(themeMode: mode));
+    }
+  }
 }
 
 @DriftAccessor(tables: [MealTable, MealFoodTable, FoodItem])
@@ -116,8 +139,8 @@ class MealDao extends DatabaseAccessor<AppDatabase> with _$MealDaoMixin {
   }
 
   Future<int> deleteFoodFromMeal(int foodId, int mealId) {
-    return (delete(mealFoodTable)
-      ..where((tbl) => tbl.mealId.equals(mealId) & tbl.foodEntryId.equals(foodId)))
-        .go();
+    return (delete(mealFoodTable)..where(
+      (tbl) => tbl.mealId.equals(mealId) & tbl.foodEntryId.equals(foodId),
+    )).go();
   }
 }

@@ -1,18 +1,26 @@
+import 'package:fittnes_tracker/core/app_database.dart';
 import 'package:flutter/material.dart';
 
 class ThemeProvider with ChangeNotifier {
-  late ThemeMode _themeMode;
+  late ThemeMode _themeMode = ThemeMode.light;
+  final AppDatabase db;
 
-  ThemeProvider() {
-    _themeMode = ThemeMode.light;
+  ThemeProvider(this.db) {
+    loadTheme();
   }
 
   ThemeMode get themeMode => _themeMode;
 
   Future<void> toggleTheme() async {
     _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    await db.userSettingsDao.updateThemeMode(_themeMode == ThemeMode.dark ? 'dark' : 'light');
     notifyListeners();
   }
+
+  Future<void> loadTheme() async {
+    final settings = await db.userSettingsDao.getSettings();
+    _themeMode = settings?.themeMode == 'dark' ? ThemeMode.dark : ThemeMode.light;
+    notifyListeners();  }
 
   // Light theme
   ThemeData get lightTheme {
@@ -26,9 +34,7 @@ class ThemeProvider with ChangeNotifier {
       ),
       cardTheme: CardTheme(
         elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       appBarTheme: AppBarTheme(
         elevation: 0,
@@ -55,9 +61,7 @@ class ThemeProvider with ChangeNotifier {
       ),
       cardTheme: CardTheme(
         elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         color: Color(0xFF2C2C2C),
       ),
       appBarTheme: AppBarTheme(
@@ -72,4 +76,4 @@ class ThemeProvider with ChangeNotifier {
       ),
     );
   }
-} 
+}
