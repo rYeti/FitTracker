@@ -60,8 +60,16 @@ class NutritionRepository {
       meal = null;
     }
     if (meal == null) return [];
-    // ...existing code...
-    return [];
+    // Get all foodEntryIds for this meal
+    final mealFoodEntries = await mealDao.getFoodItemsForMeal(meal.id);
+    if (mealFoodEntries.isEmpty) return [];
+    // Fetch all FoodItemData for these ids
+    final foodItems = <FoodItemData>[];
+    for (final entry in mealFoodEntries) {
+      final food = await foodItemDao.getFoodItemById(entry.foodEntryId);
+      if (food != null) foodItems.add(food);
+    }
+    return foodItems;
   }
 
   // Get user settings

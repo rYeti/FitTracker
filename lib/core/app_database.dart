@@ -69,6 +69,11 @@ class FoodItemDao extends DatabaseAccessor<AppDatabase>
 
   Future<int> deleteFoodItem(Insertable<FoodItemData> item) =>
       delete(foodItem).delete(item);
+
+  Future<FoodItemData?> getFoodItemById(int id) async {
+    return (select(foodItem)
+      ..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
+  }
 }
 
 @DriftAccessor(tables: [UserSettings])
