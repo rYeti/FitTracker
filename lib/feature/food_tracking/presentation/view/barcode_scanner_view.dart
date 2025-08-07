@@ -8,7 +8,8 @@ import 'food_detail_view.dart';
 import 'dart:io' show Platform; // put inside a conditional import if needed
 
 class BarcodeScannerView extends StatefulWidget {
-  const BarcodeScannerView({super.key});
+  const BarcodeScannerView({super.key, required this.category});
+  final String category;
 
   @override
   _BarcodeScannerViewState createState() => _BarcodeScannerViewState();
@@ -36,7 +37,6 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
 
       try {
         FoodItemModel foodItem = await foodApi.fetchFoodByBarcode(barcode);
-        String category = 'Breakfast';
 
         if (kDebugMode) {
           print('Food item fetched: ${foodItem.name}');
@@ -46,8 +46,10 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
         await Navigator.of(context).push(
           MaterialPageRoute(
             builder:
-                (context) =>
-                    FoodDetailsScreen(foodItem: foodItem, category: category),
+                (context) => FoodDetailsScreen(
+                  foodItem: foodItem,
+                  category: widget.category,
+                ),
           ),
         );
 

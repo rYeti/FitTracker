@@ -1,5 +1,7 @@
+import 'package:drift/drift.dart' show Value;
 // lib/feature/presentation/view/food_detail_view.dart
 import 'package:flutter/material.dart';
+
 import '../../data/models/food_item_model.dart';
 import '../../data/repositories/nutrition_repository.dart';
 import 'package:fittnes_tracker/core/app_database.dart';
@@ -206,32 +208,30 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
             padding: const EdgeInsets.symmetric(vertical: 16),
           ),
           onPressed: () async {
-            // You should fetch the FoodItemData from the DB, not create a new one with only macros
-            // If you want to add a custom portion, you should store the grams and macros in a separate table or as part of the meal entry
-            // For now, just add the food item by its ID and let the repository handle the macros
-            // If FoodItemModel does not have an id, you need to fetch the FoodItemData from the DB by name
-            // For now, assume id is present. If not, you must update FoodItemModel to include id
-            await _repository.addFoodToMeal(
-              widget.category,
-              FoodItemData(
-                id: widget.foodItem.id ?? 0,
+            // Always insert a new food item for each log
+            final newFoodId = await db.foodItemDao.insertFoodItem(
+              FoodItemCompanion.insert(
                 name: widget.foodItem.name,
                 calories: _calculatedCalories.round(),
                 protein: _calculatedProtein.round(),
                 carbs: _calculatedCarbs.round(),
                 fat: _calculatedFat.round(),
-                gramm: _quantity.round(),
+                gramm: Value(_quantity.round()),
               ),
             );
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Added ${widget.foodItem.name} (${_quantity.round()}g) to ${widget.category}',
+            final newFood = await db.foodItemDao.getFoodItemById(newFoodId);
+            if (newFood != null) {
+              await _repository.addFoodToMeal(widget.category, newFood);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Added ${widget.foodItem.name} (${_quantity.round()}g) to ${widget.category}',
+                  ),
+                  backgroundColor: Colors.green,
                 ),
-                backgroundColor: Colors.green,
-              ),
-            );
-            Navigator.pop(context);
+              );
+              Navigator.pop(context);
+            }
           },
           child: const Text('Add to Log', style: TextStyle(fontSize: 16)),
         ),

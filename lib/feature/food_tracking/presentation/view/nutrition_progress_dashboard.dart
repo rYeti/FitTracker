@@ -32,7 +32,7 @@ class _NutritionProgressDashboardState
     setState(() => _isLoading = true);
 
     // Get last 7 days of data
-    final history = await _repository.getNutritionHistory();
+    final history = await _repository.getNutritionHistoryForToday();
 
     setState(() {
       // Sort from oldest to newest for graphs

@@ -137,8 +137,8 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   dateFormat.format(DateTime.now()),
@@ -147,6 +147,7 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,

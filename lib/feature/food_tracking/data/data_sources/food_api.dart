@@ -15,14 +15,24 @@ class FoodApi {
       throw Exception('Failed to fetch food item');
     }
     final product = response.data['product'];
+    int parseInt(dynamic value) {
+      if (value == null) return 0;
+      if (value is int) return value;
+      if (value is double) return value.round();
+      if (value is String) {
+        return int.tryParse(value) ?? double.tryParse(value)?.round() ?? 0;
+      }
+      return 0;
+    }
+
+    final nutriments = product['nutriments'] ?? {};
     return FoodItemModel(
-      id: product['id'] ?? 0,
+      id: parseInt(product['id']),
       name: product['product_name'] ?? product['brands'] ?? 'Unknown',
-      calories: (product['nutriments']?['energy-kcal'] as num?)?.toInt() ?? 0,
-      protein: (product['nutriments']?['proteins_100g'] as num?)?.round() ?? 0,
-      carbs:
-          (product['nutriments']?['carbohydrates_100g'] as num?)?.round() ?? 0,
-      fat: (product['nutriments']?['fat_100g'] as num?)?.round() ?? 0,
+      calories: parseInt(nutriments['energy-kcal']),
+      protein: parseInt(nutriments['proteins_100g']),
+      carbs: parseInt(nutriments['carbohydrates_100g']),
+      fat: parseInt(nutriments['fat_100g']),
       gramm: 100, // Default to 100g if not present
     );
   }

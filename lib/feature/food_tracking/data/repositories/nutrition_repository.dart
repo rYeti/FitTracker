@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:fittnes_tracker/core/app_database.dart';
+import 'package:fittnes_tracker/feature/food_tracking/data/models/daily_nutrition_model.dart';
 
 class NutritionRepository {
   final AppDatabase db;
@@ -28,10 +29,12 @@ class NutritionRepository {
       DateTime.now().day,
     );
     final meals = await mealDao.getMealsForDate(today);
-    MealTableData? meal = meals.firstWhere(
-      (m) => m.category == category,
-      orElse: () => throw StateError('No meal found for category $category'),
-    );
+    MealTableData? meal;
+    try {
+      meal = meals.firstWhere((m) => m.category == category);
+    } catch (e) {
+      meal = null;
+    }
     if (meal == null) {
       final mealId = await mealDao.insertMeal(
         MealTableCompanion(
@@ -79,6 +82,34 @@ class NutritionRepository {
 
   Future<List<FoodItemData>> getNutritionHistory() async {
     return await foodItemDao.getAllFoodItems();
+  }
+
+  Future<List<DailyNutrition>> getNutritionHistoryForToday() async {
+    final today = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
+    final meals = await mealDao.getMealsForDate(today);
+    if (meals.isEmpty) return [];
+    
+    // Aggregate nutrition data for the day
+    final dailyNutrition = DailyNutrition.empty(today);
+    for (final meal in meals) {
+      final foodItems = await mealDao.getFoodItemsForMeal(meal.id);
+      for (final entry in foodItems) {
+        final foodItem = await foodItemDao.getFoodItemById(entry.foodEntryId);
+        if (foodItem != null) {
+          dailyNutrition.totalCalories += foodItem.calories;
+          dailyNutrition.totalProtein += foodItem.protein;
+          dailyNutrition.totalCarbs += foodItem.carbs;
+          dailyNutrition.totalFat += foodItem.fat;
+          dailyNutrition.meals[meal.category]?.add(foodItem.name);
+        }
+      }
+    }
+    
+    return [dailyNutrition];
   }
 
   Future<int> removeFoodFromMeal(String category, FoodItemData foodItem) async {

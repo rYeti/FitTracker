@@ -60,6 +60,16 @@ class FoodItemDao extends DatabaseAccessor<AppDatabase>
     with _$FoodItemDaoMixin {
   FoodItemDao(AppDatabase db) : super(db);
 
+  /// Stream the most recent food items, ordered by id descending, limited by [limit].
+  Stream<List<FoodItemData>> watchRecentFoodItems(int limit) {
+    return (select(foodItem)
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.id, mode: OrderingMode.desc),
+          ])
+          ..limit(limit))
+        .watch();
+  }
+
   Future<List<FoodItemData>> getAllFoodItems() => select(foodItem).get();
 
   Stream<List<FoodItemData>> watchAllFoodItems() => select(foodItem).watch();

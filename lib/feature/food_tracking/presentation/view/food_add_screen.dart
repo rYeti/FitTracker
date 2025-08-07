@@ -1,11 +1,11 @@
 // lib/feature/presentation/view/food_add_screen.dart
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import '../../data/models/food_item_model.dart';
 import '../../data/repositories/nutrition_repository.dart';
 import 'barcode_scanner_view.dart';
-import 'food_search_screen.dart';
 import 'package:fittnes_tracker/core/app_database.dart';
-import 'package:drift/drift.dart' as drift;
+import 'food_detail_view.dart';
 
 class FoodAddScreen extends StatefulWidget {
   final String category;
@@ -19,8 +19,9 @@ class FoodAddScreen extends StatefulWidget {
 class _FoodAddScreenState extends State<FoodAddScreen> {
   late final AppDatabase db;
   late final NutritionRepository _repository;
-  List<FoodItemData> _foodItems = [];
-  bool _isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
+  List<dynamic> _searchResults = [];
 
   @override
   void initState() {
@@ -31,18 +32,15 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
   }
 
   Future<void> _loadFoodItems() async {
-    setState(() => _isLoading = true);
-    final items = await _repository.getFoodItemsForCategory(widget.category);
-    setState(() {
-      _foodItems = items;
-      _isLoading = false;
-    });
+    // No-op: kept for future use if needed
   }
 
   Future<void> _scanBarcode() async {
     final FoodItemData? scannedFood = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const BarcodeScannerView()),
+      MaterialPageRoute(
+        builder: (context) => BarcodeScannerView(category: widget.category),
+      ),
     );
     if (scannedFood != null) {
       await _repository.addFoodToMeal(widget.category, scannedFood);
@@ -55,22 +53,80 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
     }
   }
 
-  Future<void> _searchFoods() async {
-    final FoodItemData? selectedFood = await Navigator.push(
+  Future<void> _performSearch() async {
+    final query = _searchController.text.trim();
+    if (query.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _searchResults = [];
+        });
+      }
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isSearching = true;
+        _searchResults = [];
+      });
+    }
+
+    try {
+      final response = await Dio().get(
+        'https://world.openfoodfacts.org/cgi/search.pl',
+        queryParameters: {
+          'search_terms': query,
+          'search_simple': 1,
+          'action': 'process',
+          'json': 1,
+          'page_size': 20,
+        },
+      );
+
+      if (mounted) {
+        setState(() {
+          _isSearching = false;
+          _searchResults = response.data['products'];
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSearching = false;
+        });
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+      }
+    }
+  }
+
+  void _selectFoodItem(Map<String, dynamic> productData) async {
+    final foodItem = FoodItemModel(
+      id: int.tryParse(productData['id']?.toString() ?? '') ?? 0,
+      name: productData['product_name'] ?? productData['brands'] ?? 'Unknown',
+      calories:
+          (productData['nutriments']?['energy-kcal_100g'] as num?)?.toInt() ??
+          0,
+      protein:
+          (productData['nutriments']?['proteins_100g'] as num?)?.round() ?? 0,
+      carbs:
+          (productData['nutriments']?['carbohydrates_100g'] as num?)?.round() ??
+          0,
+      fat: (productData['nutriments']?['fat_100g'] as num?)?.round() ?? 0,
+      gramm: 100,
+    );
+    Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => FoodSearchScreen(category: widget.category),
+        builder:
+            (context) => FoodDetailsScreen(
+              foodItem: foodItem,
+              category: widget.category,
+            ),
       ),
     );
-    if (selectedFood != null) {
-      await _repository.addFoodToMeal(widget.category, selectedFood);
-      _loadFoodItems();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${selectedFood.name} added to ${widget.category}'),
-        ),
-      );
-    }
   }
 
   Future<void> _addCustomFood() async {
@@ -204,35 +260,141 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
     final db = AppDatabase();
     return Scaffold(
       appBar: AppBar(title: Text('Add Food - ${widget.category}')),
-      body: StreamBuilder<List<FoodItemData>>(
-        stream: db.foodItemDao.watchAllFoodItems(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final foodItems = snapshot.data!;
-          return ListView.builder(
-            itemCount: foodItems.length,
-            itemBuilder: (context, index) {
-              final item = foodItems[index];
-              return ListTile(
-                title: Text(item.name),
-                subtitle: Text(
-                  '${item.calories} kcal | P: ${item.protein}g | C: ${item.carbs}g | F: ${item.fat}g',
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        labelText: 'Search for food',
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.camera_alt_rounded),
+                          onPressed: _scanBarcode,
+                          tooltip: 'Scan Barcode',
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                      ),
+                      onChanged: (value) {
+                        _performSearch();
+                      },
+                      onSubmitted: (_) => _performSearch(),
+                    ),
+                  ),
                 ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: () async {
-                    await db.foodItemDao.deleteFoodItem(item);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${item.name} deleted!')),
-                    );
-                  },
+              ],
+            ),
+            if (_searchController.text.isEmpty && !_isSearching) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Recently Added',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              );
-            },
-          );
-        },
+              ),
+            ],
+            Builder(
+              builder: (context) {
+                if (_isSearching) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (!_isSearching && _searchController.text.isNotEmpty) {
+                  return SizedBox(
+                    height: 400,
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _searchResults.length,
+                      itemBuilder: (context, index) {
+                        final result = _searchResults[index];
+                        return ListTile(
+                          title: Text(result['product_name'] ?? 'Unknown'),
+                          subtitle: Text(result['brands'] ?? 'Generic'),
+                          onTap: () {
+                            _selectFoodItem(result);
+                          },
+                        );
+                      },
+                    ),
+                  );
+                } else {
+                  return SizedBox(
+                    height: 400,
+                    child: StreamBuilder<List<FoodItemData>>(
+                      stream: db.foodItemDao.watchAllFoodItems(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        final foodItems = snapshot.data!;
+                        return ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: foodItems.length,
+                          itemBuilder: (context, index) {
+                            final item = foodItems[index];
+                            return ListTile(
+                              title: Text(item.name),
+                              subtitle: Text(
+                                '${item.calories} kcal | P: ${item.protein}g | C: ${item.carbs}g | F: ${item.fat}g',
+                              ),
+                              onTap: () {
+                                final foodModel = FoodItemModel(
+                                  id: item.id,
+                                  name: item.name,
+                                  calories: item.calories,
+                                  protein: item.protein,
+                                  carbs: item.carbs,
+                                  fat: item.fat,
+                                  gramm: item.gramm,
+                                );
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => FoodDetailsScreen(
+                                          foodItem: foodModel,
+                                          category: widget.category,
+                                        ),
+                                  ),
+                                );
+                              },
+                              trailing: IconButton(
+                                icon: const Icon(Icons.add),
+                                onPressed: () async {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        '${item.name} added to recent foods',
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addCustomFood,
