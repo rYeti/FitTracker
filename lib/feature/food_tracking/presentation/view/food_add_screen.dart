@@ -1,6 +1,7 @@
 // lib/feature/presentation/view/food_add_screen.dart
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
+// import 'package:dio/dio.dart'; // remove, repo handles Dio internally
+import 'dart:async';
 import '../../data/models/food_item_model.dart';
 import '../../data/repositories/nutrition_repository.dart';
 import 'barcode_scanner_view.dart';
@@ -22,17 +23,130 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   List<dynamic> _searchResults = [];
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
     db = AppDatabase();
-    _repository = NutritionRepository(db);
-    _loadFoodItems();
+    _repository = NutritionRepository(db); // fix: pass only db
+    _searchController.addListener(_onSearchChanged);
   }
 
-  Future<void> _loadFoodItems() async {
-    // No-op: kept for future use if needed
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    // Debounce user input
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), _performSearch);
+  }
+
+  // ---------- Fuzzy ranking helpers ----------
+  String _norm(String s) => s.toLowerCase().trim();
+
+  bool _isSubsequence(String q, String s) {
+    var i = 0, j = 0;
+    while (i < q.length && j < s.length) {
+      if (q.codeUnitAt(i) == s.codeUnitAt(j)) i++;
+      j++;
+    }
+    return i == q.length;
+  }
+
+  int _levenshtein(String a, String b) {
+    if (a == b) return 0;
+    if (a.isEmpty) return b.length;
+    if (b.isEmpty) return a.length;
+    final m = a.length, n = b.length;
+    final dp = List.generate(m + 1, (_) => List<int>.filled(n + 1, 0));
+    for (var i = 0; i <= m; i++) dp[i][0] = i;
+    for (var j = 0; j <= n; j++) dp[0][j] = j;
+    for (var i = 1; i <= m; i++) {
+      for (var j = 1; j <= n; j++) {
+        final cost = a[i - 1] == b[j - 1] ? 0 : 1;
+        dp[i][j] = [
+          dp[i - 1][j] + 1, // deletion
+          dp[i][j - 1] + 1, // insertion
+          dp[i - 1][j - 1] + cost, // substitution
+        ].reduce((a, b) => a < b ? a : b);
+      }
+    }
+    return dp[m][n];
+  }
+
+  int _nameScore(String query, String name) {
+    final q = _norm(query);
+    final n = _norm(name);
+    if (n.isEmpty || q.isEmpty) return 1 << 20;
+
+    if (n == q) return 0; // exact match
+    if (n.startsWith(q)) return 1; // prefix
+    if (n.contains(q)) return 2; // substring
+    if (_isSubsequence(q, n)) return 3; // subsequence
+    return 10 + _levenshtein(n, q); // fallback
+  }
+
+  String _itemName(dynamic item) {
+    // Try common keys when results are Maps from an API, else drift row
+    if (item is Map) {
+      for (final k in ['name', 'product_name', 'title', 'label']) {
+        final v = item[k];
+        if (v != null && v.toString().trim().isNotEmpty) return v.toString();
+      }
+      return '';
+    }
+    // If using Drift data class:
+    // if (item is FoodItemData) return item.name;
+    try {
+      // last-resort reflection-like access
+      // ignore: avoid_dynamic_calls
+      final v = item.name;
+      return v?.toString() ?? '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  Future<void> _performSearch() async {
+    final query = _searchController.text.trim();
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    setState(() => _isSearching = true);
+    try {
+      final results = await _repository.searchFoods(query); // now exists
+
+      // Rank by fuzzy score, then by shorter name
+      results.sort((a, b) {
+        final sa = _nameScore(query, _itemName(a));
+        final sb = _nameScore(query, _itemName(b));
+        if (sa != sb) return sa - sb;
+        return _itemName(a).length.compareTo(_itemName(b).length);
+      });
+
+      setState(() {
+        _searchResults = results.take(30).toList(); // limit to top-N
+      });
+    } catch (e) {
+      // Optional: show an error
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Search failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isSearching = false);
+    }
   }
 
   Future<void> _scanBarcode() async {
@@ -53,53 +167,8 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
     }
   }
 
-  Future<void> _performSearch() async {
-    final query = _searchController.text.trim();
-    if (query.isEmpty) {
-      if (mounted) {
-        setState(() {
-          _searchResults = [];
-        });
-      }
-      return;
-    }
-
-    if (mounted) {
-      setState(() {
-        _isSearching = true;
-        _searchResults = [];
-      });
-    }
-
-    try {
-      final response = await Dio().get(
-        'https://world.openfoodfacts.org/cgi/search.pl',
-        queryParameters: {
-          'search_terms': query,
-          'search_simple': 1,
-          'action': 'process',
-          'json': 1,
-          'page_size': 20,
-        },
-      );
-
-      if (mounted) {
-        setState(() {
-          _isSearching = false;
-          _searchResults = response.data['products'];
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isSearching = false;
-        });
-
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
-      }
-    }
+  Future<void> _loadFoodItems() async {
+    // No-op: kept for future use if needed
   }
 
   void _selectFoodItem(Map<String, dynamic> productData) async {
@@ -257,7 +326,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final db = AppDatabase();
+    // final db = AppDatabase(); // remove extra instance
     return Scaffold(
       appBar: AppBar(title: Text('Add Food - ${widget.category}')),
       body: SingleChildScrollView(
@@ -310,85 +379,79 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                 if (_isSearching) {
                   return const Center(child: CircularProgressIndicator());
                 } else if (!_isSearching && _searchController.text.isNotEmpty) {
-                  return SizedBox(
-                    height: 400,
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _searchResults.length,
-                      itemBuilder: (context, index) {
-                        final result = _searchResults[index];
-                        return ListTile(
-                          title: Text(result['product_name'] ?? 'Unknown'),
-                          subtitle: Text(result['brands'] ?? 'Generic'),
-                          onTap: () {
-                            _selectFoodItem(result);
-                          },
-                        );
-                      },
-                    ),
+                  // REMOVE the SizedBox(height: 400)
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics:
+                        const NeverScrollableScrollPhysics(), // parent scrolls
+                    itemCount: _searchResults.length,
+                    itemBuilder: (context, index) {
+                      final result = _searchResults[index];
+                      return ListTile(
+                        title: Text(result['product_name'] ?? 'Unknown'),
+                        subtitle: Text(result['brands'] ?? 'Generic'),
+                        onTap: () => _selectFoodItem(result),
+                      );
+                    },
                   );
                 } else {
-                  return SizedBox(
-                    height: 400,
-                    child: StreamBuilder<List<FoodItemData>>(
-                      stream: db.foodItemDao.watchAllFoodItems(),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
-                        final foodItems = snapshot.data!;
-                        return ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: foodItems.length,
-                          itemBuilder: (context, index) {
-                            final item = foodItems[index];
-                            return ListTile(
-                              title: Text(item.name),
-                              subtitle: Text(
-                                '${item.calories} kcal | P: ${item.protein}g | C: ${item.carbs}g | F: ${item.fat}g',
-                              ),
-                              onTap: () {
-                                final foodModel = FoodItemModel(
-                                  id: item.id,
-                                  name: item.name,
-                                  calories: item.calories,
-                                  protein: item.protein,
-                                  carbs: item.carbs,
-                                  fat: item.fat,
-                                  gramm: item.gramm,
-                                );
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) => FoodDetailsScreen(
-                                          foodItem: foodModel,
-                                          category: widget.category,
-                                        ),
+                  // REMOVE the SizedBox(height: 400)
+                  return StreamBuilder<List<FoodItemData>>(
+                    stream: db.foodItemDao.watchAllFoodItems(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final foodItems = snapshot.data!;
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics:
+                            const NeverScrollableScrollPhysics(), // parent scrolls
+                        itemCount: foodItems.length,
+                        itemBuilder: (context, index) {
+                          final item = foodItems[index];
+                          return ListTile(
+                            title: Text(item.name),
+                            subtitle: Text(
+                              '${item.calories} kcal | P: ${item.protein}g | C: ${item.carbs}g | F: ${item.fat}g',
+                            ),
+                            onTap: () {
+                              final foodModel = FoodItemModel(
+                                id: item.id,
+                                name: item.name,
+                                calories: item.calories,
+                                protein: item.protein,
+                                carbs: item.carbs,
+                                fat: item.fat,
+                                gramm: item.gramm,
+                              );
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => FoodDetailsScreen(
+                                        foodItem: foodModel,
+                                        category: widget.category,
+                                      ),
+                                ),
+                              );
+                            },
+                            trailing: IconButton(
+                              icon: const Icon(Icons.add),
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '${item.name} added to recent foods',
+                                    ),
                                   ),
                                 );
                               },
-                              trailing: IconButton(
-                                icon: const Icon(Icons.add),
-                                onPressed: () async {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        '${item.name} added to recent foods',
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
+                            ),
+                          );
+                        },
+                      );
+                    },
                   );
                 }
               },

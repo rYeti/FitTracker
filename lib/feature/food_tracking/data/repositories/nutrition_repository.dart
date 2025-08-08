@@ -1,87 +1,109 @@
 import 'package:drift/drift.dart';
 import 'package:fittnes_tracker/core/app_database.dart';
 import 'package:fittnes_tracker/feature/food_tracking/data/models/daily_nutrition_model.dart';
+import 'package:dio/dio.dart';
 
 class NutritionRepository {
   final AppDatabase db;
-  final MealDao mealDao;
-  final FoodItemDao foodItemDao;
+  final Dio _dio = Dio();
 
-  NutritionRepository(this.db)
-    : mealDao = MealDao(db),
-      foodItemDao = FoodItemDao(db);
+  NutritionRepository(this.db);
 
-  // Get all meals for today
+  Future<List<Map<String, dynamic>>> searchFoods(String query) async {
+    if (query.trim().isEmpty) return [];
+    try {
+      final resp = await _dio.get(
+        'https://world.openfoodfacts.org/cgi/search.pl',
+        queryParameters: {
+          'search_terms': query,
+          'search_simple': 1,
+          'action': 'process',
+          'json': 1,
+          'page_size': 50,
+          'fields': 'id,product_name,brands,nutriments',
+        },
+      );
+      final data = resp.data;
+      final products = (data is Map) ? data['products'] : null;
+      if (products is List) {
+        return products.whereType<Map>().cast<Map<String, dynamic>>().toList();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<List<MealTableData>> getMealsForToday() async {
     final today = DateTime(
       DateTime.now().year,
       DateTime.now().month,
       DateTime.now().day,
     );
-    return await mealDao.getMealsForDate(today);
+    return await db.mealDao.getMealsForDate(today); // fix
   }
 
-  // Add a food item to a specific meal category for today
   Future<void> addFoodToMeal(String category, FoodItemData foodItem) async {
     final today = DateTime(
       DateTime.now().year,
       DateTime.now().month,
       DateTime.now().day,
     );
-    final meals = await mealDao.getMealsForDate(today);
+    final meals = await db.mealDao.getMealsForDate(today); // fix
     MealTableData? meal;
     try {
       meal = meals.firstWhere((m) => m.category == category);
-    } catch (e) {
+    } catch (_) {
       meal = null;
     }
     if (meal == null) {
-      final mealId = await mealDao.insertMeal(
+      final mealId = await db.mealDao.insertMeal(
+        // fix
         MealTableCompanion(
           date: Value(today),
           category: Value(category),
           foodItemId: Value(foodItem.id),
         ),
       );
-      meal = await mealDao.getMealById(mealId);
+      meal = await db.mealDao.getMealById(mealId); // fix
     }
-    await mealDao.addFoodToMeal(foodItem.id, meal!.id);
+    await db.mealDao.addFoodToMeal(foodItem.id, meal!.id); // fix
   }
 
-  // Get all food items for a meal category for today
   Future<List<FoodItemData>> getFoodItemsForCategory(String category) async {
     final today = DateTime(
       DateTime.now().year,
       DateTime.now().month,
       DateTime.now().day,
     );
-    final meals = await mealDao.getMealsForDate(today);
+    final meals = await db.mealDao.getMealsForDate(today); // fix
     MealTableData? meal;
     try {
       meal = meals.firstWhere((m) => m.category == category);
-    } catch (e) {
+    } catch (_) {
       meal = null;
     }
     if (meal == null) return [];
-    // Get all foodEntryIds for this meal
-    final mealFoodEntries = await mealDao.getFoodItemsForMeal(meal.id);
+    final mealFoodEntries = await db.mealDao.getFoodItemsForMeal(
+      meal.id,
+    ); // fix
     if (mealFoodEntries.isEmpty) return [];
-    // Fetch all FoodItemData for these ids
     final foodItems = <FoodItemData>[];
     for (final entry in mealFoodEntries) {
-      final food = await foodItemDao.getFoodItemById(entry.foodEntryId);
+      final food = await db.foodItemDao.getFoodItemById(
+        entry.foodEntryId,
+      ); // fix
       if (food != null) foodItems.add(food);
     }
     return foodItems;
   }
 
-  // Get user settings
   Future<UserSetting?> getUserSettings() async {
     return await db.userSettingsDao.getSettings();
   }
 
   Future<List<FoodItemData>> getNutritionHistory() async {
-    return await foodItemDao.getAllFoodItems();
+    return await db.foodItemDao.getAllFoodItems(); // fix
   }
 
   Future<List<DailyNutrition>> getNutritionHistoryForToday() async {
@@ -90,15 +112,15 @@ class NutritionRepository {
       DateTime.now().month,
       DateTime.now().day,
     );
-    final meals = await mealDao.getMealsForDate(today);
+    final meals = await db.mealDao.getMealsForDate(today); // fix
     if (meals.isEmpty) return [];
-    
-    // Aggregate nutrition data for the day
     final dailyNutrition = DailyNutrition.empty(today);
     for (final meal in meals) {
-      final foodItems = await mealDao.getFoodItemsForMeal(meal.id);
+      final foodItems = await db.mealDao.getFoodItemsForMeal(meal.id); // fix
       for (final entry in foodItems) {
-        final foodItem = await foodItemDao.getFoodItemById(entry.foodEntryId);
+        final foodItem = await db.foodItemDao.getFoodItemById(
+          entry.foodEntryId,
+        ); // fix
         if (foodItem != null) {
           dailyNutrition.totalCalories += foodItem.calories;
           dailyNutrition.totalProtein += foodItem.protein;
@@ -108,7 +130,6 @@ class NutritionRepository {
         }
       }
     }
-    
     return [dailyNutrition];
   }
 
@@ -118,13 +139,12 @@ class NutritionRepository {
       DateTime.now().month,
       DateTime.now().day,
     );
-    final meals = await mealDao.getMealsForDate(today);
-    MealTableData? meal = meals.firstWhere(
+    final meals = await db.mealDao.getMealsForDate(today); // fix
+    final meal = meals.firstWhere(
       (m) => m.category == category,
       orElse: () => throw StateError('No meal found for category $category'),
     );
-    // meal will never be null here due to firstWhere with orElse
-    return await mealDao.deleteFoodFromMeal(foodItem.id, meal.id);
+    return await db.mealDao.deleteFoodFromMeal(foodItem.id, meal.id); // fix
   }
 
   Future<int> setCalorieGoal(int goal) async {
@@ -137,6 +157,6 @@ class NutritionRepository {
       DateTime.now().month,
       DateTime.now().day,
     );
-    return await mealDao.getMealsForDate(today);
+    return await db.mealDao.getMealsForDate(today); // fix
   }
 }

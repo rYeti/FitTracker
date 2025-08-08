@@ -7,7 +7,7 @@ part 'app_database.g.dart';
 
 @DriftDatabase(
   tables: [FoodItem, UserSettings, MealTable, MealFoodTable],
-  daos: [FoodItemDao, UserSettingsDao],
+  daos: [FoodItemDao, UserSettingsDao, MealDao], // <-- add MealDao here
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(connect());
