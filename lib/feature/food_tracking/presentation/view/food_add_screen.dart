@@ -64,8 +64,12 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
     if (b.isEmpty) return a.length;
     final m = a.length, n = b.length;
     final dp = List.generate(m + 1, (_) => List<int>.filled(n + 1, 0));
-    for (var i = 0; i <= m; i++) dp[i][0] = i;
-    for (var j = 0; j <= n; j++) dp[0][j] = j;
+    for (var i = 0; i <= m; i++) {
+      dp[i][0] = i;
+    }
+    for (var j = 0; j <= n; j++) {
+      dp[0][j] = j;
+    }
     for (var i = 1; i <= m; i++) {
       for (var j = 1; j <= n; j++) {
         final cost = a[i - 1] == b[j - 1] ? 0 : 1;
@@ -80,19 +84,100 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
   }
 
   int _nameScore(String query, String name) {
-    final q = _norm(query);
-    final n = _norm(name);
-    if (n.isEmpty || q.isEmpty) return 1 << 20;
+    final qRaw = _norm(query);
+    final nRaw = _norm(name);
+    if (qRaw.isEmpty || nRaw.isEmpty) return 1 << 20;
 
-    if (n == q) return 0; // exact match
-    if (n.startsWith(q)) return 1; // prefix
-    if (n.contains(q)) return 2; // substring
-    if (_isSubsequence(q, n)) return 3; // subsequence
-    return 10 + _levenshtein(n, q); // fallback
+    // Lightweight diacritic removal (extend as needed)
+    String strip(String s) => s
+        .replaceAll('ä', 'a')
+        .replaceAll('ö', 'o')
+        .replaceAll('ü', 'u')
+        .replaceAll('ß', 'ss');
+
+    final q = strip(qRaw);
+    final n = strip(nRaw);
+
+    // Basic German stemming / synonym expansion
+    String stem(String w) {
+      if (w == 'eier') return 'ei';
+      if (w.endsWith('en') && w.length > 4) return w.substring(0, w.length - 2);
+      if (w.endsWith('er') && w.length > 4) return w.substring(0, w.length - 2);
+      return w;
+    }
+
+    final tokens =
+        n
+            .split(RegExp(r'[^a-z0-9äöüß]+'))
+            .where((t) => t.isNotEmpty)
+            .map(stem)
+            .toList();
+    final sq = stem(q);
+
+    // 0: exact token match or synonym
+    if (tokens.contains(sq)) return 0;
+
+    // 1: full name exact
+    if (n == q) return 1;
+
+    // Helper: Levenshtein distance (inline for fewer calls when needed)
+    int lev(String a, String b) => _levenshtein(a, b);
+
+    final bool veryShort = sq.length <= 2;
+
+    // 2: first token prefix (boost first word relevance)
+    final firstToken = tokens.isNotEmpty ? tokens.first : '';
+    if (firstToken.startsWith(sq)) {
+      int penalty = 2 + (firstToken.length - sq.length);
+      if (veryShort && firstToken.length - sq.length >= 1) penalty += 2;
+      return penalty;
+    }
+
+    // 3: any token prefix
+    int bestPrefix = 9999;
+    for (final t in tokens.skip(1)) {
+      if (t.startsWith(sq)) {
+        int penalty = 4 + (t.length - sq.length);
+        if (veryShort) penalty += 3; // discourage ambiguous short prefixes
+        if (penalty < bestPrefix) bestPrefix = penalty;
+      }
+    }
+    if (bestPrefix != 9999) return bestPrefix;
+
+    // 4: fuzzy token (small edit distance) for longer queries
+    if (sq.length >= 3) {
+      int bestFuzzy = 9999;
+      for (final t in tokens) {
+        final d = lev(t, sq);
+        if (d <= 2) {
+          // near match
+          final fuzzyScore = 8 + d + (t.length - sq.length).abs();
+          if (fuzzyScore < bestFuzzy) bestFuzzy = fuzzyScore;
+        }
+      }
+      if (bestFuzzy != 9999) return bestFuzzy;
+    }
+
+    // 5: substring inside any token
+    int bestSubstring = 9999;
+    for (final t in tokens) {
+      if (t.contains(sq)) {
+        int penalty = 15 + (t.length - sq.length);
+        if (penalty < bestSubstring) bestSubstring = penalty;
+      }
+    }
+    if (bestSubstring != 9999) return bestSubstring;
+
+    // 6: subsequence of whole name
+    if (_isSubsequence(sq, n)) return 30;
+
+    // 7: fallback global distance (ratio-based)
+    final dist = lev(n, sq);
+    final ratio = dist / n.length.clamp(1, 100);
+    return 40 + (ratio * 100).round();
   }
 
   String _itemName(dynamic item) {
-    // Try common keys when results are Maps from an API, else drift row
     if (item is Map) {
       for (final k in ['name', 'product_name', 'title', 'label']) {
         final v = item[k];
@@ -100,10 +185,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
       }
       return '';
     }
-    // If using Drift data class:
-    // if (item is FoodItemData) return item.name;
     try {
-      // last-resort reflection-like access
       // ignore: avoid_dynamic_calls
       final v = item.name;
       return v?.toString() ?? '';
@@ -124,21 +206,25 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
 
     setState(() => _isSearching = true);
     try {
-      final results = await _repository.searchFoods(query); // now exists
+      final results = await _repository.searchFoods(query);
 
-      // Rank by fuzzy score, then by shorter name
+      // Precompute scores to avoid recomputing in sort comparator
+      final scoreCache = <dynamic, int>{};
+      for (final r in results) {
+        scoreCache[r] = _nameScore(query, _itemName(r));
+      }
+
       results.sort((a, b) {
-        final sa = _nameScore(query, _itemName(a));
-        final sb = _nameScore(query, _itemName(b));
+        final sa = scoreCache[a] ?? 1 << 20;
+        final sb = scoreCache[b] ?? 1 << 20;
         if (sa != sb) return sa - sb;
         return _itemName(a).length.compareTo(_itemName(b).length);
       });
 
       setState(() {
-        _searchResults = results.take(30).toList(); // limit to top-N
+        _searchResults = results.take(30).toList();
       });
     } catch (e) {
-      // Optional: show an error
       if (mounted) {
         ScaffoldMessenger.of(
           context,
