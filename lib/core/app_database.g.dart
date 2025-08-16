@@ -1273,6 +1273,267 @@ class MealFoodTableCompanion extends UpdateCompanion<MealFoodTableData> {
   }
 }
 
+class $SearchCacheTableTable extends SearchCacheTable
+    with TableInfo<$SearchCacheTableTable, SearchCacheTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SearchCacheTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _queryMeta = const VerificationMeta('query');
+  @override
+  late final GeneratedColumn<String> query = GeneratedColumn<String>(
+    'query',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _jsonMeta = const VerificationMeta('json');
+  @override
+  late final GeneratedColumn<String> json = GeneratedColumn<String>(
+    'json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tsMeta = const VerificationMeta('ts');
+  @override
+  late final GeneratedColumn<int> ts = GeneratedColumn<int>(
+    'ts',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [query, json, ts];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'search_cache_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SearchCacheTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('query')) {
+      context.handle(
+        _queryMeta,
+        query.isAcceptableOrUnknown(data['query']!, _queryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_queryMeta);
+    }
+    if (data.containsKey('json')) {
+      context.handle(
+        _jsonMeta,
+        json.isAcceptableOrUnknown(data['json']!, _jsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_jsonMeta);
+    }
+    if (data.containsKey('ts')) {
+      context.handle(_tsMeta, ts.isAcceptableOrUnknown(data['ts']!, _tsMeta));
+    } else if (isInserting) {
+      context.missing(_tsMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {query};
+  @override
+  SearchCacheTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SearchCacheTableData(
+      query:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}query'],
+          )!,
+      json:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}json'],
+          )!,
+      ts:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}ts'],
+          )!,
+    );
+  }
+
+  @override
+  $SearchCacheTableTable createAlias(String alias) {
+    return $SearchCacheTableTable(attachedDatabase, alias);
+  }
+}
+
+class SearchCacheTableData extends DataClass
+    implements Insertable<SearchCacheTableData> {
+  final String query;
+  final String json;
+  final int ts;
+  const SearchCacheTableData({
+    required this.query,
+    required this.json,
+    required this.ts,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['query'] = Variable<String>(query);
+    map['json'] = Variable<String>(json);
+    map['ts'] = Variable<int>(ts);
+    return map;
+  }
+
+  SearchCacheTableCompanion toCompanion(bool nullToAbsent) {
+    return SearchCacheTableCompanion(
+      query: Value(query),
+      json: Value(json),
+      ts: Value(ts),
+    );
+  }
+
+  factory SearchCacheTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SearchCacheTableData(
+      query: serializer.fromJson<String>(json['query']),
+      json: serializer.fromJson<String>(json['json']),
+      ts: serializer.fromJson<int>(json['ts']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'query': serializer.toJson<String>(query),
+      'json': serializer.toJson<String>(json),
+      'ts': serializer.toJson<int>(ts),
+    };
+  }
+
+  SearchCacheTableData copyWith({String? query, String? json, int? ts}) =>
+      SearchCacheTableData(
+        query: query ?? this.query,
+        json: json ?? this.json,
+        ts: ts ?? this.ts,
+      );
+  SearchCacheTableData copyWithCompanion(SearchCacheTableCompanion data) {
+    return SearchCacheTableData(
+      query: data.query.present ? data.query.value : this.query,
+      json: data.json.present ? data.json.value : this.json,
+      ts: data.ts.present ? data.ts.value : this.ts,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SearchCacheTableData(')
+          ..write('query: $query, ')
+          ..write('json: $json, ')
+          ..write('ts: $ts')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(query, json, ts);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SearchCacheTableData &&
+          other.query == this.query &&
+          other.json == this.json &&
+          other.ts == this.ts);
+}
+
+class SearchCacheTableCompanion extends UpdateCompanion<SearchCacheTableData> {
+  final Value<String> query;
+  final Value<String> json;
+  final Value<int> ts;
+  final Value<int> rowid;
+  const SearchCacheTableCompanion({
+    this.query = const Value.absent(),
+    this.json = const Value.absent(),
+    this.ts = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SearchCacheTableCompanion.insert({
+    required String query,
+    required String json,
+    required int ts,
+    this.rowid = const Value.absent(),
+  }) : query = Value(query),
+       json = Value(json),
+       ts = Value(ts);
+  static Insertable<SearchCacheTableData> custom({
+    Expression<String>? query,
+    Expression<String>? json,
+    Expression<int>? ts,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (query != null) 'query': query,
+      if (json != null) 'json': json,
+      if (ts != null) 'ts': ts,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SearchCacheTableCompanion copyWith({
+    Value<String>? query,
+    Value<String>? json,
+    Value<int>? ts,
+    Value<int>? rowid,
+  }) {
+    return SearchCacheTableCompanion(
+      query: query ?? this.query,
+      json: json ?? this.json,
+      ts: ts ?? this.ts,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (query.present) {
+      map['query'] = Variable<String>(query.value);
+    }
+    if (json.present) {
+      map['json'] = Variable<String>(json.value);
+    }
+    if (ts.present) {
+      map['ts'] = Variable<int>(ts.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SearchCacheTableCompanion(')
+          ..write('query: $query, ')
+          ..write('json: $json, ')
+          ..write('ts: $ts, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1280,11 +1541,17 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $UserSettingsTable userSettings = $UserSettingsTable(this);
   late final $MealTableTable mealTable = $MealTableTable(this);
   late final $MealFoodTableTable mealFoodTable = $MealFoodTableTable(this);
+  late final $SearchCacheTableTable searchCacheTable = $SearchCacheTableTable(
+    this,
+  );
   late final FoodItemDao foodItemDao = FoodItemDao(this as AppDatabase);
   late final UserSettingsDao userSettingsDao = UserSettingsDao(
     this as AppDatabase,
   );
   late final MealDao mealDao = MealDao(this as AppDatabase);
+  late final SearchCacheDao searchCacheDao = SearchCacheDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1294,6 +1561,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     userSettings,
     mealTable,
     mealFoodTable,
+    searchCacheTable,
   ];
 }
 
@@ -2465,6 +2733,192 @@ typedef $$MealFoodTableTableProcessedTableManager =
       MealFoodTableData,
       PrefetchHooks Function({bool mealId, bool foodEntryId})
     >;
+typedef $$SearchCacheTableTableCreateCompanionBuilder =
+    SearchCacheTableCompanion Function({
+      required String query,
+      required String json,
+      required int ts,
+      Value<int> rowid,
+    });
+typedef $$SearchCacheTableTableUpdateCompanionBuilder =
+    SearchCacheTableCompanion Function({
+      Value<String> query,
+      Value<String> json,
+      Value<int> ts,
+      Value<int> rowid,
+    });
+
+class $$SearchCacheTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SearchCacheTableTable> {
+  $$SearchCacheTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get query => $composableBuilder(
+    column: $table.query,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get json => $composableBuilder(
+    column: $table.json,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ts => $composableBuilder(
+    column: $table.ts,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SearchCacheTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SearchCacheTableTable> {
+  $$SearchCacheTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get query => $composableBuilder(
+    column: $table.query,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get json => $composableBuilder(
+    column: $table.json,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ts => $composableBuilder(
+    column: $table.ts,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SearchCacheTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SearchCacheTableTable> {
+  $$SearchCacheTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get query =>
+      $composableBuilder(column: $table.query, builder: (column) => column);
+
+  GeneratedColumn<String> get json =>
+      $composableBuilder(column: $table.json, builder: (column) => column);
+
+  GeneratedColumn<int> get ts =>
+      $composableBuilder(column: $table.ts, builder: (column) => column);
+}
+
+class $$SearchCacheTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SearchCacheTableTable,
+          SearchCacheTableData,
+          $$SearchCacheTableTableFilterComposer,
+          $$SearchCacheTableTableOrderingComposer,
+          $$SearchCacheTableTableAnnotationComposer,
+          $$SearchCacheTableTableCreateCompanionBuilder,
+          $$SearchCacheTableTableUpdateCompanionBuilder,
+          (
+            SearchCacheTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $SearchCacheTableTable,
+              SearchCacheTableData
+            >,
+          ),
+          SearchCacheTableData,
+          PrefetchHooks Function()
+        > {
+  $$SearchCacheTableTableTableManager(
+    _$AppDatabase db,
+    $SearchCacheTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () =>
+                  $$SearchCacheTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$SearchCacheTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer:
+              () => $$SearchCacheTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> query = const Value.absent(),
+                Value<String> json = const Value.absent(),
+                Value<int> ts = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SearchCacheTableCompanion(
+                query: query,
+                json: json,
+                ts: ts,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String query,
+                required String json,
+                required int ts,
+                Value<int> rowid = const Value.absent(),
+              }) => SearchCacheTableCompanion.insert(
+                query: query,
+                json: json,
+                ts: ts,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SearchCacheTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SearchCacheTableTable,
+      SearchCacheTableData,
+      $$SearchCacheTableTableFilterComposer,
+      $$SearchCacheTableTableOrderingComposer,
+      $$SearchCacheTableTableAnnotationComposer,
+      $$SearchCacheTableTableCreateCompanionBuilder,
+      $$SearchCacheTableTableUpdateCompanionBuilder,
+      (
+        SearchCacheTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $SearchCacheTableTable,
+          SearchCacheTableData
+        >,
+      ),
+      SearchCacheTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2477,6 +2931,8 @@ class $AppDatabaseManager {
       $$MealTableTableTableManager(_db, _db.mealTable);
   $$MealFoodTableTableTableManager get mealFoodTable =>
       $$MealFoodTableTableTableManager(_db, _db.mealFoodTable);
+  $$SearchCacheTableTableTableManager get searchCacheTable =>
+      $$SearchCacheTableTableTableManager(_db, _db.searchCacheTable);
 }
 
 mixin _$FoodItemDaoMixin on DatabaseAccessor<AppDatabase> {
@@ -2489,4 +2945,8 @@ mixin _$MealDaoMixin on DatabaseAccessor<AppDatabase> {
   $MealTableTable get mealTable => attachedDatabase.mealTable;
   $FoodItemTable get foodItem => attachedDatabase.foodItem;
   $MealFoodTableTable get mealFoodTable => attachedDatabase.mealFoodTable;
+}
+mixin _$SearchCacheDaoMixin on DatabaseAccessor<AppDatabase> {
+  $SearchCacheTableTable get searchCacheTable =>
+      attachedDatabase.searchCacheTable;
 }

@@ -6,20 +6,23 @@ import 'app_database_connection.dart'
 part 'app_database.g.dart';
 
 @DriftDatabase(
-  tables: [FoodItem, UserSettings, MealTable, MealFoodTable],
-  daos: [FoodItemDao, UserSettingsDao, MealDao], // <-- add MealDao here
+  tables: [FoodItem, UserSettings, MealTable, MealFoodTable, SearchCacheTable],
+  daos: [FoodItemDao, UserSettingsDao, MealDao, SearchCacheDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(connect());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onUpgrade: (m, from, to) async {
-      if (from == 1) {
+      if (from < 2) {
         await m.addColumn(userSettings, userSettings.themeMode);
+      }
+      if (from < 3) {
+        await m.createTable(searchCacheTable);
       }
     },
   );
@@ -53,6 +56,15 @@ class MealFoodTable extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get mealId => integer().references(MealTable, #id)();
   IntColumn get foodEntryId => integer().references(FoodItem, #id)();
+}
+
+// Persistent search cache table
+class SearchCacheTable extends Table {
+  TextColumn get query => text()();
+  TextColumn get json => text()(); // raw json array of products
+  IntColumn get ts => integer()(); // epoch millis
+  @override
+  Set<Column> get primaryKey => {query};
 }
 
 @DriftAccessor(tables: [FoodItem])
@@ -157,5 +169,31 @@ class MealDao extends DatabaseAccessor<AppDatabase> with _$MealDaoMixin {
     return (delete(mealFoodTable)..where(
       (tbl) => tbl.mealId.equals(mealId) & tbl.foodEntryId.equals(foodId),
     )).go();
+  }
+}
+
+@DriftAccessor(tables: [SearchCacheTable])
+class SearchCacheDao extends DatabaseAccessor<AppDatabase>
+    with _$SearchCacheDaoMixin {
+  SearchCacheDao(AppDatabase db) : super(db);
+
+  Future<void> upsert(String q, String jsonData, int ts) async {
+    await into(searchCacheTable).insertOnConflictUpdate(
+      SearchCacheTableCompanion(
+        query: Value(q),
+        json: Value(jsonData),
+        ts: Value(ts),
+      ),
+    );
+  }
+
+  Future<List<SearchCacheTableData>> getAll() => select(searchCacheTable).get();
+
+  Future<void> deleteByQuery(String q) async {
+    await (delete(searchCacheTable)..where((tbl) => tbl.query.equals(q))).go();
+  }
+
+  Future<void> deleteOlderThan(int cutoffTs) async {
+    await (delete(searchCacheTable)..where((tbl) => tbl.ts.isSmallerThanValue(cutoffTs))).go();
   }
 }

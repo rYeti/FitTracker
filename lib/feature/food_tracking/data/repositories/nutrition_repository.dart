@@ -1,21 +1,77 @@
+import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:fittnes_tracker/core/app_database.dart';
 import 'package:fittnes_tracker/feature/food_tracking/data/models/daily_nutrition_model.dart';
 import 'package:dio/dio.dart';
 
+// Lightweight cached entry for search results
+class _CachedSearch {
+  final DateTime ts;
+  final List<Map<String, dynamic>> data;
+  _CachedSearch(this.ts, this.data);
+  bool isFresh(Duration ttl) => DateTime.now().difference(ts) < ttl;
+}
+
 class NutritionRepository {
   final AppDatabase db;
   final Dio _dio = Dio();
+  // In–memory search cache (query -> results)
+  final Map<String, _CachedSearch> _searchCache = {};
+  static const int _maxCacheEntries = 40;
+  static const Duration _cacheTtl = Duration(minutes: 10);
+  bool _persistentLoaded = false; // lazy load flag
 
   NutritionRepository(this.db);
 
   Future<List<Map<String, dynamic>>> searchFoods(String query) async {
-    if (query.trim().isEmpty) return [];
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return [];
+
+    // Lazy load persistent cache once
+    if (!_persistentLoaded) {
+      await _loadPersistent();
+    }
+
+    // 1. Exact cache hit & fresh
+    final exact = _searchCache[q];
+    if (exact != null && exact.isFresh(_cacheTtl)) {
+      return List<Map<String, dynamic>>.from(exact.data);
+    }
+
+    // 2. Try prefix refinement (longest cached prefix) for incremental typing
+    _CachedSearch? prefixEntry;
+    for (final key in _searchCache.keys) {
+      if (q.startsWith(key)) {
+        if (prefixEntry == null ||
+            key.length > _searchCache.keys.first.length) {
+          final cand = _searchCache[key];
+          if (cand != null && cand.isFresh(_cacheTtl)) {
+            prefixEntry = cand;
+          }
+        }
+      }
+    }
+    if (prefixEntry != null) {
+      final filtered =
+          prefixEntry.data.where((m) {
+            final name =
+                (m['product_name'] ?? m['name'] ?? '').toString().toLowerCase();
+            final brands = (m['brands'] ?? '').toString().toLowerCase();
+            return name.contains(q) || brands.contains(q);
+          }).toList();
+      // If we have meaningful filtered results (or query length grew), return without network
+      if (filtered.isNotEmpty && q.length > 2) {
+        _cacheStore(q, filtered); // store refined subset
+        return filtered;
+      }
+    }
+
+    // 3. Network fetch fallback
     try {
       final resp = await _dio.get(
         'https://world.openfoodfacts.org/cgi/search.pl',
         queryParameters: {
-          'search_terms': query,
+          'search_terms': q,
           'search_simple': 1,
           'action': 'process',
           'json': 1,
@@ -25,12 +81,74 @@ class NutritionRepository {
       );
       final data = resp.data;
       final products = (data is Map) ? data['products'] : null;
-      if (products is List) {
-        return products.whereType<Map>().cast<Map<String, dynamic>>().toList();
-      }
-      return [];
+      final list =
+          (products is List)
+              ? products.whereType<Map>().cast<Map<String, dynamic>>().toList()
+              : <Map<String, dynamic>>[];
+      _cacheStore(q, list);
+      return List<Map<String, dynamic>>.from(list);
     } catch (_) {
+      // On failure, fallback to any stale cache if exists
+      if (exact != null) return List<Map<String, dynamic>>.from(exact.data);
+      if (prefixEntry != null)
+        return List<Map<String, dynamic>>.from(prefixEntry.data);
       return [];
+    }
+  }
+
+  void _cacheStore(String q, List<Map<String, dynamic>> data) {
+    if (data.isEmpty)
+      return; // avoid caching empty responses – they may be temporary
+    _searchCache[q] = _CachedSearch(DateTime.now(), data);
+    if (_searchCache.length > _maxCacheEntries) {
+      // Evict oldest
+      final oldestKey =
+          _searchCache.entries
+              .reduce((a, b) => a.value.ts.isBefore(b.value.ts) ? a : b)
+              .key;
+      _searchCache.remove(oldestKey);
+      // Best-effort prune in persistent store (ignore errors)
+      try {
+        db.searchCacheDao.deleteByQuery(oldestKey);
+      } catch (_) {}
+    }
+    // Persist asynchronously (fire & forget)
+    try {
+      db.searchCacheDao.upsert(
+        q,
+        jsonEncode(data),
+        DateTime.now().millisecondsSinceEpoch,
+      );
+      // Periodic pruning of stale rows
+      db.searchCacheDao.deleteOlderThan(
+        DateTime.now().subtract(_cacheTtl).millisecondsSinceEpoch,
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _loadPersistent() async {
+    _persistentLoaded = true; // set first to avoid re-entry on errors
+    try {
+      final cutoff = DateTime.now().subtract(_cacheTtl).millisecondsSinceEpoch;
+      final rows = await db.searchCacheDao.getAll();
+      for (final row in rows) {
+        if (row.ts < cutoff) continue; // stale
+        try {
+          final decoded = jsonDecode(row.json);
+          if (decoded is List) {
+            final list =
+                decoded.whereType<Map>().cast<Map<String, dynamic>>().toList();
+            _searchCache[row.query] = _CachedSearch(
+              DateTime.fromMillisecondsSinceEpoch(row.ts),
+              list,
+            );
+          }
+        } catch (_) {
+          // ignore malformed rows
+        }
+      }
+    } catch (_) {
+      // ignore load errors
     }
   }
 

@@ -43,11 +43,18 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
   void _onSearchChanged() {
     // Debounce user input
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), _performSearch);
+    _debounce = Timer(const Duration(milliseconds: 30), _performSearch);
   }
 
   // ---------- Fuzzy ranking helpers ----------
   String _norm(String s) => s.toLowerCase().trim();
+
+  // Lightweight diacritic removal (extend as needed)
+  String strip(String s) => s
+      .replaceAll('ä', 'a')
+      .replaceAll('ö', 'o')
+      .replaceAll('ü', 'u')
+      .replaceAll('ß', 'ss');
 
   bool _isSubsequence(String q, String s) {
     var i = 0, j = 0;
@@ -87,13 +94,6 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
     final qRaw = _norm(query);
     final nRaw = _norm(name);
     if (qRaw.isEmpty || nRaw.isEmpty) return 1 << 20;
-
-    // Lightweight diacritic removal (extend as needed)
-    String strip(String s) => s
-        .replaceAll('ä', 'a')
-        .replaceAll('ö', 'o')
-        .replaceAll('ü', 'u')
-        .replaceAll('ß', 'ss');
 
     final q = strip(qRaw);
     final n = strip(nRaw);
