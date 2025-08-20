@@ -2,13 +2,10 @@
 import 'package:fittnes_tracker/core/app_database.dart';
 import 'package:fittnes_tracker/core/providers/user_goals_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../data/repositories/nutrition_repository.dart';
 import 'food_add_screen.dart';
-// ...existing code...
-// ...existing code...
 
 class FoodTrackingScreen extends StatefulWidget {
   const FoodTrackingScreen({super.key});
@@ -97,8 +94,6 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildDailySummary(),
-                const SizedBox(height: 24),
-                _buildMacroChart(),
                 const SizedBox(height: 24),
                 // _buildWeeklyProgress(),
                 const SizedBox(height: 24),
@@ -237,118 +232,104 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
     );
   }
 
-  Widget _buildMacroChart() {
-    // Calculate daily totals from _mealFoods
-    int totalProtein = 0;
-    int totalCarbs = 0;
-    int totalFat = 0;
-    int totalCalories = 0;
-    _mealFoods.forEach((_, foods) {
-      for (final food in foods) {
-        totalProtein += food.protein;
-        totalCarbs += food.carbs;
-        totalFat += food.fat;
-        totalCalories += food.calories;
-      }
-    });
-    if (totalCalories == 0 &&
-        totalProtein == 0 &&
-        totalCarbs == 0 &&
-        totalFat == 0) {
-      return Container();
-    }
+  // Widget _buildMacroChart() {
+  //   // Calculate daily totals from _mealFoods
+  //   int totalProtein = 0;
+  //   int totalCarbs = 0;
+  //   int totalFat = 0;
+  //   int totalCalories = 0;
+  //   _mealFoods.forEach((_, foods) {
+  //     for (final food in foods) {
+  //       totalProtein += food.protein;
+  //       totalCarbs += food.carbs;
+  //       totalFat += food.fat;
+  //       totalCalories += food.calories;
+  //     }
+  //   });
+  //   if (totalCalories == 0 &&
+  //       totalProtein == 0 &&
+  //       totalCarbs == 0 &&
+  //       totalFat == 0) {
+  //     return Container();
+  //   }
 
-    final proteinCal = totalProtein * 4;
-    final carbsCal = totalCarbs * 4;
-    final fatCal = totalFat * 9;
-    final total = proteinCal + carbsCal + fatCal;
+  //   final proteinCal = totalProtein * 4;
+  //   final carbsCal = totalCarbs * 4;
+  //   final fatCal = totalFat * 9;
+  //   final total = proteinCal + carbsCal + fatCal;
 
-    final proteinPerc = total > 0 ? proteinCal / total : 0.0;
-    final carbsPerc = total > 0 ? carbsCal / total : 0.0;
-    final fatPerc = total > 0 ? fatCal / total : 0.0;
+  //   final proteinPerc = total > 0 ? proteinCal / total : 0.0;
+  //   final carbsPerc = total > 0 ? carbsCal / total : 0.0;
+  //   final fatPerc = total > 0 ? fatCal / total : 0.0;
 
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Macronutrient Breakdown',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 180,
-              child: PieChart(
-                PieChartData(
-                  sectionsSpace: 2,
-                  centerSpaceRadius: 3,
-                  sections: [
-                    PieChartSectionData(
-                      value: proteinPerc * 100,
-                      title: '${(proteinPerc * 100).toStringAsFixed(1)}%',
-                      color: Colors.red,
-                      radius: 100,
-                      titleStyle: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    PieChartSectionData(
-                      value: carbsPerc * 100,
-                      title: '${(carbsPerc * 100).toStringAsFixed(1)}%',
-                      color: Colors.blue,
-                      radius: 100,
-                      titleStyle: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    PieChartSectionData(
-                      value: fatPerc * 100,
-                      title: '${(fatPerc * 100).toStringAsFixed(1)}%',
-                      color: Colors.green,
-                      radius: 100,
-                      titleStyle: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildLegendItem('Protein', Colors.red),
-                _buildLegendItem('Carbs', Colors.blue),
-                _buildLegendItem('Fat', Colors.green),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLegendItem(String label, Color color) {
-    return Row(
-      children: [
-        Container(
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 8),
-        Text(label),
-      ],
-    );
-  }
+  //   return Card(
+  //     elevation: 4,
+  //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+  //     child: Padding(
+  //       padding: const EdgeInsets.all(16.0),
+  //       child: Column(
+  //         crossAxisAlignment: CrossAxisAlignment.start,
+  //         children: [
+  //           const Text(
+  //             'Macronutrient Breakdown',
+  //             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+  //           ),
+  //           const SizedBox(height: 16),
+  //           SizedBox(
+  //             height: 180,
+  //             child: PieChart(
+  //               PieChartData(
+  //                 sectionsSpace: 2,
+  //                 centerSpaceRadius: 3,
+  //                 sections: [
+  //                   PieChartSectionData(
+  //                     value: proteinPerc * 100,
+  //                     title: '${(proteinPerc * 100).toStringAsFixed(1)}%',
+  //                     color: Colors.red,
+  //                     radius: 100,
+  //                     titleStyle: const TextStyle(
+  //                       color: Colors.white,
+  //                       fontWeight: FontWeight.bold,
+  //                     ),
+  //                   ),
+  //                   PieChartSectionData(
+  //                     value: carbsPerc * 100,
+  //                     title: '${(carbsPerc * 100).toStringAsFixed(1)}%',
+  //                     color: Colors.blue,
+  //                     radius: 100,
+  //                     titleStyle: const TextStyle(
+  //                       color: Colors.white,
+  //                       fontWeight: FontWeight.bold,
+  //                     ),
+  //                   ),
+  //                   PieChartSectionData(
+  //                     value: fatPerc * 100,
+  //                     title: '${(fatPerc * 100).toStringAsFixed(1)}%',
+  //                     color: Colors.green,
+  //                     radius: 100,
+  //                     titleStyle: const TextStyle(
+  //                       color: Colors.white,
+  //                       fontWeight: FontWeight.bold,
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //           ),
+  //           const SizedBox(height: 16),
+  //           Row(
+  //             mainAxisAlignment: MainAxisAlignment.spaceAround,
+  //             children: [
+  //               _buildLegendItem('Protein', Colors.red),
+  //               _buildLegendItem('Carbs', Colors.blue),
+  //               _buildLegendItem('Fat', Colors.green),
+  //             ],
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildMealsList() {
     return Column(

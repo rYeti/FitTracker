@@ -490,8 +490,73 @@ class $UserSettingsTable extends UserSettings
     requiredDuringInsert: false,
     defaultValue: const Constant('light'),
   );
+  static const VerificationMeta _ageMeta = const VerificationMeta('age');
   @override
-  List<GeneratedColumn> get $columns => [id, dailyCalorieGoal, themeMode];
+  late final GeneratedColumn<int> age = GeneratedColumn<int>(
+    'age',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(30),
+  );
+  static const VerificationMeta _heightCmMeta = const VerificationMeta(
+    'heightCm',
+  );
+  @override
+  late final GeneratedColumn<int> heightCm = GeneratedColumn<int>(
+    'height_cm',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(170),
+  );
+  static const VerificationMeta _sexMeta = const VerificationMeta('sex');
+  @override
+  late final GeneratedColumn<String> sex = GeneratedColumn<String>(
+    'sex',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('male'),
+  );
+  static const VerificationMeta _activityLevelMeta = const VerificationMeta(
+    'activityLevel',
+  );
+  @override
+  late final GeneratedColumn<int> activityLevel = GeneratedColumn<int>(
+    'activity_level',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _goalTypeMeta = const VerificationMeta(
+    'goalType',
+  );
+  @override
+  late final GeneratedColumn<int> goalType = GeneratedColumn<int>(
+    'goal_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    dailyCalorieGoal,
+    themeMode,
+    age,
+    heightCm,
+    sex,
+    activityLevel,
+    goalType,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -522,6 +587,39 @@ class $UserSettingsTable extends UserSettings
         themeMode.isAcceptableOrUnknown(data['theme_mode']!, _themeModeMeta),
       );
     }
+    if (data.containsKey('age')) {
+      context.handle(
+        _ageMeta,
+        age.isAcceptableOrUnknown(data['age']!, _ageMeta),
+      );
+    }
+    if (data.containsKey('height_cm')) {
+      context.handle(
+        _heightCmMeta,
+        heightCm.isAcceptableOrUnknown(data['height_cm']!, _heightCmMeta),
+      );
+    }
+    if (data.containsKey('sex')) {
+      context.handle(
+        _sexMeta,
+        sex.isAcceptableOrUnknown(data['sex']!, _sexMeta),
+      );
+    }
+    if (data.containsKey('activity_level')) {
+      context.handle(
+        _activityLevelMeta,
+        activityLevel.isAcceptableOrUnknown(
+          data['activity_level']!,
+          _activityLevelMeta,
+        ),
+      );
+    }
+    if (data.containsKey('goal_type')) {
+      context.handle(
+        _goalTypeMeta,
+        goalType.isAcceptableOrUnknown(data['goal_type']!, _goalTypeMeta),
+      );
+    }
     return context;
   }
 
@@ -546,6 +644,31 @@ class $UserSettingsTable extends UserSettings
             DriftSqlType.string,
             data['${effectivePrefix}theme_mode'],
           )!,
+      age:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}age'],
+          )!,
+      heightCm:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}height_cm'],
+          )!,
+      sex:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}sex'],
+          )!,
+      activityLevel:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}activity_level'],
+          )!,
+      goalType:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}goal_type'],
+          )!,
     );
   }
 
@@ -559,10 +682,20 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
   final int id;
   final int dailyCalorieGoal;
   final String themeMode;
+  final int age;
+  final int heightCm;
+  final String sex;
+  final int activityLevel;
+  final int goalType;
   const UserSetting({
     required this.id,
     required this.dailyCalorieGoal,
     required this.themeMode,
+    required this.age,
+    required this.heightCm,
+    required this.sex,
+    required this.activityLevel,
+    required this.goalType,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -570,6 +703,11 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
     map['id'] = Variable<int>(id);
     map['daily_calorie_goal'] = Variable<int>(dailyCalorieGoal);
     map['theme_mode'] = Variable<String>(themeMode);
+    map['age'] = Variable<int>(age);
+    map['height_cm'] = Variable<int>(heightCm);
+    map['sex'] = Variable<String>(sex);
+    map['activity_level'] = Variable<int>(activityLevel);
+    map['goal_type'] = Variable<int>(goalType);
     return map;
   }
 
@@ -578,6 +716,11 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
       id: Value(id),
       dailyCalorieGoal: Value(dailyCalorieGoal),
       themeMode: Value(themeMode),
+      age: Value(age),
+      heightCm: Value(heightCm),
+      sex: Value(sex),
+      activityLevel: Value(activityLevel),
+      goalType: Value(goalType),
     );
   }
 
@@ -590,6 +733,11 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
       id: serializer.fromJson<int>(json['id']),
       dailyCalorieGoal: serializer.fromJson<int>(json['dailyCalorieGoal']),
       themeMode: serializer.fromJson<String>(json['themeMode']),
+      age: serializer.fromJson<int>(json['age']),
+      heightCm: serializer.fromJson<int>(json['heightCm']),
+      sex: serializer.fromJson<String>(json['sex']),
+      activityLevel: serializer.fromJson<int>(json['activityLevel']),
+      goalType: serializer.fromJson<int>(json['goalType']),
     );
   }
   @override
@@ -599,15 +747,33 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
       'id': serializer.toJson<int>(id),
       'dailyCalorieGoal': serializer.toJson<int>(dailyCalorieGoal),
       'themeMode': serializer.toJson<String>(themeMode),
+      'age': serializer.toJson<int>(age),
+      'heightCm': serializer.toJson<int>(heightCm),
+      'sex': serializer.toJson<String>(sex),
+      'activityLevel': serializer.toJson<int>(activityLevel),
+      'goalType': serializer.toJson<int>(goalType),
     };
   }
 
-  UserSetting copyWith({int? id, int? dailyCalorieGoal, String? themeMode}) =>
-      UserSetting(
-        id: id ?? this.id,
-        dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
-        themeMode: themeMode ?? this.themeMode,
-      );
+  UserSetting copyWith({
+    int? id,
+    int? dailyCalorieGoal,
+    String? themeMode,
+    int? age,
+    int? heightCm,
+    String? sex,
+    int? activityLevel,
+    int? goalType,
+  }) => UserSetting(
+    id: id ?? this.id,
+    dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
+    themeMode: themeMode ?? this.themeMode,
+    age: age ?? this.age,
+    heightCm: heightCm ?? this.heightCm,
+    sex: sex ?? this.sex,
+    activityLevel: activityLevel ?? this.activityLevel,
+    goalType: goalType ?? this.goalType,
+  );
   UserSetting copyWithCompanion(UserSettingsCompanion data) {
     return UserSetting(
       id: data.id.present ? data.id.value : this.id,
@@ -616,6 +782,14 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
               ? data.dailyCalorieGoal.value
               : this.dailyCalorieGoal,
       themeMode: data.themeMode.present ? data.themeMode.value : this.themeMode,
+      age: data.age.present ? data.age.value : this.age,
+      heightCm: data.heightCm.present ? data.heightCm.value : this.heightCm,
+      sex: data.sex.present ? data.sex.value : this.sex,
+      activityLevel:
+          data.activityLevel.present
+              ? data.activityLevel.value
+              : this.activityLevel,
+      goalType: data.goalType.present ? data.goalType.value : this.goalType,
     );
   }
 
@@ -624,45 +798,89 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
     return (StringBuffer('UserSetting(')
           ..write('id: $id, ')
           ..write('dailyCalorieGoal: $dailyCalorieGoal, ')
-          ..write('themeMode: $themeMode')
+          ..write('themeMode: $themeMode, ')
+          ..write('age: $age, ')
+          ..write('heightCm: $heightCm, ')
+          ..write('sex: $sex, ')
+          ..write('activityLevel: $activityLevel, ')
+          ..write('goalType: $goalType')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, dailyCalorieGoal, themeMode);
+  int get hashCode => Object.hash(
+    id,
+    dailyCalorieGoal,
+    themeMode,
+    age,
+    heightCm,
+    sex,
+    activityLevel,
+    goalType,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is UserSetting &&
           other.id == this.id &&
           other.dailyCalorieGoal == this.dailyCalorieGoal &&
-          other.themeMode == this.themeMode);
+          other.themeMode == this.themeMode &&
+          other.age == this.age &&
+          other.heightCm == this.heightCm &&
+          other.sex == this.sex &&
+          other.activityLevel == this.activityLevel &&
+          other.goalType == this.goalType);
 }
 
 class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
   final Value<int> id;
   final Value<int> dailyCalorieGoal;
   final Value<String> themeMode;
+  final Value<int> age;
+  final Value<int> heightCm;
+  final Value<String> sex;
+  final Value<int> activityLevel;
+  final Value<int> goalType;
   const UserSettingsCompanion({
     this.id = const Value.absent(),
     this.dailyCalorieGoal = const Value.absent(),
     this.themeMode = const Value.absent(),
+    this.age = const Value.absent(),
+    this.heightCm = const Value.absent(),
+    this.sex = const Value.absent(),
+    this.activityLevel = const Value.absent(),
+    this.goalType = const Value.absent(),
   });
   UserSettingsCompanion.insert({
     this.id = const Value.absent(),
     this.dailyCalorieGoal = const Value.absent(),
     this.themeMode = const Value.absent(),
+    this.age = const Value.absent(),
+    this.heightCm = const Value.absent(),
+    this.sex = const Value.absent(),
+    this.activityLevel = const Value.absent(),
+    this.goalType = const Value.absent(),
   });
   static Insertable<UserSetting> custom({
     Expression<int>? id,
     Expression<int>? dailyCalorieGoal,
     Expression<String>? themeMode,
+    Expression<int>? age,
+    Expression<int>? heightCm,
+    Expression<String>? sex,
+    Expression<int>? activityLevel,
+    Expression<int>? goalType,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (dailyCalorieGoal != null) 'daily_calorie_goal': dailyCalorieGoal,
       if (themeMode != null) 'theme_mode': themeMode,
+      if (age != null) 'age': age,
+      if (heightCm != null) 'height_cm': heightCm,
+      if (sex != null) 'sex': sex,
+      if (activityLevel != null) 'activity_level': activityLevel,
+      if (goalType != null) 'goal_type': goalType,
     });
   }
 
@@ -670,11 +888,21 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
     Value<int>? id,
     Value<int>? dailyCalorieGoal,
     Value<String>? themeMode,
+    Value<int>? age,
+    Value<int>? heightCm,
+    Value<String>? sex,
+    Value<int>? activityLevel,
+    Value<int>? goalType,
   }) {
     return UserSettingsCompanion(
       id: id ?? this.id,
       dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
       themeMode: themeMode ?? this.themeMode,
+      age: age ?? this.age,
+      heightCm: heightCm ?? this.heightCm,
+      sex: sex ?? this.sex,
+      activityLevel: activityLevel ?? this.activityLevel,
+      goalType: goalType ?? this.goalType,
     );
   }
 
@@ -690,6 +918,21 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
     if (themeMode.present) {
       map['theme_mode'] = Variable<String>(themeMode.value);
     }
+    if (age.present) {
+      map['age'] = Variable<int>(age.value);
+    }
+    if (heightCm.present) {
+      map['height_cm'] = Variable<int>(heightCm.value);
+    }
+    if (sex.present) {
+      map['sex'] = Variable<String>(sex.value);
+    }
+    if (activityLevel.present) {
+      map['activity_level'] = Variable<int>(activityLevel.value);
+    }
+    if (goalType.present) {
+      map['goal_type'] = Variable<int>(goalType.value);
+    }
     return map;
   }
 
@@ -698,7 +941,12 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
     return (StringBuffer('UserSettingsCompanion(')
           ..write('id: $id, ')
           ..write('dailyCalorieGoal: $dailyCalorieGoal, ')
-          ..write('themeMode: $themeMode')
+          ..write('themeMode: $themeMode, ')
+          ..write('age: $age, ')
+          ..write('heightCm: $heightCm, ')
+          ..write('sex: $sex, ')
+          ..write('activityLevel: $activityLevel, ')
+          ..write('goalType: $goalType')
           ..write(')'))
         .toString();
   }
@@ -1913,12 +2161,22 @@ typedef $$UserSettingsTableCreateCompanionBuilder =
       Value<int> id,
       Value<int> dailyCalorieGoal,
       Value<String> themeMode,
+      Value<int> age,
+      Value<int> heightCm,
+      Value<String> sex,
+      Value<int> activityLevel,
+      Value<int> goalType,
     });
 typedef $$UserSettingsTableUpdateCompanionBuilder =
     UserSettingsCompanion Function({
       Value<int> id,
       Value<int> dailyCalorieGoal,
       Value<String> themeMode,
+      Value<int> age,
+      Value<int> heightCm,
+      Value<String> sex,
+      Value<int> activityLevel,
+      Value<int> goalType,
     });
 
 class $$UserSettingsTableFilterComposer
@@ -1942,6 +2200,31 @@ class $$UserSettingsTableFilterComposer
 
   ColumnFilters<String> get themeMode => $composableBuilder(
     column: $table.themeMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get age => $composableBuilder(
+    column: $table.age,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get heightCm => $composableBuilder(
+    column: $table.heightCm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sex => $composableBuilder(
+    column: $table.sex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get activityLevel => $composableBuilder(
+    column: $table.activityLevel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get goalType => $composableBuilder(
+    column: $table.goalType,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1969,6 +2252,31 @@ class $$UserSettingsTableOrderingComposer
     column: $table.themeMode,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get age => $composableBuilder(
+    column: $table.age,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get heightCm => $composableBuilder(
+    column: $table.heightCm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sex => $composableBuilder(
+    column: $table.sex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get activityLevel => $composableBuilder(
+    column: $table.activityLevel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get goalType => $composableBuilder(
+    column: $table.goalType,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$UserSettingsTableAnnotationComposer
@@ -1990,6 +2298,23 @@ class $$UserSettingsTableAnnotationComposer
 
   GeneratedColumn<String> get themeMode =>
       $composableBuilder(column: $table.themeMode, builder: (column) => column);
+
+  GeneratedColumn<int> get age =>
+      $composableBuilder(column: $table.age, builder: (column) => column);
+
+  GeneratedColumn<int> get heightCm =>
+      $composableBuilder(column: $table.heightCm, builder: (column) => column);
+
+  GeneratedColumn<String> get sex =>
+      $composableBuilder(column: $table.sex, builder: (column) => column);
+
+  GeneratedColumn<int> get activityLevel => $composableBuilder(
+    column: $table.activityLevel,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get goalType =>
+      $composableBuilder(column: $table.goalType, builder: (column) => column);
 }
 
 class $$UserSettingsTableTableManager
@@ -2027,20 +2352,40 @@ class $$UserSettingsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> dailyCalorieGoal = const Value.absent(),
                 Value<String> themeMode = const Value.absent(),
+                Value<int> age = const Value.absent(),
+                Value<int> heightCm = const Value.absent(),
+                Value<String> sex = const Value.absent(),
+                Value<int> activityLevel = const Value.absent(),
+                Value<int> goalType = const Value.absent(),
               }) => UserSettingsCompanion(
                 id: id,
                 dailyCalorieGoal: dailyCalorieGoal,
                 themeMode: themeMode,
+                age: age,
+                heightCm: heightCm,
+                sex: sex,
+                activityLevel: activityLevel,
+                goalType: goalType,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 Value<int> dailyCalorieGoal = const Value.absent(),
                 Value<String> themeMode = const Value.absent(),
+                Value<int> age = const Value.absent(),
+                Value<int> heightCm = const Value.absent(),
+                Value<String> sex = const Value.absent(),
+                Value<int> activityLevel = const Value.absent(),
+                Value<int> goalType = const Value.absent(),
               }) => UserSettingsCompanion.insert(
                 id: id,
                 dailyCalorieGoal: dailyCalorieGoal,
                 themeMode: themeMode,
+                age: age,
+                heightCm: heightCm,
+                sex: sex,
+                activityLevel: activityLevel,
+                goalType: goalType,
               ),
           withReferenceMapper:
               (p0) =>

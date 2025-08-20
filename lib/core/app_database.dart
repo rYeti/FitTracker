@@ -13,7 +13,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(connect());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -23,6 +23,14 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 3) {
         await m.createTable(searchCacheTable);
+      }
+      if (from < 4) {
+        // Add newly introduced profile columns to userSettings
+        await m.addColumn(userSettings, userSettings.age);
+        await m.addColumn(userSettings, userSettings.heightCm);
+        await m.addColumn(userSettings, userSettings.sex);
+        await m.addColumn(userSettings, userSettings.activityLevel);
+        await m.addColumn(userSettings, userSettings.goalType);
       }
     },
   );
@@ -43,6 +51,12 @@ class UserSettings extends Table {
   IntColumn get dailyCalorieGoal =>
       integer().withDefault(const Constant(2000))();
   TextColumn get themeMode => text().withDefault(const Constant('light'))();
+  // Profile fields
+  IntColumn get age => integer().withDefault(const Constant(30))();
+  IntColumn get heightCm => integer().withDefault(const Constant(170))();
+  TextColumn get sex => text().withDefault(const Constant('male'))();
+  IntColumn get activityLevel => integer().withDefault(const Constant(1))();
+  IntColumn get goalType => integer().withDefault(const Constant(1))();
 }
 
 class MealTable extends Table {
@@ -115,6 +129,39 @@ class UserSettingsDao extends DatabaseAccessor<AppDatabase>
       final success = await update(
         userSettings,
       ).replace(settings.copyWith(dailyCalorieGoal: goal));
+      return success ? 1 : 0;
+    }
+  }
+
+  // Update profile fields (age, heightCm, sex, activityLevel, goalType)
+  Future<int> updateProfile({
+    int? age,
+    int? heightCm,
+    String? sex,
+    int? activityLevel,
+    int? goalType,
+  }) async {
+    final settings = await getSettings();
+    if (settings == null) {
+      return into(userSettings).insert(
+        UserSettingsCompanion.insert(
+          dailyCalorieGoal: const Value(2000),
+          age: Value(age ?? 30),
+          heightCm: Value(heightCm ?? 170),
+          sex: Value(sex ?? 'male'),
+          activityLevel: Value(activityLevel ?? 1),
+          goalType: Value(goalType ?? 1),
+        ),
+      );
+    } else {
+      final updated = settings.copyWith(
+        age: age ?? settings.age,
+        heightCm: heightCm ?? settings.heightCm,
+        sex: sex ?? settings.sex,
+        activityLevel: activityLevel ?? settings.activityLevel,
+        goalType: goalType ?? settings.goalType,
+      );
+      final success = await update(userSettings).replace(updated);
       return success ? 1 : 0;
     }
   }
@@ -194,6 +241,7 @@ class SearchCacheDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<void> deleteOlderThan(int cutoffTs) async {
-    await (delete(searchCacheTable)..where((tbl) => tbl.ts.isSmallerThanValue(cutoffTs))).go();
+    await (delete(searchCacheTable)
+      ..where((tbl) => tbl.ts.isSmallerThanValue(cutoffTs))).go();
   }
 }

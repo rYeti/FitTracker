@@ -15,12 +15,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   setupLocator();
   final db = AppDatabase();
-    
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider(db)),
-        ChangeNotifierProvider(create: (_) => UserGoalsProvider()),
+        ChangeNotifierProvider(create: (_) => UserGoalsProvider(db)),
       ],
       child: const MyApp(),
     ),
