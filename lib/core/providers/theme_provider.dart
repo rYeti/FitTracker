@@ -1,4 +1,5 @@
-import 'package:fittnes_tracker/core/app_database.dart';
+
+import '../app_database.dart';
 import 'package:flutter/material.dart';
 
 class ThemeProvider with ChangeNotifier {

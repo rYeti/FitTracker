@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 // lib/feature/presentation/view/food_detail_view.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import '../../data/models/food_item_model.dart';
 import '../../data/repositories/nutrition_repository.dart';
@@ -55,7 +56,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        appBar: AppBar(title: const Text('Food Details')),
+        appBar: AppBar(title: Text(AppLocalizations.of(context)!.foodDetails)),
         body: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -98,30 +99,47 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Nutrition Information',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              AppLocalizations.of(context)!.nutritionInformation,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             _buildNutrientRow(
-              'Calories',
-              '$_calculatedCalories kcal',
+              AppLocalizations.of(context)!.calories,
+              _calculatedCalories,
+              'kcal',
               Colors.orange,
             ),
-            _buildNutrientRow('Protein', '$_calculatedProtein g', Colors.red),
-            _buildNutrientRow('Carbs', '$_calculatedCarbs g', Colors.blue),
-            _buildNutrientRow('Fat', '$_calculatedFat g', Colors.green),
+            _buildNutrientRow(
+              AppLocalizations.of(context)!.protein,
+              _calculatedProtein,
+              'g',
+              Colors.red,
+            ),
+            _buildNutrientRow(
+              AppLocalizations.of(context)!.carbs,
+              _calculatedCarbs,
+              'g',
+              Colors.blue,
+            ),
+            _buildNutrientRow(
+              AppLocalizations.of(context)!.fat,
+              _calculatedFat,
+              'g',
+              Colors.green,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildNutrientRow(String label, String value, Color color) {
-    // Extract numeric value from the string, removing units
-    final numericValue = double.parse(value.replaceAll(RegExp(r'[^0-9.]'), ''));
-    final String unit = label.contains("Calories") ? "kcal" : "g";
-
+  Widget _buildNutrientRow(
+    String label,
+    double numericValue,
+    String unit,
+    Color color,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -136,10 +154,14 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
           const Spacer(),
           TweenAnimationBuilder<double>(
             tween: Tween<double>(begin: 0, end: numericValue),
-            duration: const Duration(milliseconds: 200),
+            duration: const Duration(milliseconds: 250),
             builder: (context, value, child) {
+              final formatted =
+                  value >= 10
+                      ? value.toStringAsFixed(0)
+                      : value.toStringAsFixed(1);
               return Text(
-                '${value.toStringAsFixed(1)} $unit',
+                '$formatted $unit',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -160,20 +182,19 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Portion Size",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              AppLocalizations.of(context)!.portionSize,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             TextField(
               controller: _quantityController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Quantity (g)',
-                border: OutlineInputBorder(),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context)!.quantityInGrams,
+                border: const OutlineInputBorder(),
               ),
               onChanged: (value) {
-                // Strip non-numeric characters
                 final numericValue = value.replaceAll(RegExp(r'[^0-9.]'), '');
                 setState(() {
                   _quantity = double.tryParse(numericValue) ?? 100.0;
@@ -182,6 +203,30 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
               },
             ),
             const SizedBox(height: 16),
+            // Show calculated summary
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${AppLocalizations.of(context)!.calories}: ${_calculatedCalories.toStringAsFixed(0)} kcal',
+                ),
+                Text(
+                  '${AppLocalizations.of(context)!.protein}: ${_calculatedProtein.toStringAsFixed(0)} g',
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${AppLocalizations.of(context)!.carbs}: ${_calculatedCarbs.toStringAsFixed(0)} g',
+                ),
+                Text(
+                  '${AppLocalizations.of(context)!.fat}: ${_calculatedFat.toStringAsFixed(0)} g',
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -192,14 +237,14 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Add to today\'s log:',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        Text(
+          AppLocalizations.of(context)!.addToTodayLog,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         // Show the selected category
         Text(
-          'Meal Category: ${widget.category}',
+          '${AppLocalizations.of(context)!.mealCategory}: ${widget.category}',
           style: const TextStyle(fontSize: 16),
         ),
         const SizedBox(height: 16),
@@ -208,7 +253,6 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
             padding: const EdgeInsets.symmetric(vertical: 16),
           ),
           onPressed: () async {
-            // Always insert a new food item for each log
             final newFoodId = await db.foodItemDao.insertFoodItem(
               FoodItemCompanion.insert(
                 name: widget.foodItem.name,
@@ -225,7 +269,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    'Added ${widget.foodItem.name} (${_quantity.round()}g) to ${widget.category}',
+                    '${widget.foodItem.name} (${_quantity.round()}g) ${AppLocalizations.of(context)!.addedSuccessfully}',
                   ),
                   backgroundColor: Colors.green,
                 ),
@@ -233,7 +277,10 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
               Navigator.pop(context);
             }
           },
-          child: const Text('Add to Log', style: TextStyle(fontSize: 16)),
+          child: Text(
+            AppLocalizations.of(context)!.addToLog,
+            style: const TextStyle(fontSize: 16),
+          ),
         ),
       ],
     );

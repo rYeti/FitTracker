@@ -3,6 +3,7 @@ import 'package:fittnes_tracker/core/app_database.dart';
 import 'package:fittnes_tracker/core/providers/user_goals_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import '../../data/repositories/nutrition_repository.dart';
 import 'food_add_screen.dart';
@@ -20,6 +21,21 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
   Map<String, List<FoodItemData>> _mealFoods = {};
   bool _isLoading = true;
   double _dailyCalorieGoal = 2000;
+
+  // Map stored category keys to AppLocalizations getters so we can present
+  // translated labels without changing storage or DB values.
+  final Map<String, String Function(AppLocalizations)> _mealLabelGetters = {
+    'Breakfast': (loc) => loc.mealBreakfast,
+    'Lunch': (loc) => loc.mealLunch,
+    'Dinner': (loc) => loc.mealDinner,
+    'Snacks': (loc) => loc.mealSnacks,
+  };
+
+  String _localizedMealLabel(String category, BuildContext ctx) {
+    final loc = AppLocalizations.of(ctx)!;
+    final getter = _mealLabelGetters[category];
+    return getter?.call(loc) ?? category;
+  }
 
   @override
   void initState() {
@@ -53,9 +69,11 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to load data: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.failedToLoadData(e)),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -70,7 +88,7 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Food Tracker"),
+        title: Text(AppLocalizations.of(context)!.foodTracker),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -107,7 +125,8 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
   }
 
   Widget _buildDailySummary() {
-    final dateFormat = DateFormat('EEEE, MMMM d');
+    final locale = Localizations.localeOf(context).toString();
+    final dateFormat = DateFormat('EEEE, MMMM d', locale);
     final calorieGoal = Provider.of<UserGoalsProvider>(context).calorieGoal;
     // Calculate daily totals from _mealFoods
     int totalCalories = 0;
@@ -176,7 +195,7 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNutrientSummary(
-                  'Protein',
+                  AppLocalizations.of(context)!.proteinLabel,
                   '${totalProtein}g',
                   Colors.red,
                   calorieGoal > 0
@@ -184,7 +203,7 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
                       : '0%',
                 ),
                 _buildNutrientSummary(
-                  'Carbs',
+                  AppLocalizations.of(context)!.carbsLabel,
                   '${totalCarbs}g',
                   Colors.blue,
                   calorieGoal > 0
@@ -192,7 +211,7 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
                       : '0%',
                 ),
                 _buildNutrientSummary(
-                  'Fat',
+                  AppLocalizations.of(context)!.fatLabel,
                   '${totalFat}g',
                   Colors.green,
                   calorieGoal > 0
@@ -232,112 +251,13 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
     );
   }
 
-  // Widget _buildMacroChart() {
-  //   // Calculate daily totals from _mealFoods
-  //   int totalProtein = 0;
-  //   int totalCarbs = 0;
-  //   int totalFat = 0;
-  //   int totalCalories = 0;
-  //   _mealFoods.forEach((_, foods) {
-  //     for (final food in foods) {
-  //       totalProtein += food.protein;
-  //       totalCarbs += food.carbs;
-  //       totalFat += food.fat;
-  //       totalCalories += food.calories;
-  //     }
-  //   });
-  //   if (totalCalories == 0 &&
-  //       totalProtein == 0 &&
-  //       totalCarbs == 0 &&
-  //       totalFat == 0) {
-  //     return Container();
-  //   }
-
-  //   final proteinCal = totalProtein * 4;
-  //   final carbsCal = totalCarbs * 4;
-  //   final fatCal = totalFat * 9;
-  //   final total = proteinCal + carbsCal + fatCal;
-
-  //   final proteinPerc = total > 0 ? proteinCal / total : 0.0;
-  //   final carbsPerc = total > 0 ? carbsCal / total : 0.0;
-  //   final fatPerc = total > 0 ? fatCal / total : 0.0;
-
-  //   return Card(
-  //     elevation: 4,
-  //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-  //     child: Padding(
-  //       padding: const EdgeInsets.all(16.0),
-  //       child: Column(
-  //         crossAxisAlignment: CrossAxisAlignment.start,
-  //         children: [
-  //           const Text(
-  //             'Macronutrient Breakdown',
-  //             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-  //           ),
-  //           const SizedBox(height: 16),
-  //           SizedBox(
-  //             height: 180,
-  //             child: PieChart(
-  //               PieChartData(
-  //                 sectionsSpace: 2,
-  //                 centerSpaceRadius: 3,
-  //                 sections: [
-  //                   PieChartSectionData(
-  //                     value: proteinPerc * 100,
-  //                     title: '${(proteinPerc * 100).toStringAsFixed(1)}%',
-  //                     color: Colors.red,
-  //                     radius: 100,
-  //                     titleStyle: const TextStyle(
-  //                       color: Colors.white,
-  //                       fontWeight: FontWeight.bold,
-  //                     ),
-  //                   ),
-  //                   PieChartSectionData(
-  //                     value: carbsPerc * 100,
-  //                     title: '${(carbsPerc * 100).toStringAsFixed(1)}%',
-  //                     color: Colors.blue,
-  //                     radius: 100,
-  //                     titleStyle: const TextStyle(
-  //                       color: Colors.white,
-  //                       fontWeight: FontWeight.bold,
-  //                     ),
-  //                   ),
-  //                   PieChartSectionData(
-  //                     value: fatPerc * 100,
-  //                     title: '${(fatPerc * 100).toStringAsFixed(1)}%',
-  //                     color: Colors.green,
-  //                     radius: 100,
-  //                     titleStyle: const TextStyle(
-  //                       color: Colors.white,
-  //                       fontWeight: FontWeight.bold,
-  //                     ),
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //           ),
-  //           const SizedBox(height: 16),
-  //           Row(
-  //             mainAxisAlignment: MainAxisAlignment.spaceAround,
-  //             children: [
-  //               _buildLegendItem('Protein', Colors.red),
-  //               _buildLegendItem('Carbs', Colors.blue),
-  //               _buildLegendItem('Fat', Colors.green),
-  //             ],
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
-
   Widget _buildMealsList() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Today\'s Meals',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        Text(
+          AppLocalizations.of(context)!.food,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         ..._mealFoods.entries.map((entry) {
@@ -368,7 +288,7 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        category,
+                        _localizedMealLabel(category, localContext),
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -389,9 +309,7 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        TextButton.icon(
-                          icon: const Icon(Icons.add, size: 18),
-                          label: const Text('Add Food'),
+                        TextButton(
                           onPressed: () async {
                             await Navigator.push(
                               localContext,
@@ -403,12 +321,13 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
                             );
                             _loadNutritionData();
                           },
-                        ),
-                        const SizedBox(width: 8),
-                        TextButton.icon(
-                          icon: const Icon(Icons.list_alt, size: 18),
-                          label: const Text('Templates'),
-                          onPressed: () => _showMealTemplates(category),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(width: 8),
+                              const Icon(Icons.add, size: 22),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -416,11 +335,11 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
 
                   // Meal Items
                   if (foods.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12.0),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12.0),
                       child: Text(
-                        'No foods added yet',
-                        style: TextStyle(color: Colors.grey),
+                        AppLocalizations.of(context)!.noFoodAdded,
+                        style: const TextStyle(color: Colors.grey),
                       ),
                     )
                   else
@@ -533,45 +452,4 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
   //     ],
   //   );
   // }
-
-  void _showMealTemplates(String category) {
-    showModalBottomSheet(
-      context: context,
-      builder: (sheetContext) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: Text('$category Templates'),
-              subtitle: const Text('Quick add your favorite meals'),
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.breakfast_dining),
-              title: const Text('Oatmeal with Fruit'),
-              subtitle: const Text('350 kcal | P: 12g | C: 60g | F: 8g'),
-              onTap: () {
-                // Add template meal
-                Navigator.pop(sheetContext);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.lunch_dining),
-              title: const Text('Chicken Salad'),
-              subtitle: const Text('450 kcal | P: 35g | C: 20g | F: 25g'),
-              onTap: () {
-                // Add template meal
-                Navigator.pop(sheetContext);
-              },
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(sheetContext),
-              child: const Text('Close'),
-            ),
-            const SizedBox(height: 20),
-          ],
-        );
-      },
-    );
-  }
 }

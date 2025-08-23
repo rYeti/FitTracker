@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../data/models/daily_nutrition_model.dart';
 import '../../data/repositories/nutrition_repository.dart';
 import 'package:fittnes_tracker/core/app_database.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class NutritionProgressDashboard extends StatefulWidget {
   const NutritionProgressDashboard({super.key});
@@ -50,7 +51,9 @@ class _NutritionProgressDashboardState
 
     return SafeArea(
       child: Scaffold(
-        appBar: AppBar(title: const Text('Nutrition Progress')),
+        appBar: AppBar(
+          title: Text(AppLocalizations.of(context)?.nutritionProgress ?? ''),
+        ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(

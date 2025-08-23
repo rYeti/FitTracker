@@ -1,0 +1,129 @@
+{
+  "@@locale": "en",
+
+  "male": "Male",
+  "female": "Female",
+  "other": "Other",
+
+  "sedentary": "Sedentary",
+  "lightlyActive": "Lightly Active",
+  "moderatelyActive": "Moderately Active",
+  "veryActive": "Very Active",
+  "extremelyActive": "Extremely Active",
+
+  "weightLoss": "Weight Loss",
+  "muscleGain": "Muscle Gain",
+  "maintenance": "Maintenance",
+
+  "dashboard": "Dashboard",
+  "food": "Food",
+  "gym": "Gym",
+  "progress": "Progress",
+
+  "settings": "Settings",
+  "age": "Age",
+  "heightCm": "Height (cm)",
+  "dailyCalorieGoal": "Daily Calorie Goal",
+  "calculateAndSave": "Calculate & Save",
+  "save": "Save",
+
+  "addFood": "Add Food - {category}",
+  "@addFood": {
+    "placeholders": {
+      "category": {
+        "type": "Object"
+      }
+    }
+  },
+
+  "scanBarcode": "Scan Barcode",
+  "nutritionProgress": "Nutrition Progress",
+  "foodDetails": "Food Details",
+
+  "searchFailed": "Search failed: {error}",
+  "@searchFailed": {
+    "placeholders": {
+      "error": {
+        "type": "Object"
+      }
+    }
+  },
+
+  "pleaseEnterValidAgeAndHeight": "Please enter valid age and height",
+  "pleaseEnterValidNumber": "Please enter a valid number",
+  "calculatedAndSavedCalorieGoal": "Calculated and saved calorie goal",
+
+  "failedToSaveProfile": "Failed to save profile: {error}",
+  "@failedToSaveProfile": {
+    "placeholders": {
+      "error": {
+        "type": "Object"
+      }
+    }
+  },
+
+  "failedToUpdateCalorieGoal": "Failed to update calorie goal: {error}",
+  "@failedToUpdateCalorieGoal": {
+    "placeholders": {
+      "error": {
+        "type": "Object"
+      }
+    }
+  },
+
+  "failedToLoadData": "Failed to load data: {error}",
+  "@failedToLoadData": {
+    "placeholders": {
+      "error": {
+        "type": "Object"
+      }
+    }
+  },
+
+  "sex": "Sex",
+  "activity": "Activity",
+  "goal": "Goal",
+
+  "cancel": "Cancel",
+  "addCustomFood": "Add Custom Food",
+  "foodName": "Food Name",
+  "calories": "Calories",
+  "protein": "Protein (g)",
+  "carbs": "Carbs (g)",
+  "fat": "Fat (g)",
+  "addedSuccessfully": "added successfully!",
+  "pleaseEnterAName": "Please enter a name",
+  "pleaseEnterCalories": "Please enter calories",
+
+  "foodTracker": "Tracker",
+  "proteinLabel": "Protein",
+  "carbsLabel": "Carbs",
+  "fatLabel": "Fat",
+
+  "ok": "OK",
+
+  "addFailed": "Failed to add",
+  "nutritionInformation": "Nutrition Information",
+  "portionSize": "Portion size",
+  "quantityInGrams": "Quantity in grams",
+  "addToTodayLog": "Add to today's log",
+  "mealCategory": "Meal category",
+  "addToLog": "Add to log",
+
+  "mealBreakfast": "Breakfast",
+  "mealLunch": "Lunch",
+  "mealDinner": "Dinner",
+  "mealSnacks": "Snacks",
+
+  "searchForFood": "Search for food",
+  "recentlyAdded": "Recently Added",
+  "addedToRecentFoods": "{name} added to recent foods",
+  "@addedToRecentFoods": {
+    "placeholders": {
+      "name": {
+        "type": "Object"
+      }
+    }
+  },
+  "noFoodAdded": "No foods added yet"
+}

@@ -10,9 +10,14 @@ import 'feature/food_tracking/presentation/view/nutrition_progress_dashboard.dar
 import 'feature/dashboard/view/dashboard_screen.dart';
 import 'feature/food_tracking/presentation/view/food_add_screen.dart';
 import 'feature/settings/settings_screen.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting();
   setupLocator();
   final db = AppDatabase();
 
@@ -36,6 +41,13 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [Locale('en'), Locale('de')],
       theme: themeProvider.lightTheme,
       darkTheme: themeProvider.darkTheme,
       themeMode: themeProvider.themeMode,
@@ -96,19 +108,22 @@ class _HomeScreenState extends State<HomeScreen> {
           unselectedItemColor: Colors.grey,
           backgroundColor: Theme.of(context).colorScheme.surface,
           type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Dashboard'),
+          items: [
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.dashboard),
+              label: AppLocalizations.of(context)!.dashboard,
+            ),
             BottomNavigationBarItem(
               icon: Icon(Icons.restaurant),
-              label: 'Food',
+              label: AppLocalizations.of(context)!.food,
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.fitness_center),
-              label: 'Gym',
+              label: AppLocalizations.of(context)!.gym,
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.bar_chart),
-              label: 'Progress',
+              label: AppLocalizations.of(context)!.progress,
             ),
           ],
         ),

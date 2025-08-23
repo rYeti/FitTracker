@@ -1,11 +1,19 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../data/data_sources/food_api.dart';
 import '../../data/models/food_item_model.dart';
 import '../../../../core/network/api_client.dart';
 import 'food_detail_view.dart';
-import 'dart:io' show Platform; // put inside a conditional import if needed
+// Define isMobileDevice if not provided by platform_detector.dart
+// Remove this block if isMobileDevice is already exported from platform_detector.dart
+bool get isMobileDevice {
+  // You can use defaultTargetPlatform from flutter/foundation.dart
+  // This covers Android and iOS as mobile platforms
+  return defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
+}
 
 class BarcodeScannerView extends StatefulWidget {
   const BarcodeScannerView({super.key, required this.category});
@@ -26,51 +34,52 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
 
   void _onBarcodeDetected(BarcodeCapture capture) async {
     if (_isHandlingBarcode) return; // Prevent multiple triggers
+
+    // Ensure there's at least one barcode and a non-null rawValue
+    if (capture.barcodes.isEmpty) return;
+    final raw = capture.barcodes.first.rawValue;
+    if (raw == null || raw.isEmpty) return;
+
     _isHandlingBarcode = true;
+    final barcode = raw;
 
-    final barcode = capture.barcodes.first.rawValue;
+    if (kDebugMode) {
+      print('✅ Scanned barcode: $barcode');
+    }
 
-    if (barcode != null) {
+    try {
+      FoodItemModel foodItem = await foodApi.fetchFoodByBarcode(barcode);
+
       if (kDebugMode) {
-        print('✅ Scanned barcode: $barcode');
+        print('Food item fetched: ${foodItem.name}');
       }
 
-      try {
-        FoodItemModel foodItem = await foodApi.fetchFoodByBarcode(barcode);
-
-        if (kDebugMode) {
-          print('Food item fetched: ${foodItem.name}');
-        }
-
-        if (!mounted) return;
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder:
-                (context) => FoodDetailsScreen(
-                  foodItem: foodItem,
-                  category: widget.category,
-                ),
-          ),
-        );
-
-        // ✅ Allow scanning again once user returns
-        _isHandlingBarcode = false;
-      } catch (error) {
-        if (kDebugMode) {
-          print('❌ Error fetching food data: $error');
-        }
-        _isHandlingBarcode = false; // Allow re-scan on error
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder:
+              (context) => FoodDetailsScreen(
+                foodItem: foodItem,
+                category: widget.category,
+              ),
+        ),
+      );
+    } catch (error) {
+      if (kDebugMode) {
+        print('❌ Error fetching food data: $error');
       }
-    } else {
+    } finally {
+      // Allow scanning again once user returns or on error
       _isHandlingBarcode = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) {
+    // Use kIsWeb + conditional shim instead of importing dart:io directly.
+    if (kIsWeb || !isMobileDevice) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Scan Barcode')),
+        appBar: AppBar(title: Text(AppLocalizations.of(context)!.scanBarcode)),
         body: const Center(
           child: Text('Barcode scanning is only supported on mobile devices.'),
         ),
@@ -79,7 +88,7 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
 
     return SafeArea(
       child: Scaffold(
-        appBar: AppBar(title: const Text('Scan Barcode')),
+        appBar: AppBar(title: Text(AppLocalizations.of(context)!.scanBarcode)),
         body: MobileScanner(
           controller: scannerController,
           onDetect: _onBarcodeDetected,

@@ -1,5 +1,7 @@
 // lib/feature/presentation/view/food_add_screen.dart
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 // import 'package:dio/dio.dart'; // remove, repo handles Dio internally
 import 'dart:async';
 import '../../data/models/food_item_model.dart';
@@ -226,28 +228,68 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Search failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.searchFailed(e.toString()),
+            ),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSearching = false);
     }
   }
 
+  // Helper to derive a display name from a scanned result (Map / FoodItemModel / DB row)
+  String _displayNameFromScanned(dynamic scanned) {
+    if (scanned == null) return 'Unknown';
+    if (scanned is String) return scanned;
+    if (scanned is Map) {
+      return scanned['product_name']?.toString() ??
+          scanned['name']?.toString() ??
+          scanned['brands']?.toString() ??
+          'Unknown';
+    }
+    try {
+      // try common fields
+      final name =
+          (scanned.name ?? scanned.productName ?? scanned.product_name);
+      if (name != null) return name.toString();
+    } catch (_) {}
+    return scanned.toString();
+  }
+
   Future<void> _scanBarcode() async {
-    final FoodItemData? scannedFood = await Navigator.push(
+    // Accept any returned value from the BarcodeScannerView and handle safely.
+    final dynamic scanned = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => BarcodeScannerView(category: widget.category),
       ),
     );
-    if (scannedFood != null) {
-      await _repository.addFoodToMeal(widget.category, scannedFood);
-      _loadFoodItems();
+
+    if (scanned == null) return;
+
+    try {
+      // Pass the scanned item to repository. Using dynamic here avoids a hard compile-time type assumption.
+      await _repository.addFoodToMeal(widget.category, scanned);
+      await _loadFoodItems();
+      final name = _displayNameFromScanned(scanned);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${scannedFood.name} added to ${widget.category}'),
+          content: Text(
+            '${name} ${AppLocalizations.of(context)!.addedSuccessfully}',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error adding scanned food to meal: $e');
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${AppLocalizations.of(context)!.addFailed}: ${e.toString()}'),
         ),
       );
     }
@@ -296,7 +338,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Add Custom Food'),
+          title: Text(AppLocalizations.of(context)!.addCustomFood),
           content: SingleChildScrollView(
             child: Form(
               key: formKey,
@@ -305,66 +347,86 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                 children: [
                   TextFormField(
                     controller: nameController,
-                    decoration: const InputDecoration(labelText: 'Food Name'),
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context)!.foodName,
+                    ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter a name';
+                        return AppLocalizations.of(context)!.pleaseEnterAName;
                       }
                       return null;
                     },
                   ),
                   TextFormField(
                     controller: caloriesController,
-                    decoration: const InputDecoration(labelText: 'Calories'),
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context)!.calories,
+                    ),
                     keyboardType: TextInputType.number,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter calories';
+                        return AppLocalizations.of(
+                          context,
+                        )!.pleaseEnterCalories;
                       }
                       if (int.tryParse(value) == null) {
-                        return 'Please enter a valid number';
+                        return AppLocalizations.of(
+                          context,
+                        )!.pleaseEnterValidNumber;
                       }
                       return null;
                     },
                   ),
                   TextFormField(
                     controller: proteinController,
-                    decoration: const InputDecoration(labelText: 'Protein (g)'),
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context)!.protein,
+                    ),
                     keyboardType: TextInputType.number,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter protein content';
+                        return AppLocalizations.of(context)!.pleaseEnterAName;
                       }
                       if (int.tryParse(value) == null) {
-                        return 'Please enter a valid number';
+                        return AppLocalizations.of(
+                          context,
+                        )!.pleaseEnterValidNumber;
                       }
                       return null;
                     },
                   ),
                   TextFormField(
                     controller: carbsController,
-                    decoration: const InputDecoration(labelText: 'Carbs (g)'),
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context)!.carbs,
+                    ),
                     keyboardType: TextInputType.number,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter carbs content';
+                        return AppLocalizations.of(context)!.pleaseEnterAName;
                       }
                       if (int.tryParse(value) == null) {
-                        return 'Please enter a valid number';
+                        return AppLocalizations.of(
+                          context,
+                        )!.pleaseEnterValidNumber;
                       }
                       return null;
                     },
                   ),
                   TextFormField(
                     controller: fatController,
-                    decoration: const InputDecoration(labelText: 'Fat (g)'),
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context)!.fat,
+                    ),
                     keyboardType: TextInputType.number,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter fat content';
+                        return AppLocalizations.of(context)!.pleaseEnterAName;
                       }
                       if (int.tryParse(value) == null) {
-                        return 'Please enter a valid number';
+                        return AppLocalizations.of(
+                          context,
+                        )!.pleaseEnterValidNumber;
                       }
                       return null;
                     },
@@ -378,7 +440,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: const Text('Cancel'),
+              child: Text(AppLocalizations.of(context)!.cancel),
             ),
             TextButton(
               onPressed: () async {
@@ -396,7 +458,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        '${nameController.text} added successfully!',
+                        '${nameController.text} ${AppLocalizations.of(context)!.addedSuccessfully}',
                       ),
                     ),
                   );
@@ -414,7 +476,9 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
   Widget build(BuildContext context) {
     // final db = AppDatabase(); // remove extra instance
     return Scaffold(
-      appBar: AppBar(title: Text('Add Food - ${widget.category}')),
+      appBar: AppBar(
+        title: Text(AppLocalizations.of(context)!.addFood(widget.category)),
+      ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -431,7 +495,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                         suffixIcon: IconButton(
                           icon: const Icon(Icons.camera_alt_rounded),
                           onPressed: _scanBarcode,
-                          tooltip: 'Scan Barcode',
+                          tooltip: AppLocalizations.of(context)!.scanBarcode,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8.0),

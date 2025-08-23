@@ -1,0 +1,132 @@
+
+{
+    "@@locale": "de",
+
+    "male": "Männlich",
+    "female": "Weiblich",
+    "other": "Andere",
+
+    "sedentary": "Sitzend",
+    "lightlyActive": "Leicht aktiv",
+    "moderatelyActive": "Mäßig aktiv",
+    "veryActive": "Sehr aktiv",
+    "extremelyActive": "Extrem aktiv",
+
+    "weightLoss": "Gewichtsverlust",
+    "muscleGain": "Muskelaufbau",
+    "maintenance": "Erhaltung",
+
+    "dashboard": "Übersicht",
+    "food": "Essen",
+    "gym": "Fitnessstudio",
+    "progress": "Fortschritt",
+
+    "settings": "Einstellungen",
+    "age": "Alter",
+    "heightCm": "Größe (cm)",
+    "dailyCalorieGoal": "Tägliches Kalorienziel",
+    "calculateAndSave": "Berechnen & Speichern",
+    "save": "Speichern",
+
+    "addFood": "Lebensmittel hinzufügen - {category}",
+    "@addFood": {
+      "placeholders": {
+        "category": {
+          "type": "Object"
+        }
+      }
+    },
+
+    "scanBarcode": "Barcode scannen",
+    "nutritionProgress": "Ernährungsfortschritt",
+    "foodDetails": "Lebensmitteldetails",
+
+    "searchFailed": "Suche fehlgeschlagen: {error}",
+    "@searchFailed": {
+      "placeholders": {
+        "error": {
+          "type": "Object"
+        }
+      }
+    },
+
+    "pleaseEnterValidAgeAndHeight": "Bitte gültiges Alter und Größe eingeben",
+    "pleaseEnterValidNumber": "Bitte eine gültige Zahl eingeben",
+    "calculatedAndSavedCalorieGoal": "Kalorienziel berechnet und gespeichert",
+
+    "failedToSaveProfile": "Profil konnte nicht gespeichert werden: {error}",
+    "@failedToSaveProfile": {
+      "placeholders": {
+        "error": {
+          "type": "Object"
+        }
+      }
+    },
+
+    "failedToUpdateCalorieGoal": "Kalorienziel konnte nicht aktualisiert werden: {error}",
+    "@failedToUpdateCalorieGoal": {
+      "placeholders": {
+        "error": {
+          "type": "Object"
+        }
+      }
+    },
+
+    "failedToLoadData": "Daten konnten nicht geladen werden: {error}",
+    "@failedToLoadData": {
+      "placeholders": {
+        "error": {
+          "type": "Object"
+        }
+      }
+    },
+
+    "sex": "Geschlecht",
+    "activity": "Aktivität",
+    "goal": "Ziel",
+
+    "cancel": "Abbrechen",
+    "addCustomFood": "Eigenes Lebensmittel hinzufügen",
+    "foodName": "Lebensmittelname",
+    "calories": "Kalorien",
+    "protein": "Protein (g)",
+    "carbs": "Kohlenhydrate (g)",
+    "fat": "Fett (g)",
+    "addedSuccessfully": "erfolgreich hinzugefügt!",
+    "pleaseEnterAName": "Bitte einen Namen eingeben",
+    "pleaseEnterCalories": "Bitte Kalorien eingeben",
+
+    "foodTracker": "Tracker",
+    "proteinLabel": "Protein",
+    "carbsLabel": "Kohlenhydrate",
+    "fatLabel": "Fett",
+
+    "ok": "OK",
+
+    "addFailed": "Hinzufügen fehlgeschlagen",
+    "nutritionInformation": "Nährwertinformationen",
+    "portionSize": "Portionsgröße",
+    "quantityInGrams": "Menge in Gramm",
+    "addToTodayLog": "Zum heutigen Protokoll hinzufügen",
+    "mealCategory": "Mahlzeitenkategorie",
+    "addToLog": "Zum Protokoll hinzufügen",
+
+  "mealBreakfast": "Frühstück",
+  "mealLunch": "Mittagessen",
+  "mealDinner": "Abendessen",
+  "mealSnacks": "Snacks",
+
+    "searchForFood": "Nach Lebensmitteln suchen",
+    "recentlyAdded": "Kürzlich hinzugefügt",
+    "addedToRecentFoods": "{name} wurde zu den kürzlich hinzugefügten Lebensmitteln hinzugefügt",
+    "@addedToRecentFoods": {
+      "placeholders": {
+        "name": {
+          "type": "Object"
+        }
+      }
+    },
+
+    "noFoodAdded": "Noch nichts hinzugefügt"
+
+  }

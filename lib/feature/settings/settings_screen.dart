@@ -3,6 +3,28 @@ import 'package:fittnes_tracker/core/providers/enums.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
+// Friendly labels for enum values (use these for display / localization later)
+const Map<Sex, String> _sexLabels = {
+  Sex.male: 'Male',
+  Sex.female: 'Female',
+  Sex.other: 'Other',
+};
+
+const Map<ActivityLevel, String> _activityLabels = {
+  ActivityLevel.sedentary: 'Sedentary',
+  ActivityLevel.lightlyActive: 'Lightly Active',
+  ActivityLevel.moderatelyActive: 'Moderately Active',
+  ActivityLevel.veryActive: 'Very Active',
+  ActivityLevel.extremelyActive: 'Extremely Active',
+};
+
+const Map<GoalType, String> _goalLabels = {
+  GoalType.weightLoss: 'Weight Loss',
+  GoalType.muscleGain: 'Muscle Gain',
+  GoalType.maintenance: 'Maintenance',
+};
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -12,6 +34,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _calorieGoalController = TextEditingController();
   bool _initialized = false;
   bool _isSaving = false;
@@ -48,7 +71,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         setState(() {
           _ageController.text = settings.age.toString();
           _heightController.text = settings.heightCm.toString();
-          _sex = (settings.sex == 'male') ? Sex.male : Sex.female;
+          final dbSex = settings.sex.toLowerCase();
+          if (dbSex == 'male') {
+            _sex = Sex.male;
+          } else if (dbSex == 'female') {
+            _sex = Sex.female;
+          } else {
+            _sex = Sex.other;
+          }
           // guard index bounds
           final activityIndex = settings.activityLevel;
           if (activityIndex >= 0 &&
@@ -76,7 +106,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final calorieGoalProvider = Provider.of<UserGoalsProvider>(context);
     if (!calorieGoalProvider.isLoaded) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Settings')),
+        appBar: AppBar(title: Text(AppLocalizations.of(context)!.settings)),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -85,254 +115,301 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _initialized = true;
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(AppLocalizations.of(context)!.settings)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Profile inputs
-            TextField(
-              controller: _ageController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(labelText: 'Age'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _heightController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(labelText: 'Height (cm)'),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Text('Sex'),
-                const SizedBox(width: 12),
-                DropdownButton<Sex>(
-                  value: _sex,
-                  items:
-                      Sex.values
-                          .map(
-                            (s) =>
-                                DropdownMenuItem(value: s, child: Text(s.name)),
-                          )
-                          .toList(),
-                  onChanged: (v) => setState(() => _sex = v ?? Sex.male),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Profile inputs
+              TextFormField(
+                controller: _ageController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.age,
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Text('Activity'),
-                const SizedBox(width: 12),
-                DropdownButton<ActivityLevel>(
-                  value: _activity,
-                  items:
-                      ActivityLevel.values
-                          .map(
-                            (a) =>
-                                DropdownMenuItem(value: a, child: Text(a.name)),
-                          )
-                          .toList(),
-                  onChanged:
-                      (v) => setState(
-                        () => _activity = v ?? ActivityLevel.sedentary,
-                      ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Text('Goal'),
-                const SizedBox(width: 12),
-                DropdownButton<GoalType>(
-                  value: _goalType,
-                  items:
-                      GoalType.values
-                          .map(
-                            (g) =>
-                                DropdownMenuItem(value: g, child: Text(g.name)),
-                          )
-                          .toList(),
-                  onChanged:
-                      (v) =>
-                          setState(() => _goalType = v ?? GoalType.maintenance),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Calorie goal field
-            TextField(
-              controller: _calorieGoalController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(
-                labelText: 'Daily Calorie Goal',
-                border: OutlineInputBorder(),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return AppLocalizations.of(
+                      context,
+                    )!.pleaseEnterValidAgeAndHeight;
+                  }
+                  final parsed = int.tryParse(v.trim());
+                  if (parsed == null || parsed <= 0) {
+                    return AppLocalizations.of(
+                      context,
+                    )!.pleaseEnterValidAgeAndHeight;
+                  }
+                  return null;
+                },
               ),
-            ),
-            const SizedBox(height: 12),
-
-            ElevatedButton(
-              onPressed:
-                  _isSaving
-                      ? null
-                      : () async {
-                        // Calculate and save
-                        final age = int.tryParse(_ageController.text.trim());
-                        final height = int.tryParse(
-                          _heightController.text.trim(),
-                        );
-                        if (age == null || height == null) {
-                          if (mounted)
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Please enter valid age and height',
-                                ),
-                              ),
-                            );
-                          return;
-                        }
-
-                        setState(() => _isSaving = true);
-                        final provider = Provider.of<UserGoalsProvider>(
-                          context,
-                          listen: false,
-                        );
-                        final weightKg = provider.currentWeight;
-                        final kcal = provider.calculateCalorieTarget(
-                          sex: _sex,
-                          age: age,
-                          heightCm: height.toDouble(),
-                          weightKg: weightKg,
-                          activity: _activity,
-                          goal: _goalType,
-                        );
-                        // persist profile + calorie
-                        try {
-                          await provider.db.userSettingsDao.updateProfile(
-                            age: age,
-                            heightCm: height,
-                            sex: _sex.name,
-                            activityLevel: ActivityLevel.values.indexOf(
-                              _activity,
-                            ),
-                            goalType: GoalType.values.indexOf(_goalType),
-                          );
-                          await provider.saveCalorieGoal(kcal);
-                        } catch (e) {
-                          if (mounted)
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Failed to save profile: $e'),
-                              ),
-                            );
-                        } finally {
-                          if (mounted) setState(() => _isSaving = false);
-                        }
-
-                        if (!mounted) return;
-                        _calorieGoalController.text = kcal.toString();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Calculated and saved calorie goal'),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _heightController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.heightCm,
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return AppLocalizations.of(
+                      context,
+                    )!.pleaseEnterValidAgeAndHeight;
+                  }
+                  final parsed = int.tryParse(v.trim());
+                  if (parsed == null || parsed <= 0) {
+                    return AppLocalizations.of(
+                      context,
+                    )!.pleaseEnterValidAgeAndHeight;
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<Sex>(
+                value: _sex,
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.sex,
+                ),
+                items:
+                    Sex.values
+                        .map(
+                          (s) => DropdownMenuItem(
+                            value: s,
+                            child: Text(_sexLabels[s]!),
                           ),
-                        );
-                        Navigator.pop(context);
-                      },
-              child:
-                  _isSaving
-                      ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                      : const Text('Calculate & Save'),
-            ),
+                        )
+                        .toList(),
+                onChanged: (v) => setState(() => _sex = v ?? Sex.male),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<ActivityLevel>(
+                value: _activity,
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.activity,
+                ),
+                items:
+                    ActivityLevel.values
+                        .map(
+                          (a) => DropdownMenuItem(
+                            value: a,
+                            child: Text(_activityLabels[a]!),
+                          ),
+                        )
+                        .toList(),
+                onChanged:
+                    (v) => setState(
+                      () => _activity = v ?? ActivityLevel.sedentary,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<GoalType>(
+                value: _goalType,
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.goal,
+                ),
+                items:
+                    GoalType.values
+                        .map(
+                          (g) => DropdownMenuItem(
+                            value: g,
+                            child: Text(_goalLabels[g]!),
+                          ),
+                        )
+                        .toList(),
+                onChanged:
+                    (v) =>
+                        setState(() => _goalType = v ?? GoalType.maintenance),
+              ),
+              const SizedBox(height: 12),
 
-            const SizedBox(height: 12),
-            // existing Save button (manual save of the calorie field)
-            ElevatedButton(
-              onPressed:
-                  _isSaving
-                      ? null
-                      : () async {
-                        FocusScope.of(context).unfocus();
-                        final text = _calorieGoalController.text.trim();
-                        final newGoal = int.tryParse(text);
-                        if (newGoal == null) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Please enter a valid number'),
-                              ),
-                            );
-                          }
-                          return;
-                        }
+              // Calorie goal field
+              TextFormField(
+                controller: _calorieGoalController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.dailyCalorieGoal,
+                  border: const OutlineInputBorder(),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty)
+                    return AppLocalizations.of(context)!.pleaseEnterValidNumber;
+                  if (int.tryParse(v.trim()) == null)
+                    return AppLocalizations.of(context)!.pleaseEnterValidNumber;
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
 
-                        setState(() => _isSaving = true);
-                        var success = false;
-                        try {
-                          // Persist profile fields as well (manual save)
+              ElevatedButton(
+                onPressed:
+                    _isSaving
+                        ? null
+                        : () async {
+                          // Calculate and save
                           final age = int.tryParse(_ageController.text.trim());
                           final height = int.tryParse(
                             _heightController.text.trim(),
                           );
-                          if (age != null && height != null) {
-                            await calorieGoalProvider.db.userSettingsDao
-                                .updateProfile(
-                                  age: age,
-                                  heightCm: height,
-                                  sex: _sex.name,
-                                  activityLevel: ActivityLevel.values.indexOf(
-                                    _activity,
+                          if (age == null || height == null) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Please enter valid age and height',
                                   ),
-                                  goalType: GoalType.values.indexOf(_goalType),
-                                );
-                          }
-
-                          await calorieGoalProvider.saveCalorieGoal(newGoal);
-                          success = true;
-                        } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Failed to update calorie goal: $e',
                                 ),
-                              ),
-                            );
+                              );
+                            }
+                            return;
                           }
-                        } finally {
-                          if (mounted) setState(() => _isSaving = false);
-                        }
 
-                        if (success && mounted) {
+                          setState(() => _isSaving = true);
+                          final provider = Provider.of<UserGoalsProvider>(
+                            context,
+                            listen: false,
+                          );
+                          final weightKg = provider.currentWeight;
+                          final kcal = provider.calculateCalorieTarget(
+                            sex: _sex,
+                            age: age,
+                            heightCm: height.toDouble(),
+                            weightKg: weightKg,
+                            activity: _activity,
+                            goal: _goalType,
+                          );
+                          // persist profile + calorie
+                          try {
+                            await provider.db.userSettingsDao.updateProfile(
+                              age: age,
+                              heightCm: height,
+                              sex: _sex.name,
+                              activityLevel: ActivityLevel.values.indexOf(
+                                _activity,
+                              ),
+                              goalType: GoalType.values.indexOf(_goalType),
+                            );
+                            await provider.saveCalorieGoal(kcal);
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Failed to save profile: $e'),
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (mounted) setState(() => _isSaving = false);
+                          }
+
+                          if (!mounted) return;
+                          _calorieGoalController.text = kcal.toString();
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Calorie goal updated'),
+                              content: Text(
+                                'Calculated and saved calorie goal',
+                              ),
                             ),
                           );
                           Navigator.pop(context);
-                        }
-                      },
-              child:
-                  _isSaving
-                      ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                      : const Text('Save'),
-            ),
-          ],
+                        },
+                child:
+                    _isSaving
+                        ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : Text(AppLocalizations.of(context)!.calculateAndSave),
+              ),
+
+              const SizedBox(height: 12),
+              // existing Save button (manual save of the calorie field)
+              ElevatedButton(
+                onPressed:
+                    _isSaving
+                        ? null
+                        : () async {
+                          FocusScope.of(context).unfocus();
+                          final text = _calorieGoalController.text.trim();
+                          final newGoal = int.tryParse(text);
+                          if (newGoal == null) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please enter a valid number'),
+                                ),
+                              );
+                            }
+                            return;
+                          }
+
+                          setState(() => _isSaving = true);
+                          var success = false;
+                          try {
+                            // Persist profile fields as well (manual save)
+                            final age = int.tryParse(
+                              _ageController.text.trim(),
+                            );
+                            final height = int.tryParse(
+                              _heightController.text.trim(),
+                            );
+                            if (age != null && height != null) {
+                              await calorieGoalProvider.db.userSettingsDao
+                                  .updateProfile(
+                                    age: age,
+                                    heightCm: height,
+                                    sex: _sex.name,
+                                    activityLevel: ActivityLevel.values.indexOf(
+                                      _activity,
+                                    ),
+                                    goalType: GoalType.values.indexOf(
+                                      _goalType,
+                                    ),
+                                  );
+                            }
+
+                            await calorieGoalProvider.saveCalorieGoal(newGoal);
+                            success = true;
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Failed to update calorie goal: $e',
+                                  ),
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (mounted) setState(() => _isSaving = false);
+                          }
+
+                          if (success && mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Calorie goal updated'),
+                              ),
+                            );
+                            Navigator.pop(context);
+                          }
+                        },
+                child:
+                    _isSaving
+                        ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : Text(AppLocalizations.of(context)!.save),
+              ),
+            ],
+          ),
         ),
       ),
     );
