@@ -546,6 +546,30 @@ class $UserSettingsTable extends UserSettings
     requiredDuringInsert: false,
     defaultValue: const Constant(1),
   );
+  static const VerificationMeta _startingWeightMeta = const VerificationMeta(
+    'startingWeight',
+  );
+  @override
+  late final GeneratedColumn<double> startingWeight = GeneratedColumn<double>(
+    'starting_weight',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(80.0),
+  );
+  static const VerificationMeta _goalWeightMeta = const VerificationMeta(
+    'goalWeight',
+  );
+  @override
+  late final GeneratedColumn<double> goalWeight = GeneratedColumn<double>(
+    'goal_weight',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(70.0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -556,6 +580,8 @@ class $UserSettingsTable extends UserSettings
     sex,
     activityLevel,
     goalType,
+    startingWeight,
+    goalWeight,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -620,6 +646,21 @@ class $UserSettingsTable extends UserSettings
         goalType.isAcceptableOrUnknown(data['goal_type']!, _goalTypeMeta),
       );
     }
+    if (data.containsKey('starting_weight')) {
+      context.handle(
+        _startingWeightMeta,
+        startingWeight.isAcceptableOrUnknown(
+          data['starting_weight']!,
+          _startingWeightMeta,
+        ),
+      );
+    }
+    if (data.containsKey('goal_weight')) {
+      context.handle(
+        _goalWeightMeta,
+        goalWeight.isAcceptableOrUnknown(data['goal_weight']!, _goalWeightMeta),
+      );
+    }
     return context;
   }
 
@@ -669,6 +710,16 @@ class $UserSettingsTable extends UserSettings
             DriftSqlType.int,
             data['${effectivePrefix}goal_type'],
           )!,
+      startingWeight:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.double,
+            data['${effectivePrefix}starting_weight'],
+          )!,
+      goalWeight:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.double,
+            data['${effectivePrefix}goal_weight'],
+          )!,
     );
   }
 
@@ -687,6 +738,8 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
   final String sex;
   final int activityLevel;
   final int goalType;
+  final double startingWeight;
+  final double goalWeight;
   const UserSetting({
     required this.id,
     required this.dailyCalorieGoal,
@@ -696,6 +749,8 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
     required this.sex,
     required this.activityLevel,
     required this.goalType,
+    required this.startingWeight,
+    required this.goalWeight,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -708,6 +763,8 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
     map['sex'] = Variable<String>(sex);
     map['activity_level'] = Variable<int>(activityLevel);
     map['goal_type'] = Variable<int>(goalType);
+    map['starting_weight'] = Variable<double>(startingWeight);
+    map['goal_weight'] = Variable<double>(goalWeight);
     return map;
   }
 
@@ -721,6 +778,8 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
       sex: Value(sex),
       activityLevel: Value(activityLevel),
       goalType: Value(goalType),
+      startingWeight: Value(startingWeight),
+      goalWeight: Value(goalWeight),
     );
   }
 
@@ -738,6 +797,8 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
       sex: serializer.fromJson<String>(json['sex']),
       activityLevel: serializer.fromJson<int>(json['activityLevel']),
       goalType: serializer.fromJson<int>(json['goalType']),
+      startingWeight: serializer.fromJson<double>(json['startingWeight']),
+      goalWeight: serializer.fromJson<double>(json['goalWeight']),
     );
   }
   @override
@@ -752,6 +813,8 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
       'sex': serializer.toJson<String>(sex),
       'activityLevel': serializer.toJson<int>(activityLevel),
       'goalType': serializer.toJson<int>(goalType),
+      'startingWeight': serializer.toJson<double>(startingWeight),
+      'goalWeight': serializer.toJson<double>(goalWeight),
     };
   }
 
@@ -764,6 +827,8 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
     String? sex,
     int? activityLevel,
     int? goalType,
+    double? startingWeight,
+    double? goalWeight,
   }) => UserSetting(
     id: id ?? this.id,
     dailyCalorieGoal: dailyCalorieGoal ?? this.dailyCalorieGoal,
@@ -773,6 +838,8 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
     sex: sex ?? this.sex,
     activityLevel: activityLevel ?? this.activityLevel,
     goalType: goalType ?? this.goalType,
+    startingWeight: startingWeight ?? this.startingWeight,
+    goalWeight: goalWeight ?? this.goalWeight,
   );
   UserSetting copyWithCompanion(UserSettingsCompanion data) {
     return UserSetting(
@@ -790,6 +857,12 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
               ? data.activityLevel.value
               : this.activityLevel,
       goalType: data.goalType.present ? data.goalType.value : this.goalType,
+      startingWeight:
+          data.startingWeight.present
+              ? data.startingWeight.value
+              : this.startingWeight,
+      goalWeight:
+          data.goalWeight.present ? data.goalWeight.value : this.goalWeight,
     );
   }
 
@@ -803,7 +876,9 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
           ..write('heightCm: $heightCm, ')
           ..write('sex: $sex, ')
           ..write('activityLevel: $activityLevel, ')
-          ..write('goalType: $goalType')
+          ..write('goalType: $goalType, ')
+          ..write('startingWeight: $startingWeight, ')
+          ..write('goalWeight: $goalWeight')
           ..write(')'))
         .toString();
   }
@@ -818,6 +893,8 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
     sex,
     activityLevel,
     goalType,
+    startingWeight,
+    goalWeight,
   );
   @override
   bool operator ==(Object other) =>
@@ -830,7 +907,9 @@ class UserSetting extends DataClass implements Insertable<UserSetting> {
           other.heightCm == this.heightCm &&
           other.sex == this.sex &&
           other.activityLevel == this.activityLevel &&
-          other.goalType == this.goalType);
+          other.goalType == this.goalType &&
+          other.startingWeight == this.startingWeight &&
+          other.goalWeight == this.goalWeight);
 }
 
 class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
@@ -842,6 +921,8 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
   final Value<String> sex;
   final Value<int> activityLevel;
   final Value<int> goalType;
+  final Value<double> startingWeight;
+  final Value<double> goalWeight;
   const UserSettingsCompanion({
     this.id = const Value.absent(),
     this.dailyCalorieGoal = const Value.absent(),
@@ -851,6 +932,8 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
     this.sex = const Value.absent(),
     this.activityLevel = const Value.absent(),
     this.goalType = const Value.absent(),
+    this.startingWeight = const Value.absent(),
+    this.goalWeight = const Value.absent(),
   });
   UserSettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -861,6 +944,8 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
     this.sex = const Value.absent(),
     this.activityLevel = const Value.absent(),
     this.goalType = const Value.absent(),
+    this.startingWeight = const Value.absent(),
+    this.goalWeight = const Value.absent(),
   });
   static Insertable<UserSetting> custom({
     Expression<int>? id,
@@ -871,6 +956,8 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
     Expression<String>? sex,
     Expression<int>? activityLevel,
     Expression<int>? goalType,
+    Expression<double>? startingWeight,
+    Expression<double>? goalWeight,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -881,6 +968,8 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
       if (sex != null) 'sex': sex,
       if (activityLevel != null) 'activity_level': activityLevel,
       if (goalType != null) 'goal_type': goalType,
+      if (startingWeight != null) 'starting_weight': startingWeight,
+      if (goalWeight != null) 'goal_weight': goalWeight,
     });
   }
 
@@ -893,6 +982,8 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
     Value<String>? sex,
     Value<int>? activityLevel,
     Value<int>? goalType,
+    Value<double>? startingWeight,
+    Value<double>? goalWeight,
   }) {
     return UserSettingsCompanion(
       id: id ?? this.id,
@@ -903,6 +994,8 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
       sex: sex ?? this.sex,
       activityLevel: activityLevel ?? this.activityLevel,
       goalType: goalType ?? this.goalType,
+      startingWeight: startingWeight ?? this.startingWeight,
+      goalWeight: goalWeight ?? this.goalWeight,
     );
   }
 
@@ -933,6 +1026,12 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
     if (goalType.present) {
       map['goal_type'] = Variable<int>(goalType.value);
     }
+    if (startingWeight.present) {
+      map['starting_weight'] = Variable<double>(startingWeight.value);
+    }
+    if (goalWeight.present) {
+      map['goal_weight'] = Variable<double>(goalWeight.value);
+    }
     return map;
   }
 
@@ -946,7 +1045,9 @@ class UserSettingsCompanion extends UpdateCompanion<UserSetting> {
           ..write('heightCm: $heightCm, ')
           ..write('sex: $sex, ')
           ..write('activityLevel: $activityLevel, ')
-          ..write('goalType: $goalType')
+          ..write('goalType: $goalType, ')
+          ..write('startingWeight: $startingWeight, ')
+          ..write('goalWeight: $goalWeight')
           ..write(')'))
         .toString();
   }
@@ -1782,6 +1883,303 @@ class SearchCacheTableCompanion extends UpdateCompanion<SearchCacheTableData> {
   }
 }
 
+class $WeightRecordTable extends WeightRecord
+    with TableInfo<$WeightRecordTable, WeightRecordData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WeightRecordTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _weightMeta = const VerificationMeta('weight');
+  @override
+  late final GeneratedColumn<double> weight = GeneratedColumn<double>(
+    'weight',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, date, weight, note];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'weight_record';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WeightRecordData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('weight')) {
+      context.handle(
+        _weightMeta,
+        weight.isAcceptableOrUnknown(data['weight']!, _weightMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_weightMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  WeightRecordData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WeightRecordData(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}id'],
+          )!,
+      date:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}date'],
+          )!,
+      weight:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.double,
+            data['${effectivePrefix}weight'],
+          )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+    );
+  }
+
+  @override
+  $WeightRecordTable createAlias(String alias) {
+    return $WeightRecordTable(attachedDatabase, alias);
+  }
+}
+
+class WeightRecordData extends DataClass
+    implements Insertable<WeightRecordData> {
+  final int id;
+  final DateTime date;
+  final double weight;
+  final String? note;
+  const WeightRecordData({
+    required this.id,
+    required this.date,
+    required this.weight,
+    this.note,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['date'] = Variable<DateTime>(date);
+    map['weight'] = Variable<double>(weight);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    return map;
+  }
+
+  WeightRecordCompanion toCompanion(bool nullToAbsent) {
+    return WeightRecordCompanion(
+      id: Value(id),
+      date: Value(date),
+      weight: Value(weight),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+    );
+  }
+
+  factory WeightRecordData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WeightRecordData(
+      id: serializer.fromJson<int>(json['id']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      weight: serializer.fromJson<double>(json['weight']),
+      note: serializer.fromJson<String?>(json['note']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'date': serializer.toJson<DateTime>(date),
+      'weight': serializer.toJson<double>(weight),
+      'note': serializer.toJson<String?>(note),
+    };
+  }
+
+  WeightRecordData copyWith({
+    int? id,
+    DateTime? date,
+    double? weight,
+    Value<String?> note = const Value.absent(),
+  }) => WeightRecordData(
+    id: id ?? this.id,
+    date: date ?? this.date,
+    weight: weight ?? this.weight,
+    note: note.present ? note.value : this.note,
+  );
+  WeightRecordData copyWithCompanion(WeightRecordCompanion data) {
+    return WeightRecordData(
+      id: data.id.present ? data.id.value : this.id,
+      date: data.date.present ? data.date.value : this.date,
+      weight: data.weight.present ? data.weight.value : this.weight,
+      note: data.note.present ? data.note.value : this.note,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WeightRecordData(')
+          ..write('id: $id, ')
+          ..write('date: $date, ')
+          ..write('weight: $weight, ')
+          ..write('note: $note')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, date, weight, note);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WeightRecordData &&
+          other.id == this.id &&
+          other.date == this.date &&
+          other.weight == this.weight &&
+          other.note == this.note);
+}
+
+class WeightRecordCompanion extends UpdateCompanion<WeightRecordData> {
+  final Value<int> id;
+  final Value<DateTime> date;
+  final Value<double> weight;
+  final Value<String?> note;
+  const WeightRecordCompanion({
+    this.id = const Value.absent(),
+    this.date = const Value.absent(),
+    this.weight = const Value.absent(),
+    this.note = const Value.absent(),
+  });
+  WeightRecordCompanion.insert({
+    this.id = const Value.absent(),
+    required DateTime date,
+    required double weight,
+    this.note = const Value.absent(),
+  }) : date = Value(date),
+       weight = Value(weight);
+  static Insertable<WeightRecordData> custom({
+    Expression<int>? id,
+    Expression<DateTime>? date,
+    Expression<double>? weight,
+    Expression<String>? note,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (date != null) 'date': date,
+      if (weight != null) 'weight': weight,
+      if (note != null) 'note': note,
+    });
+  }
+
+  WeightRecordCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? date,
+    Value<double>? weight,
+    Value<String?>? note,
+  }) {
+    return WeightRecordCompanion(
+      id: id ?? this.id,
+      date: date ?? this.date,
+      weight: weight ?? this.weight,
+      note: note ?? this.note,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (weight.present) {
+      map['weight'] = Variable<double>(weight.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WeightRecordCompanion(')
+          ..write('id: $id, ')
+          ..write('date: $date, ')
+          ..write('weight: $weight, ')
+          ..write('note: $note')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1792,12 +2190,16 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SearchCacheTableTable searchCacheTable = $SearchCacheTableTable(
     this,
   );
+  late final $WeightRecordTable weightRecord = $WeightRecordTable(this);
   late final FoodItemDao foodItemDao = FoodItemDao(this as AppDatabase);
   late final UserSettingsDao userSettingsDao = UserSettingsDao(
     this as AppDatabase,
   );
   late final MealDao mealDao = MealDao(this as AppDatabase);
   late final SearchCacheDao searchCacheDao = SearchCacheDao(
+    this as AppDatabase,
+  );
+  late final WeightRecordDao weightRecordDao = WeightRecordDao(
     this as AppDatabase,
   );
   @override
@@ -1810,6 +2212,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     mealTable,
     mealFoodTable,
     searchCacheTable,
+    weightRecord,
   ];
 }
 
@@ -2166,6 +2569,8 @@ typedef $$UserSettingsTableCreateCompanionBuilder =
       Value<String> sex,
       Value<int> activityLevel,
       Value<int> goalType,
+      Value<double> startingWeight,
+      Value<double> goalWeight,
     });
 typedef $$UserSettingsTableUpdateCompanionBuilder =
     UserSettingsCompanion Function({
@@ -2177,6 +2582,8 @@ typedef $$UserSettingsTableUpdateCompanionBuilder =
       Value<String> sex,
       Value<int> activityLevel,
       Value<int> goalType,
+      Value<double> startingWeight,
+      Value<double> goalWeight,
     });
 
 class $$UserSettingsTableFilterComposer
@@ -2225,6 +2632,16 @@ class $$UserSettingsTableFilterComposer
 
   ColumnFilters<int> get goalType => $composableBuilder(
     column: $table.goalType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get startingWeight => $composableBuilder(
+    column: $table.startingWeight,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get goalWeight => $composableBuilder(
+    column: $table.goalWeight,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2277,6 +2694,16 @@ class $$UserSettingsTableOrderingComposer
     column: $table.goalType,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<double> get startingWeight => $composableBuilder(
+    column: $table.startingWeight,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get goalWeight => $composableBuilder(
+    column: $table.goalWeight,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$UserSettingsTableAnnotationComposer
@@ -2315,6 +2742,16 @@ class $$UserSettingsTableAnnotationComposer
 
   GeneratedColumn<int> get goalType =>
       $composableBuilder(column: $table.goalType, builder: (column) => column);
+
+  GeneratedColumn<double> get startingWeight => $composableBuilder(
+    column: $table.startingWeight,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get goalWeight => $composableBuilder(
+    column: $table.goalWeight,
+    builder: (column) => column,
+  );
 }
 
 class $$UserSettingsTableTableManager
@@ -2357,6 +2794,8 @@ class $$UserSettingsTableTableManager
                 Value<String> sex = const Value.absent(),
                 Value<int> activityLevel = const Value.absent(),
                 Value<int> goalType = const Value.absent(),
+                Value<double> startingWeight = const Value.absent(),
+                Value<double> goalWeight = const Value.absent(),
               }) => UserSettingsCompanion(
                 id: id,
                 dailyCalorieGoal: dailyCalorieGoal,
@@ -2366,6 +2805,8 @@ class $$UserSettingsTableTableManager
                 sex: sex,
                 activityLevel: activityLevel,
                 goalType: goalType,
+                startingWeight: startingWeight,
+                goalWeight: goalWeight,
               ),
           createCompanionCallback:
               ({
@@ -2377,6 +2818,8 @@ class $$UserSettingsTableTableManager
                 Value<String> sex = const Value.absent(),
                 Value<int> activityLevel = const Value.absent(),
                 Value<int> goalType = const Value.absent(),
+                Value<double> startingWeight = const Value.absent(),
+                Value<double> goalWeight = const Value.absent(),
               }) => UserSettingsCompanion.insert(
                 id: id,
                 dailyCalorieGoal: dailyCalorieGoal,
@@ -2386,6 +2829,8 @@ class $$UserSettingsTableTableManager
                 sex: sex,
                 activityLevel: activityLevel,
                 goalType: goalType,
+                startingWeight: startingWeight,
+                goalWeight: goalWeight,
               ),
           withReferenceMapper:
               (p0) =>
@@ -3264,6 +3709,189 @@ typedef $$SearchCacheTableTableProcessedTableManager =
       SearchCacheTableData,
       PrefetchHooks Function()
     >;
+typedef $$WeightRecordTableCreateCompanionBuilder =
+    WeightRecordCompanion Function({
+      Value<int> id,
+      required DateTime date,
+      required double weight,
+      Value<String?> note,
+    });
+typedef $$WeightRecordTableUpdateCompanionBuilder =
+    WeightRecordCompanion Function({
+      Value<int> id,
+      Value<DateTime> date,
+      Value<double> weight,
+      Value<String?> note,
+    });
+
+class $$WeightRecordTableFilterComposer
+    extends Composer<_$AppDatabase, $WeightRecordTable> {
+  $$WeightRecordTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get weight => $composableBuilder(
+    column: $table.weight,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$WeightRecordTableOrderingComposer
+    extends Composer<_$AppDatabase, $WeightRecordTable> {
+  $$WeightRecordTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get weight => $composableBuilder(
+    column: $table.weight,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$WeightRecordTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WeightRecordTable> {
+  $$WeightRecordTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<double> get weight =>
+      $composableBuilder(column: $table.weight, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+}
+
+class $$WeightRecordTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WeightRecordTable,
+          WeightRecordData,
+          $$WeightRecordTableFilterComposer,
+          $$WeightRecordTableOrderingComposer,
+          $$WeightRecordTableAnnotationComposer,
+          $$WeightRecordTableCreateCompanionBuilder,
+          $$WeightRecordTableUpdateCompanionBuilder,
+          (
+            WeightRecordData,
+            BaseReferences<_$AppDatabase, $WeightRecordTable, WeightRecordData>,
+          ),
+          WeightRecordData,
+          PrefetchHooks Function()
+        > {
+  $$WeightRecordTableTableManager(_$AppDatabase db, $WeightRecordTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$WeightRecordTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$WeightRecordTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () =>
+                  $$WeightRecordTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<double> weight = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+              }) => WeightRecordCompanion(
+                id: id,
+                date: date,
+                weight: weight,
+                note: note,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required DateTime date,
+                required double weight,
+                Value<String?> note = const Value.absent(),
+              }) => WeightRecordCompanion.insert(
+                id: id,
+                date: date,
+                weight: weight,
+                note: note,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$WeightRecordTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WeightRecordTable,
+      WeightRecordData,
+      $$WeightRecordTableFilterComposer,
+      $$WeightRecordTableOrderingComposer,
+      $$WeightRecordTableAnnotationComposer,
+      $$WeightRecordTableCreateCompanionBuilder,
+      $$WeightRecordTableUpdateCompanionBuilder,
+      (
+        WeightRecordData,
+        BaseReferences<_$AppDatabase, $WeightRecordTable, WeightRecordData>,
+      ),
+      WeightRecordData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3278,6 +3906,8 @@ class $AppDatabaseManager {
       $$MealFoodTableTableTableManager(_db, _db.mealFoodTable);
   $$SearchCacheTableTableTableManager get searchCacheTable =>
       $$SearchCacheTableTableTableManager(_db, _db.searchCacheTable);
+  $$WeightRecordTableTableManager get weightRecord =>
+      $$WeightRecordTableTableManager(_db, _db.weightRecord);
 }
 
 mixin _$FoodItemDaoMixin on DatabaseAccessor<AppDatabase> {
@@ -3294,4 +3924,7 @@ mixin _$MealDaoMixin on DatabaseAccessor<AppDatabase> {
 mixin _$SearchCacheDaoMixin on DatabaseAccessor<AppDatabase> {
   $SearchCacheTableTable get searchCacheTable =>
       attachedDatabase.searchCacheTable;
+}
+mixin _$WeightRecordDaoMixin on DatabaseAccessor<AppDatabase> {
+  $WeightRecordTable get weightRecord => attachedDatabase.weightRecord;
 }

@@ -6,14 +6,27 @@ import 'app_database_connection.dart'
 part 'app_database.g.dart';
 
 @DriftDatabase(
-  tables: [FoodItem, UserSettings, MealTable, MealFoodTable, SearchCacheTable],
-  daos: [FoodItemDao, UserSettingsDao, MealDao, SearchCacheDao],
+  tables: [
+    FoodItem,
+    UserSettings,
+    MealTable,
+    MealFoodTable,
+    SearchCacheTable,
+    WeightRecord,
+  ],
+  daos: [
+    FoodItemDao,
+    UserSettingsDao,
+    MealDao,
+    SearchCacheDao,
+    WeightRecordDao,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(connect());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -31,6 +44,16 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(userSettings, userSettings.sex);
         await m.addColumn(userSettings, userSettings.activityLevel);
         await m.addColumn(userSettings, userSettings.goalType);
+      }
+      if (from < 5) {
+        // Create weight records table
+        await m.createTable(weightRecord);
+      }
+      if (from < 6) {
+        // For schema version 6, we add the new weight tracking columns
+        // First create the table without attempting to copy data
+        await m.addColumn(userSettings, userSettings.startingWeight);
+        await m.addColumn(userSettings, userSettings.goalWeight);
       }
     },
   );
@@ -57,6 +80,9 @@ class UserSettings extends Table {
   TextColumn get sex => text().withDefault(const Constant('male'))();
   IntColumn get activityLevel => integer().withDefault(const Constant(1))();
   IntColumn get goalType => integer().withDefault(const Constant(1))();
+  // Weight tracking fields
+  RealColumn get startingWeight => real().withDefault(const Constant(80.0))();
+  RealColumn get goalWeight => real().withDefault(const Constant(70.0))();
 }
 
 class MealTable extends Table {
@@ -140,6 +166,8 @@ class UserSettingsDao extends DatabaseAccessor<AppDatabase>
     String? sex,
     int? activityLevel,
     int? goalType,
+    double? startingWeight,
+    double? goalWeight,
   }) async {
     final settings = await getSettings();
     if (settings == null) {
@@ -151,6 +179,8 @@ class UserSettingsDao extends DatabaseAccessor<AppDatabase>
           sex: Value(sex ?? 'male'),
           activityLevel: Value(activityLevel ?? 1),
           goalType: Value(goalType ?? 1),
+          startingWeight: Value(startingWeight ?? 80.0),
+          goalWeight: Value(goalWeight ?? 70.0),
         ),
       );
     } else {
@@ -160,6 +190,32 @@ class UserSettingsDao extends DatabaseAccessor<AppDatabase>
         sex: sex ?? settings.sex,
         activityLevel: activityLevel ?? settings.activityLevel,
         goalType: goalType ?? settings.goalType,
+        startingWeight: startingWeight ?? settings.startingWeight,
+        goalWeight: goalWeight ?? settings.goalWeight,
+      );
+      final success = await update(userSettings).replace(updated);
+      return success ? 1 : 0;
+    }
+  }
+
+  // Update weight goals specifically
+  Future<int> updateWeightGoals({
+    required double startingWeight,
+    required double goalWeight,
+  }) async {
+    final settings = await getSettings();
+    if (settings == null) {
+      return into(userSettings).insert(
+        UserSettingsCompanion.insert(
+          dailyCalorieGoal: const Value(2000),
+          startingWeight: Value(startingWeight),
+          goalWeight: Value(goalWeight),
+        ),
+      );
+    } else {
+      final updated = settings.copyWith(
+        startingWeight: startingWeight,
+        goalWeight: goalWeight,
       );
       final success = await update(userSettings).replace(updated);
       return success ? 1 : 0;
@@ -244,4 +300,52 @@ class SearchCacheDao extends DatabaseAccessor<AppDatabase>
     await (delete(searchCacheTable)
       ..where((tbl) => tbl.ts.isSmallerThanValue(cutoffTs))).go();
   }
+}
+
+// Weight tracking table definition
+class WeightRecord extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  DateTimeColumn get date => dateTime()();
+  RealColumn get weight => real()();
+  TextColumn get note => text().nullable()();
+}
+
+// Weight tracking DAO
+@DriftAccessor(tables: [WeightRecord])
+class WeightRecordDao extends DatabaseAccessor<AppDatabase>
+    with _$WeightRecordDaoMixin {
+  WeightRecordDao(AppDatabase db) : super(db);
+
+  // Get all weight records ordered by date
+  Future<List<WeightRecordData>> getAllWeightRecords() =>
+      (select(weightRecord)..orderBy([
+        (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
+      ])).get();
+
+  // Watch all weight records (reactive stream)
+  Stream<List<WeightRecordData>> watchAllWeightRecords() =>
+      (select(weightRecord)..orderBy([
+        (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
+      ])).watch();
+
+  // Get the most recent weight record
+  Future<WeightRecordData?> getLatestWeightRecord() =>
+      (select(weightRecord)
+            ..orderBy([
+              (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
+            ])
+            ..limit(1))
+          .getSingleOrNull();
+
+  // Add a new weight record
+  Future<int> addWeightRecord(Insertable<WeightRecordData> record) =>
+      into(weightRecord).insert(record);
+
+  // Update an existing weight record
+  Future<bool> updateWeightRecord(Insertable<WeightRecordData> record) =>
+      update(weightRecord).replace(record);
+
+  // Delete a weight record
+  Future<int> deleteWeightRecord(int id) =>
+      (delete(weightRecord)..where((tbl) => tbl.id.equals(id))).go();
 }

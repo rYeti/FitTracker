@@ -5,26 +5,54 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-// Friendly labels for enum values (use these for display / localization later)
-const Map<Sex, String> _sexLabels = {
-  Sex.male: 'Male',
-  Sex.female: 'Female',
-  Sex.other: 'Other',
-};
+// Sex
+extension SexLocalizations on Sex {
+  String localized(BuildContext ctx) {
+    final loc = AppLocalizations.of(ctx)!;
+    switch (this) {
+      case Sex.male:
+        return loc.male;
+      case Sex.female:
+        return loc.female;
+      case Sex.other:
+        return loc.other;
+    }
+  }
+}
 
-const Map<ActivityLevel, String> _activityLabels = {
-  ActivityLevel.sedentary: 'Sedentary',
-  ActivityLevel.lightlyActive: 'Lightly Active',
-  ActivityLevel.moderatelyActive: 'Moderately Active',
-  ActivityLevel.veryActive: 'Very Active',
-  ActivityLevel.extremelyActive: 'Extremely Active',
-};
+// ActivityLevel
+extension ActivityLevelLocalizations on ActivityLevel {
+  String localized(BuildContext ctx) {
+    final loc = AppLocalizations.of(ctx)!;
+    switch (this) {
+      case ActivityLevel.sedentary:
+        return loc.sedentary;
+      case ActivityLevel.lightlyActive:
+        return loc.lightlyActive;
+      case ActivityLevel.moderatelyActive:
+        return loc.moderatelyActive;
+      case ActivityLevel.veryActive:
+        return loc.veryActive;
+      case ActivityLevel.extremelyActive:
+        return loc.extremelyActive;
+    }
+  }
+}
 
-const Map<GoalType, String> _goalLabels = {
-  GoalType.weightLoss: 'Weight Loss',
-  GoalType.muscleGain: 'Muscle Gain',
-  GoalType.maintenance: 'Maintenance',
-};
+// GoalType
+extension GoalTypeLocalizations on GoalType {
+  String localized(BuildContext ctx) {
+    final loc = AppLocalizations.of(ctx)!;
+    switch (this) {
+      case GoalType.weightLoss:
+        return loc.weightLoss;
+      case GoalType.muscleGain:
+        return loc.muscleGain;
+      case GoalType.maintenance:
+        return loc.maintenance;
+    }
+  }
+}
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -180,7 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         .map(
                           (s) => DropdownMenuItem(
                             value: s,
-                            child: Text(_sexLabels[s]!),
+                            child: Text(s.localized(context)),
                           ),
                         )
                         .toList(),
@@ -197,7 +225,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         .map(
                           (a) => DropdownMenuItem(
                             value: a,
-                            child: Text(_activityLabels[a]!),
+                            child: Text(a.localized(context)),
                           ),
                         )
                         .toList(),
@@ -217,7 +245,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         .map(
                           (g) => DropdownMenuItem(
                             value: g,
-                            child: Text(_goalLabels[g]!),
+                            child: Text(g.localized(context)),
                           ),
                         )
                         .toList(),
@@ -310,9 +338,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           if (!mounted) return;
                           _calorieGoalController.text = kcal.toString();
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
+                            SnackBar(
                               content: Text(
-                                'Calculated and saved calorie goal',
+                                AppLocalizations.of(context)!.calculateAndSave,
                               ),
                             ),
                           );
@@ -341,8 +369,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           if (newGoal == null) {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Please enter a valid number'),
+                                SnackBar(
+                                  content: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.pleaseEnterValidNumber,
+                                  ),
                                 ),
                               );
                             }
@@ -392,8 +424,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                           if (success && mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Calorie goal updated'),
+                              SnackBar(
+                                content: Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  )!.saveCalorieGoal, // or use a suitable getter or hardcoded string
+                                ),
                               ),
                             );
                             Navigator.pop(context);

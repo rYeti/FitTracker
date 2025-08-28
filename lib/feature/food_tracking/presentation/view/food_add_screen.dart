@@ -27,6 +27,20 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
   List<dynamic> _searchResults = [];
   Timer? _debounce;
 
+  // Reuse the same meal localization approach as food_tracking_screen
+  final Map<String, String Function(AppLocalizations)> _mealLabelGetters = {
+    'Breakfast': (loc) => loc.mealBreakfast,
+    'Lunch': (loc) => loc.mealLunch,
+    'Dinner': (loc) => loc.mealDinner,
+    'Snacks': (loc) => loc.mealSnacks,
+  };
+
+  String _localizedMealLabel(String category, BuildContext ctx) {
+    final loc = AppLocalizations.of(ctx)!;
+    final getter = _mealLabelGetters[category];
+    return getter?.call(loc) ?? category;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -289,7 +303,9 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${AppLocalizations.of(context)!.addFailed}: ${e.toString()}'),
+          content: Text(
+            '${AppLocalizations.of(context)!.addFailed}: ${e.toString()}',
+          ),
         ),
       );
     }
@@ -477,7 +493,11 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
     // final db = AppDatabase(); // remove extra instance
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.addFood(widget.category)),
+        title: Text(
+          AppLocalizations.of(
+            context,
+          )!.addFood(_localizedMealLabel(widget.category, context)),
+        ),
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -491,7 +511,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                     child: TextField(
                       controller: _searchController,
                       decoration: InputDecoration(
-                        labelText: 'Search for food',
+                        labelText: AppLocalizations.of(context)!.searchForFood,
                         suffixIcon: IconButton(
                           icon: const Icon(Icons.camera_alt_rounded),
                           onPressed: _scanBarcode,
@@ -516,7 +536,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Recently Added',
+                    AppLocalizations.of(context)!.recentlyAdded,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),

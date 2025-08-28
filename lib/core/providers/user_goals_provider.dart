@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../feature/food_tracking/data/repositories/nutrition_repository.dart';
 import 'package:fittnes_tracker/core/app_database.dart';
+import '../../feature/weight_tracking/data/repositories/weight_repository.dart';
 import 'enums.dart';
 
 class UserGoalsProvider with ChangeNotifier {
@@ -18,23 +19,55 @@ class UserGoalsProvider with ChangeNotifier {
 
   final AppDatabase db;
   late final NutritionRepository repo;
+  late final WeightRepository weightRepo;
   bool _loadedFromDb = false;
 
   UserGoalsProvider(this.db) {
     repo = NutritionRepository(db);
+    weightRepo = WeightRepository(db);
     _init();
   }
 
   Future<void> _init() async {
     await loadCalorieGoal();
+    await loadLatestWeight();
+    await loadWeightGoals();
   }
 
-  // Loads the persisted calorie goal (if any) from the DB
+  // Loads the latest weight record from the database
+  Future<void> loadLatestWeight() async {
+    try {
+      final latestWeight = await weightRepo.getLatestWeightRecord();
+      if (latestWeight != null) {
+        _currentWeight = latestWeight.weight;
+        notifyListeners();
+      }
+    } catch (e) {
+      // If there's an error, keep the default weight
+      debugPrint('Error loading latest weight: $e');
+    }
+  }
+
+  // Load weight goals from user settings
+  Future<void> loadWeightGoals() async {
+    try {
+      final settings = await db.userSettingsDao.getSettings();
+      if (settings != null) {
+        // These fields will exist after we regenerate the database code
+        _startingWeight = settings.startingWeight;
+        _goalWeight = settings.goalWeight;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error loading weight goals: $e');
+    }
+  }
+
   Future<void> loadCalorieGoal() async {
     try {
       final settings = await db.userSettingsDao.getSettings();
       if (settings != null) {
-        _calorieGoal = settings.dailyCalorieGoal; // Drift data class field
+        _calorieGoal = settings.dailyCalorieGoal;
       }
       _loadedFromDb = true;
     } catch (_) {
@@ -45,12 +78,11 @@ class UserGoalsProvider with ChangeNotifier {
 
   Future<void> saveCalorieGoal(int goal) async {
     _calorieGoal = goal;
-    await repo.setCalorieGoal(goal); // persists via UserSettingsDao
+    await repo.setCalorieGoal(goal);
     notifyListeners();
   }
 
   Future<void> setDailyCalorieGoal(int goal) async {
-    // Update only in memory (UI) – call saveCalorieGoal to persist
     _calorieGoal = goal;
     notifyListeners();
   }
@@ -58,16 +90,35 @@ class UserGoalsProvider with ChangeNotifier {
   Future<void> setGoalWeight(double weight) async {
     _goalWeight = weight;
     notifyListeners();
+
+    try {
+      await db.userSettingsDao.updateProfile(goalWeight: weight);
+    } catch (e) {
+      debugPrint('Error saving goal weight: $e');
+    }
   }
 
   Future<void> setStartingWeight(double weight) async {
     _startingWeight = weight;
     notifyListeners();
+
+    try {
+      await db.userSettingsDao.updateProfile(startingWeight: weight);
+    } catch (e) {
+      debugPrint('Error saving starting weight: $e');
+    }
   }
 
   Future<void> setCurrentWeight(double weight) async {
     _currentWeight = weight;
     notifyListeners();
+
+    // Current weight is tracked through weight records, not user settings
+    try {
+      await weightRepo.addWeightRecord(date: DateTime.now(), weight: weight);
+    } catch (e) {
+      debugPrint('Error saving current weight: $e');
+    }
   }
 
   bool get isLoaded => _loadedFromDb;
@@ -149,5 +200,10 @@ class UserGoalsProvider with ChangeNotifier {
     );
 
     await setDailyCalorieGoal(newGoal);
+  }
+
+  Future<void> updateCurrentWeightValue(double weight) async {
+    _currentWeight = weight;
+    notifyListeners();
   }
 }

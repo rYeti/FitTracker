@@ -24,10 +24,11 @@
   "age": "Age",
   "heightCm": "Height (cm)",
   "dailyCalorieGoal": "Daily Calorie Goal",
-  "calculateAndSave": "Calculate & Save",
   "save": "Save",
+  "saveCalorieGoal": "Calorie goal saved",
 
-  "addFood": "Add Food - {category}",
+
+  "addFood": "{category}",
   "@addFood": {
     "placeholders": {
       "category": {
@@ -125,5 +126,6 @@
       }
     }
   },
-  "noFoodAdded": "No foods added yet"
+  "noFoodAdded": "No foods added yet",
+  "calculateAndSave": "Calculated and saved calorie goal"
 }

@@ -25,10 +25,10 @@
     "age": "Alter",
     "heightCm": "Größe (cm)",
     "dailyCalorieGoal": "Tägliches Kalorienziel",
-    "calculateAndSave": "Berechnen & Speichern",
     "save": "Speichern",
+    "saveCalorieGoal": "Kalorienziel gespeichert",
 
-    "addFood": "Lebensmittel hinzufügen - {category}",
+    "addFood": "{category}",
     "@addFood": {
       "placeholders": {
         "category": {
@@ -126,7 +126,7 @@
         }
       }
     },
-
-    "noFoodAdded": "Noch nichts hinzugefügt"
+    "noFoodAdded": "Noch nichts hinzugefügt",
+    "calculateAndSave": "Kalorienziel berechnet und gespeichert"
 
   }

@@ -4,12 +4,15 @@ import 'package:provider/provider.dart';
 import 'core/di/service_locator.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/providers/user_goals_provider.dart';
+import 'feature/weight_tracking/presentation/providers/weight_provider.dart';
 import 'feature/gym_tracking/presentation/view/gym_tracking_screen.dart';
 import 'feature/food_tracking/presentation/view/food_tracking_screen.dart';
 import 'feature/food_tracking/presentation/view/nutrition_progress_dashboard.dart';
 import 'feature/dashboard/view/dashboard_screen.dart';
 import 'feature/food_tracking/presentation/view/food_add_screen.dart';
 import 'feature/settings/settings_screen.dart';
+import 'feature/weight_tracking/presentation/view/weight_tracking_screen.dart';
+import 'feature/weight_tracking/presentation/view/weight_goal_screen.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -26,6 +29,20 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider(db)),
         ChangeNotifierProvider(create: (_) => UserGoalsProvider(db)),
+        ChangeNotifierProxyProvider<UserGoalsProvider, WeightProvider>(
+          create:
+              (context) => WeightProvider(
+                db,
+                userGoalsProvider: Provider.of<UserGoalsProvider>(
+                  context,
+                  listen: false,
+                ),
+              ),
+          update:
+              (context, userGoalsProvider, weightProvider) =>
+                  weightProvider ??
+                  WeightProvider(db, userGoalsProvider: userGoalsProvider),
+        ),
       ],
       child: const MyApp(),
     ),
@@ -67,6 +84,16 @@ class MyApp extends StatelessWidget {
 
         if (settings.name == '/settings') {
           return MaterialPageRoute(builder: (_) => const SettingsScreen());
+        }
+
+        if (settings.name == '/weight-tracking') {
+          return MaterialPageRoute(
+            builder: (_) => const WeightTrackingScreen(),
+          );
+        }
+
+        if (settings.name == '/weight-goals') {
+          return MaterialPageRoute(builder: (_) => const WeightGoalScreen());
         }
 
         return MaterialPageRoute(builder: (_) => const HomeScreen());
