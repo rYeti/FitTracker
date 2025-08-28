@@ -126,9 +126,27 @@ class UserGoalsProvider with ChangeNotifier {
   // Progress calculations
   double getWeightProgress() {
     if (startingWeight == goalWeight) return 1.0;
+
+    // Determine if goal is weight loss or gain
+    final isWeightLoss = startingWeight > goalWeight;
+
+    // Calculate total change needed
     final totalChange = (goalWeight - startingWeight).abs();
-    final currentChange = (currentWeight - startingWeight).abs();
-    final progress = currentChange / (totalChange == 0 ? 1 : totalChange);
+
+    // Calculate current change from starting point
+    final currentChange = currentWeight - startingWeight;
+
+    // Calculate progress based on direction
+    double progress;
+    if (isWeightLoss) {
+      // For weight loss, negative change is progress
+      progress = -currentChange / totalChange;
+    } else {
+      // For weight gain, positive change is progress
+      progress = currentChange / totalChange;
+    }
+
+    // Ensure progress is between 0 and 1
     return progress.clamp(0.0, 1.0);
   }
 
@@ -205,5 +223,83 @@ class UserGoalsProvider with ChangeNotifier {
   Future<void> updateCurrentWeightValue(double weight) async {
     _currentWeight = weight;
     notifyListeners();
+  }
+
+  Future<double> getAverageWeeklyWeightChange() async {
+    try {
+      final weightRecords = await weightRepo.getAllWeightRecords();
+      if (weightRecords.length < 2) return 0.0; // Not enough data
+
+      // Sort by date (newest first)
+      weightRecords.sort((a, b) => b.date.compareTo(a.date));
+
+      // Get records from past 4 weeks only
+      final now = DateTime.now();
+      final fourWeeksAgo = now.subtract(const Duration(days: 28));
+      final recentRecords =
+          weightRecords
+              .where((record) => record.date.isAfter(fourWeeksAgo))
+              .toList();
+
+      if (recentRecords.length < 2) return 0.0; // Not enough recent data
+
+      // Calculate weekly change
+      final newest = recentRecords.first;
+      final oldest = recentRecords.last;
+      final weightDifference = newest.weight - oldest.weight;
+      final daysDifference = newest.date.difference(oldest.date).inDays;
+
+      if (daysDifference == 0) return 0.0; // Avoid division by zero
+
+      // Convert to weekly rate
+      return (weightDifference / daysDifference) * 7;
+    } catch (e) {
+      debugPrint('Error calculating weekly weight change: $e');
+      return 0.0;
+    }
+  }
+
+  // Get projected completion date
+  Future<DateTime?> getProjectedCompletionDate() async {
+    final weeklyChange = await getAverageWeeklyWeightChange();
+    if (weeklyChange.abs() < 0.01) return null; // No significant change
+
+    final isWeightLoss = startingWeight > goalWeight;
+    final remainingWeight = (currentWeight - goalWeight).abs();
+
+    // If the direction of change is wrong, return null
+    if ((isWeightLoss && weeklyChange >= 0) ||
+        (!isWeightLoss && weeklyChange <= 0)) {
+      return null;
+    }
+
+    // Calculate weeks needed
+    final weeksNeeded = remainingWeight / weeklyChange.abs();
+
+    // Convert to days and add to current date
+    final daysNeeded = (weeksNeeded * 7).round();
+    return DateTime.now().add(Duration(days: daysNeeded));
+  }
+
+  // Get human-readable completion estimate
+  Future<String?> getCompletionEstimate() async {
+    final completionDate = await getProjectedCompletionDate();
+    if (completionDate == null) return null;
+
+    final difference = completionDate.difference(DateTime.now());
+    final days = difference.inDays;
+
+    if (days < 7) {
+      return 'Less than a week';
+    } else if (days < 30) {
+      final weeks = (days / 7).round();
+      return '$weeks ${weeks == 1 ? 'week' : 'weeks'}';
+    } else if (days < 365) {
+      final months = (days / 30).round();
+      return '$months ${months == 1 ? 'month' : 'months'}';
+    } else {
+      final years = (days / 365).round();
+      return '$years ${years == 1 ? 'year' : 'years'}';
+    }
   }
 }

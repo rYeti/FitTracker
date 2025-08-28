@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fittnes_tracker/core/providers/user_goals_provider.dart';
 import 'package:provider/provider.dart';
+import '../widgets/weight_progress_card.dart';
 
 class WeightGoalScreen extends StatefulWidget {
   const WeightGoalScreen({Key? key}) : super(key: key);
@@ -13,6 +14,7 @@ class _WeightGoalScreenState extends State<WeightGoalScreen> {
   late TextEditingController _startingWeightController;
   late TextEditingController _goalWeightController;
   late UserGoalsProvider _goalsProvider;
+  String? _completionEstimate;
 
   @override
   void initState() {
@@ -24,6 +26,16 @@ class _WeightGoalScreenState extends State<WeightGoalScreen> {
     _goalWeightController = TextEditingController(
       text: _goalsProvider.goalWeight.toString(),
     );
+    _loadCompletionEstimate();
+  }
+
+  Future<void> _loadCompletionEstimate() async {
+    final estimate = await _goalsProvider.getCompletionEstimate();
+    if (mounted) {
+      setState(() {
+        _completionEstimate = estimate;
+      });
+    }
   }
 
   @override
@@ -46,8 +58,6 @@ class _WeightGoalScreenState extends State<WeightGoalScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildInfoCard(theme),
-                const SizedBox(height: 24),
                 Text(
                   'Starting Weight',
                   style: theme.textTheme.titleMedium?.copyWith(
@@ -123,37 +133,5 @@ class _WeightGoalScreenState extends State<WeightGoalScreen> {
     ).showSnackBar(const SnackBar(content: Text('Weight goals saved')));
 
     Navigator.pop(context);
-  }
-
-  Widget _buildInfoCard(ThemeData theme) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Weight Goal Settings',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Your starting weight is the weight you were when you began your fitness journey. Your goal weight is what you\'re aiming to achieve.',
-              style: theme.textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Current progress: ${(_goalsProvider.getWeightProgress() * 100).toStringAsFixed(1)}%',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

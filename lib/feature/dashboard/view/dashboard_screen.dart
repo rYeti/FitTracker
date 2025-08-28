@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/providers/user_goals_provider.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+import '../widgets/dashboard_weight_card.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -271,73 +272,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ThemeData theme,
     UserGoalsProvider goalsProvider,
   ) {
-    final progress = goalsProvider.getWeightProgress();
-    final currentWeight = goalsProvider.currentWeight;
-    final goalWeight = goalsProvider.goalWeight;
-    final startingWeight = goalsProvider.startingWeight;
-
-    return Card(
-      child: InkWell(
-        onTap: () => Navigator.pushNamed(context, '/weight-tracking'),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Weight Progress',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Icon(Icons.arrow_forward, color: theme.colorScheme.primary),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${startingWeight} kg',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                  Text(
-                    '${currentWeight} kg',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                  Text('${goalWeight} kg', style: theme.textTheme.bodySmall),
-                ],
-              ),
-              const SizedBox(height: 8),
-              LinearProgressIndicator(
-                value: progress,
-                backgroundColor: theme.colorScheme.surfaceVariant,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '${(progress * 100).toStringAsFixed(1)}% completed',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+    return DashboardWeightCard(
+      goalsProvider: goalsProvider,
+      onNavigateToWeightTracking:
+          () => Navigator.pushNamed(context, '/weight-tracking'),
     );
   }
 
