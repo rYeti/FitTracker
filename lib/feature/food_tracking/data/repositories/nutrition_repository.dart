@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:fittnes_tracker/core/app_database.dart';
 import 'package:fittnes_tracker/feature/food_tracking/data/models/daily_nutrition_model.dart';
+import 'package:fittnes_tracker/feature/food_tracking/data/models/meal_template.dart';
 import 'package:dio/dio.dart';
 
 // Lightweight cached entry for search results
@@ -276,5 +277,68 @@ class NutritionRepository {
       DateTime.now().day,
     );
     return await db.mealDao.getMealsForDate(today); // fix
+  }
+
+  // Add a template to a specific meal category
+  Future<void> applyTemplateToMeal(
+    String category,
+    List<MealTemplateItem> templateItems,
+  ) async {
+    print(
+      'Starting to apply template with ${templateItems.length} items to $category',
+    );
+
+    for (final item in templateItems) {
+      print('Processing item: ${item.foodName}');
+
+      // First, make sure the food item is in the database
+      FoodItemData? foodItem = await db.foodItemDao.getFoodItemById(
+        item.foodId,
+      );
+
+      // If the food doesn't exist, create it first
+      if (foodItem == null) {
+        print('Food item not found in database, creating new food item');
+
+        try {
+          final foodId = await db.foodItemDao.insertFoodItem(
+            FoodItemCompanion.insert(
+              name: item.foodName,
+              calories: item.calories.toInt(),
+              protein: item.protein.toInt(),
+              carbs: item.carbs.toInt(),
+              fat: item.fat.toInt(),
+              gramm: Value(item.quantity.toInt()),
+            ),
+          );
+
+          print('Created new food item with ID: $foodId');
+          foodItem = await db.foodItemDao.getFoodItemById(foodId);
+
+          if (foodItem == null) {
+            print('Could not retrieve the created food item, skipping');
+            continue; // Skip if we couldn't create the food
+          }
+        } catch (e) {
+          print('Error creating food item: $e');
+          continue; // Skip if there was an error
+        }
+      } else {
+        print(
+          'Found existing food item: ${foodItem.name} (ID: ${foodItem.id})',
+        );
+      }
+
+      // Add the food to the meal
+      try {
+        print('Adding food ${foodItem.name} to meal category $category');
+        await addFoodToMeal(category, foodItem);
+        print('Successfully added food to meal');
+      } catch (e) {
+        print('Error adding food to meal: $e');
+      }
+    }
+
+    print('Finished applying template');
   }
 }

@@ -8,8 +8,11 @@ import 'package:provider/provider.dart';
 import '../../data/repositories/nutrition_repository.dart';
 import 'food_add_screen.dart';
 
+// Create a global key to access the FoodTrackingScreen state
+final globalFoodTrackingKey = GlobalKey<_FoodTrackingScreenState>();
+
 class FoodTrackingScreen extends StatefulWidget {
-  const FoodTrackingScreen({super.key});
+  const FoodTrackingScreen({Key? key}) : super(key: key);
 
   @override
   State<FoodTrackingScreen> createState() => _FoodTrackingScreenState();
@@ -40,12 +43,14 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
   @override
   void initState() {
     super.initState();
-    db = AppDatabase();
+    // Get the database instance from Provider instead of creating a new one
+    db = Provider.of<AppDatabase>(context, listen: false);
     _repository = NutritionRepository(db);
-    _loadNutritionData();
+    loadNutritionData();
   }
 
-  Future<void> _loadNutritionData() async {
+  // Making this method public so it can be called from outside
+  Future<void> loadNutritionData() async {
     setState(() => _isLoading = true);
     try {
       final userSettings = await _repository.getUserSettings();
@@ -91,8 +96,15 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
         title: Text(AppLocalizations.of(context)!.foodTracker),
         actions: [
           IconButton(
+            icon: const Icon(Icons.restaurant_menu),
+            tooltip: 'Meal Templates',
+            onPressed: () {
+              Navigator.pushNamed(context, '/meal-templates');
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadNutritionData,
+            onPressed: loadNutritionData,
           ),
           IconButton(
             icon: const Icon(Icons.settings),
@@ -103,7 +115,7 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _loadNutritionData,
+        onRefresh: loadNutritionData,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Padding(
@@ -319,7 +331,7 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
                                         FoodAddScreen(category: category),
                               ),
                             );
-                            _loadNutritionData();
+                            loadNutritionData();
                           },
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -360,7 +372,7 @@ class _FoodTrackingScreenState extends State<FoodTrackingScreen> {
                                     category,
                                     food,
                                   );
-                                  _loadNutritionData();
+                                  loadNutritionData();
                                 },
                               ),
                             );

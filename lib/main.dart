@@ -5,6 +5,7 @@ import 'core/di/service_locator.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/providers/user_goals_provider.dart';
 import 'feature/weight_tracking/presentation/providers/weight_provider.dart';
+import 'feature/food_tracking/data/repositories/meal_template_repository.dart';
 import 'feature/gym_tracking/presentation/view/gym_tracking_screen.dart';
 import 'feature/food_tracking/presentation/view/food_tracking_screen.dart';
 import 'feature/food_tracking/presentation/view/nutrition_progress_dashboard.dart';
@@ -13,10 +14,10 @@ import 'feature/food_tracking/presentation/view/food_add_screen.dart';
 import 'feature/settings/settings_screen.dart';
 import 'feature/weight_tracking/presentation/view/weight_tracking_screen.dart';
 import 'feature/weight_tracking/presentation/view/weight_goal_screen.dart';
+import 'feature/food_tracking/presentation/view/meal_templates_screen.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:intl/intl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +28,8 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        // Provide the AppDatabase instance directly
+        Provider<AppDatabase>.value(value: db),
         ChangeNotifierProvider(create: (_) => ThemeProvider(db)),
         ChangeNotifierProvider(create: (_) => UserGoalsProvider(db)),
         ChangeNotifierProxyProvider<UserGoalsProvider, WeightProvider>(
@@ -42,6 +45,9 @@ void main() async {
               (context, userGoalsProvider, weightProvider) =>
                   weightProvider ??
                   WeightProvider(db, userGoalsProvider: userGoalsProvider),
+        ),
+        Provider<MealTemplateRepository>(
+          create: (_) => MealTemplateRepository(db),
         ),
       ],
       child: const MyApp(),
@@ -96,6 +102,10 @@ class MyApp extends StatelessWidget {
           return MaterialPageRoute(builder: (_) => const WeightGoalScreen());
         }
 
+        if (settings.name == '/meal-templates') {
+          return MaterialPageRoute(builder: (_) => const MealTemplatesScreen());
+        }
+
         return MaterialPageRoute(builder: (_) => const HomeScreen());
       },
     );
@@ -114,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Widget> _screens = [
     const DashboardScreen(),
-    const FoodTrackingScreen(),
+    FoodTrackingScreen(key: globalFoodTrackingKey),
     const GymTrackingScreen(),
     const NutritionProgressDashboard(),
   ];

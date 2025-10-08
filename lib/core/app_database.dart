@@ -26,7 +26,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(connect());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -54,6 +54,18 @@ class AppDatabase extends _$AppDatabase {
         // First create the table without attempting to copy data
         await m.addColumn(userSettings, userSettings.startingWeight);
         await m.addColumn(userSettings, userSettings.goalWeight);
+      }
+      if (from < 7) {
+        // For schema version 7, we removed MealTemplates and MealTemplateItems tables
+        // These are now handled via SharedPreferences
+        try {
+          await customStatement('DROP TABLE IF EXISTS meal_template_items');
+          await customStatement('DROP TABLE IF EXISTS meal_templates');
+          print('Successfully removed meal template tables');
+        } catch (e) {
+          print('Error removing meal template tables: $e');
+          // Continue with migration even if this fails
+        }
       }
     },
   );
@@ -106,6 +118,8 @@ class SearchCacheTable extends Table {
   @override
   Set<Column> get primaryKey => {query};
 }
+
+// Note: Meal templates are now handled via SharedPreferences instead of database tables
 
 @DriftAccessor(tables: [FoodItem])
 class FoodItemDao extends DatabaseAccessor<AppDatabase>

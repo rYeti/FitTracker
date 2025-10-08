@@ -10,11 +10,14 @@ import 'package:fittnes_tracker/core/app_database.dart';
 class FoodDetailsScreen extends StatefulWidget {
   final FoodItemModel foodItem;
   final String category;
+  final bool
+  isTemplate; // Add this parameter to determine if we're adding to template or meal
 
   const FoodDetailsScreen({
     super.key,
     required this.foodItem,
     required this.category,
+    this.isTemplate = false, // Default to meal mode (not template)
   });
 
   @override
@@ -238,7 +241,9 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          AppLocalizations.of(context)!.addToTodayLog,
+          widget.isTemplate
+              ? 'Add to Meal Template'
+              : AppLocalizations.of(context)!.addToTodayLog,
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
@@ -248,39 +253,87 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
           style: const TextStyle(fontSize: 16),
         ),
         const SizedBox(height: 16),
+        // Add to Daily Meal Log button - disabled if we're in template mode
         ElevatedButton(
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16),
+            backgroundColor: Colors.green,
+            // Disable the button if we're in template mode
+            disabledBackgroundColor: Colors.grey.shade300,
+            disabledForegroundColor: Colors.grey.shade600,
           ),
-          onPressed: () async {
-            final newFoodId = await db.foodItemDao.insertFoodItem(
-              FoodItemCompanion.insert(
-                name: widget.foodItem.name,
-                calories: _calculatedCalories.round(),
-                protein: _calculatedProtein.round(),
-                carbs: _calculatedCarbs.round(),
-                fat: _calculatedFat.round(),
-                gramm: Value(_quantity.round()),
-              ),
-            );
-            final newFood = await db.foodItemDao.getFoodItemById(newFoodId);
-            if (newFood != null) {
-              await _repository.addFoodToMeal(widget.category, newFood);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    '${widget.foodItem.name} (${_quantity.round()}g) ${AppLocalizations.of(context)!.addedSuccessfully}',
-                  ),
-                  backgroundColor: Colors.green,
-                ),
-              );
-              Navigator.pop(context);
-            }
-          },
+          onPressed:
+              widget.isTemplate
+                  ? null
+                  : () async {
+                    final newFoodId = await db.foodItemDao.insertFoodItem(
+                      FoodItemCompanion.insert(
+                        name: widget.foodItem.name,
+                        calories: _calculatedCalories.round(),
+                        protein: _calculatedProtein.round(),
+                        carbs: _calculatedCarbs.round(),
+                        fat: _calculatedFat.round(),
+                        gramm: Value(_quantity.round()),
+                      ),
+                    );
+                    final newFood = await db.foodItemDao.getFoodItemById(
+                      newFoodId,
+                    );
+                    if (newFood != null) {
+                      await _repository.addFoodToMeal(widget.category, newFood);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '${widget.foodItem.name} (${_quantity.round()}g) ${AppLocalizations.of(context)!.addedSuccessfully}',
+                          ),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                      // Close both food details and barcode scanner screens
+                      Navigator.pop(context); // Close food details screen
+                      Navigator.pop(context); // Close barcode scanner screen
+                    }
+                  },
           child: Text(
             AppLocalizations.of(context)!.addToLog,
             style: const TextStyle(fontSize: 16),
           ),
+        ),
+        const SizedBox(height: 12),
+        // Add to Template button - disabled if we're not in template mode
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            backgroundColor: Colors.deepPurple,
+            foregroundColor: Colors.white,
+            // Disable the button if we're not in template mode
+            disabledBackgroundColor: Colors.grey.shade300,
+            disabledForegroundColor: Colors.grey.shade600,
+          ),
+          onPressed:
+              !widget.isTemplate
+                  ? null
+                  : () {
+                    // Create a modified version of the food item with updated quantity
+                    final updatedFoodItem = FoodItemModel(
+                      id: widget.foodItem.id,
+                      name: widget.foodItem.name,
+                      calories: _calculatedCalories.round(),
+                      protein: _calculatedProtein.round(),
+                      carbs: _calculatedCarbs.round(),
+                      fat: _calculatedFat.round(),
+                      gramm: _quantity.round(),
+                    );
+
+                    // Return this item to the previous screen (CreateMealTemplateScreen)
+                    // Only close the food details screen and return the data
+                    // The barcode scanner will handle the next navigation
+                    Navigator.pop(
+                      context,
+                      updatedFoodItem,
+                    ); // Close food details and return data
+                  },
+          child: const Text('Add to Template', style: TextStyle(fontSize: 16)),
         ),
       ],
     );

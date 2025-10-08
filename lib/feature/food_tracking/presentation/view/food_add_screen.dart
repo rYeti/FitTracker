@@ -2,7 +2,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-// import 'package:dio/dio.dart'; // remove, repo handles Dio internally
 import 'dart:async';
 import '../../data/models/food_item_model.dart';
 import '../../data/repositories/nutrition_repository.dart';
@@ -279,7 +278,12 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
     final dynamic scanned = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => BarcodeScannerView(category: widget.category),
+        builder:
+            (context) => BarcodeScannerView(
+              category: widget.category,
+              isTemplate:
+                  false, // Explicitly set to false for normal meal tracking
+            ),
       ),
     );
 
@@ -490,7 +494,6 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // final db = AppDatabase(); // remove extra instance
     return Scaffold(
       appBar: AppBar(
         title: Text(

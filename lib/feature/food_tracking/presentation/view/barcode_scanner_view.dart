@@ -6,6 +6,7 @@ import '../../data/data_sources/food_api.dart';
 import '../../data/models/food_item_model.dart';
 import '../../../../core/network/api_client.dart';
 import 'food_detail_view.dart';
+
 // Define isMobileDevice if not provided by platform_detector.dart
 // Remove this block if isMobileDevice is already exported from platform_detector.dart
 bool get isMobileDevice {
@@ -16,8 +17,14 @@ bool get isMobileDevice {
 }
 
 class BarcodeScannerView extends StatefulWidget {
-  const BarcodeScannerView({super.key, required this.category});
+  const BarcodeScannerView({
+    super.key,
+    required this.category,
+    this.isTemplate = false, // Add this parameter
+  });
+
   final String category;
+  final bool isTemplate; // Flag to indicate if we're adding to a template
 
   @override
   _BarcodeScannerViewState createState() => _BarcodeScannerViewState();
@@ -55,15 +62,22 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> {
       }
 
       if (!mounted) return;
-      await Navigator.of(context).push(
+      final result = await Navigator.of(context).push(
         MaterialPageRoute(
           builder:
               (context) => FoodDetailsScreen(
                 foodItem: foodItem,
                 category: widget.category,
+                isTemplate: widget.isTemplate, // Pass the isTemplate flag
               ),
         ),
       );
+
+      // If we got a result back and are still mounted, return it to the calling screen
+      if (result != null && mounted) {
+        // This will pass the result back to the calling screen (either food_add_screen or create_meal_template_screen)
+        Navigator.pop(context, result);
+      }
     } catch (error) {
       if (kDebugMode) {
         print('❌ Error fetching food data: $error');
