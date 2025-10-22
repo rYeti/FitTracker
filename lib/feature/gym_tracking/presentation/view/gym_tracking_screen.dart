@@ -12,4 +12,6 @@ class _GymTrackingScreen extends State<GymTrackingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(body: Center(child: Text("Gym Screen Loaded!")));
   }
+
+  
 }

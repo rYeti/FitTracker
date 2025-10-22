@@ -15,6 +15,7 @@ import 'feature/settings/settings_screen.dart';
 import 'feature/weight_tracking/presentation/view/weight_tracking_screen.dart';
 import 'feature/weight_tracking/presentation/view/weight_goal_screen.dart';
 import 'feature/food_tracking/presentation/view/meal_templates_screen.dart';
+import 'feature/workout/database_test.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
