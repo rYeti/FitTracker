@@ -1,3 +1,26 @@
+## Communication & implementation rules
+
+These are working rules to follow when we pair on changes and learning tasks. Add them to your PR descriptions and use them as a checklist before merging.
+
+- Prefer concise conceptual explanations (no line-by-line walkthroughs). Give a short summary of the idea, the contract (inputs/outputs), and 2–3 edge cases — then show the minimal code or apply the change.
+- Work in small increments: every change should be small, testable, and verifiable. Each increment should include at least one of: a schema/DAO change, a provider change, a UI tweak, or a unit test.
+- Make each increment an atomic commit with a clear message and a tiny smoke test plan (how to run and what to verify). If the change touches the DB schema, bump `schemaVersion`, add a safe `onUpgrade` migration branch, and run codegen.
+- When editing database schemas or DAOs, run `flutter pub run build_runner build --delete-conflicting-outputs` and include the generated `.g.dart` changes in the same branch.
+- Tests: for pure logic (grouping, aggregation) add unit tests. For DB migration or integration checks, prefer FFI-backed adapters in CI or gracefully skip tests when native sqlite is missing. Document the expected environment for DB tests in the PR.
+
+## Incremental implementation workflow (how we'll build features)
+
+Follow this repeatable, low-risk process every time you add or change functionality:
+
+1. Plan (one paragraph): write the small goal (e.g., "Add grouping helper and a unit test to validate grouping by date"). Keep scope to a single thin slice of functionality.
+2. Scaffold: add or modify the minimal files (data model/DAO/provider/UI) needed for the slice. Keep changes focused (1–4 files).
+3. Tests: write a small unit test for pure logic (grouping) and/or a smoke widget test for rendering. Tests should be runnable quickly.
+4. Codegen & local verification: if DB types changed, run build_runner and then run the app or tests locally to verify. Keep console outputs or screenshots if needed for review.
+5. Commit & PR: commit with a single intent (e.g., "feat(gym): add events grouping helper + unit test"). In the PR description, include the one-paragraph plan, the smoke test steps, and any environment notes.
+6. Iterate after review: address feedback in small follow-ups.
+
+Now continue with the normal learning plan below.
+
 ## Learning + Building (how to use this guide)
 
 This document is both a learning plan and a development roadmap. The goal is to learn Flutter and related technologies while actively building features for FitTracker. You will alternate short learning exercises with small, ship‑ready code changes so your knowledge grows as the product evolves.
