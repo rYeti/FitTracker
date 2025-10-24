@@ -49,10 +49,7 @@ FitTracker is a Flutter mobile application for fitness tracking with multiple ke
 
 ## Database Design
 
-- Uses **Drift** (formerly Moor) for SQLite ORM
-- Key tables: `FoodItem`, `UserSettings`, `MealTable`, `WeightRecord`, `WorkoutTable`, etc.
-- Database migrations handled in `app_database.dart` via `schemaVersion` and `MigrationStrategy`
-- Database version: 8 (see `schemaVersion` in `AppDatabase` class)
+Database version: 9 (see `schemaVersion` in `AppDatabase` class)
 
 ## Key Development Workflows
 
@@ -133,3 +130,43 @@ Example: See `lib/feature/food_tracking/` for reference implementation
 
 - Tests organized in `/test` directory
 - Create tests mirroring the source structure (`feature/component/component_test.dart`)
+
+## Repository-specific additions
+
+The following additions are specific to this repository. Keep changes minimal and preserve the file when merging.
+
+- Database
+
+  - Primary DB file: `lib/core/app_database.dart` (Drift).
+  - Current `schemaVersion` is 8 — if you change tables, bump the schema version and add an entry to `MigrationStrategy.onUpgrade` to create/alter tables or migrate data.
+  - DAO pattern is used; prefer adding DAO methods and repository wrappers rather than calling SQL from UI code.
+
+- Localization (l10n)
+
+  - This repo contains generated localization files under `lib/l10n/` (for example `app_localizations.dart`).
+  - Default workflow: keep and import the checked-in `lib/l10n` files. If you prefer generated package imports (`package:flutter_gen/gen_l10n/...`), remove the checked-in generated files and run `flutter gen-l10n` as part of the CI/PR flow.
+
+- Code generation & build
+
+  - Run these after schema/model/API changes:
+    - `flutter pub get`
+    - `flutter pub run build_runner build --delete-conflicting-outputs`
+    - `flutter gen-l10n` (if you rely on flutter_gen generated artifacts)
+  - Prefer `build_runner` watch during active development: `flutter pub run build_runner watch`
+
+- Android / Gradle notes
+
+  - This project uses Gradle Kotlin DSL. When editing `android/build.gradle.kts` or `android/app/build.gradle.kts` use Kotlin-style assignments (e.g., `minSdk = flutter.minSdkVersion`) and include `compileOptions` + `kotlinOptions { jvmTarget = "1.8" }` to avoid Kotlin/JVM target mismatches.
+  - If resource shrinking triggers build validation errors, set `isShrinkResources = false` when `isMinifyEnabled` is false in the release config to satisfy Gradle checks.
+
+- UI / Flutter SDK drift
+
+  - Keep an eye on Flutter API changes (e.g., the `cardTheme` field expects `CardThemeData` in newer SDKs). If build errors reference types like `CardTheme` vs `CardThemeData`, update theme code accordingly.
+
+- Workflow & safety
+  - When proposing DB schema changes, include:
+    1. `schemaVersion` bump in `AppDatabase`.
+    2. A `MigrationStrategy.onUpgrade` branch that creates or migrates tables safely.
+    3. A one-line test plan (commands to run) in the PR description: `flutter pub get`, `build_runner build`, and a smoke run.
+
+Keep this file updated with any repository-wide conventions discovered during development.

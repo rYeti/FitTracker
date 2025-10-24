@@ -27,6 +27,7 @@ part 'app_database.g.dart';
     WorkoutSetTable,
     WorkoutPlanTable,
     WorkoutPlanWorkoutTable,
+    ScheduledWorkoutTable,
   ],
   daos: [
     FoodItemDao,
@@ -38,15 +39,20 @@ part 'app_database.g.dart';
     ExerciseDao,
     WorkoutDao,
     WorkoutPlanDao,
+    ScheduledWorkoutDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(connect());
 
+  /// Test constructor that allows providing a custom [QueryExecutor],
+  /// useful for in-memory tests.
+  AppDatabase.test(QueryExecutor executor) : super(executor);
+
   // Workout planning DAOs will be added here after code generation
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -163,6 +169,16 @@ class AppDatabase extends _$AppDatabase {
           ')',
         );
       }
+      if (from < 9) {
+        // Create scheduled workouts table in a safe way (no SQL-side
+        // default expressions that sqlite3 native rejects). The table's
+        // createdAt column uses a clientDefault instead of a SQL default.
+        try {
+          await m.createTable(scheduledWorkoutTable);
+        } catch (e) {
+          print('Error creating scheduled_workout_table during migration: $e');
+        }
+      }
     },
   );
 
@@ -170,6 +186,33 @@ class AppDatabase extends _$AppDatabase {
   late final exerciseDao = ExerciseDao(this);
   late final workoutDao = WorkoutDao(this);
   late final workoutPlanDao = WorkoutPlanDao(this);
+}
+
+@DriftAccessor(tables: [ScheduledWorkoutTable])
+class ScheduledWorkoutDao extends DatabaseAccessor<AppDatabase>
+    with _$ScheduledWorkoutDaoMixin {
+  ScheduledWorkoutDao(AppDatabase db) : super(db);
+
+  Future<List<ScheduledWorkoutTableData>> getForDate(DateTime date) {
+    return (select(scheduledWorkoutTable)
+      ..where((t) => t.scheduledDate.equals(date))).get();
+  }
+
+  Stream<List<ScheduledWorkoutTableData>> watchForDate(DateTime date) {
+    return (select(scheduledWorkoutTable)
+      ..where((t) => t.scheduledDate.equals(date))).watch();
+  }
+
+  Future<int> scheduleWorkout(Insertable<ScheduledWorkoutTableData> item) {
+    return into(scheduledWorkoutTable).insert(item);
+  }
+
+  Future<int> removeScheduled(int id) {
+    return (delete(scheduledWorkoutTable)..where((t) => t.id.equals(id))).go();
+  }
+
+  Future<List<ScheduledWorkoutTableData>> getAll() =>
+      select(scheduledWorkoutTable).get();
 }
 
 class FoodItem extends Table {
@@ -499,6 +542,26 @@ class WorkoutPlanWorkoutTable extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get planId => integer().references(WorkoutPlanTable, #id)();
   IntColumn get workoutId => integer().references(WorkoutTable, #id)();
+}
+
+/// Table for storing scheduled workouts (instances of a workout scheduled on a date)
+class ScheduledWorkoutTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  /// Links to the workout template or workout entry
+  IntColumn get workoutId => integer().references(WorkoutTable, #id)();
+
+  /// The date/time this workout is scheduled for
+  DateTimeColumn get scheduledDate => dateTime()();
+
+  /// When the scheduled entry was created. Use a clientDefault so
+  /// sqlite3 native doesn't receive a non-constant SQL default.
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+
+  TextColumn get notes => text().nullable()();
+
+  BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
 }
 
 // Weight tracking DAO
