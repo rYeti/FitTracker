@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 // lib/feature/presentation/view/food_detail_view.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:fittnes_tracker/l10n/app_localizations.dart';
 
 import '../../data/models/food_item_model.dart';
 import '../../data/repositories/nutrition_repository.dart';

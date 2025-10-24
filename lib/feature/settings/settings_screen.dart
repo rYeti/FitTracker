@@ -3,7 +3,7 @@ import 'package:fittnes_tracker/core/providers/enums.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:fittnes_tracker/l10n/app_localizations.dart';
 
 // Sex
 extension SexLocalizations on Sex {

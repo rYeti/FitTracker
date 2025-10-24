@@ -1,7 +1,7 @@
 // lib/feature/presentation/view/food_add_screen.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:fittnes_tracker/l10n/app_localizations.dart';
 import 'dart:async';
 import '../../data/models/food_item_model.dart';
 import '../../data/repositories/nutrition_repository.dart';

@@ -3,7 +3,7 @@ import 'package:fittnes_tracker/core/app_database.dart';
 import 'package:fittnes_tracker/core/providers/user_goals_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:fittnes_tracker/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import '../../data/repositories/nutrition_repository.dart';
 import 'food_add_screen.dart';

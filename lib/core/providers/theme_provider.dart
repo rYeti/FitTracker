@@ -1,4 +1,3 @@
-
 import '../app_database.dart';
 import 'package:flutter/material.dart';
 
@@ -13,15 +12,20 @@ class ThemeProvider with ChangeNotifier {
   ThemeMode get themeMode => _themeMode;
 
   Future<void> toggleTheme() async {
-    _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-    await db.userSettingsDao.updateThemeMode(_themeMode == ThemeMode.dark ? 'dark' : 'light');
+    _themeMode =
+        _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    await db.userSettingsDao.updateThemeMode(
+      _themeMode == ThemeMode.dark ? 'dark' : 'light',
+    );
     notifyListeners();
   }
 
   Future<void> loadTheme() async {
     final settings = await db.userSettingsDao.getSettings();
-    _themeMode = settings?.themeMode == 'dark' ? ThemeMode.dark : ThemeMode.light;
-    notifyListeners();  }
+    _themeMode =
+        settings?.themeMode == 'dark' ? ThemeMode.dark : ThemeMode.light;
+    notifyListeners();
+  }
 
   // Light theme
   ThemeData get lightTheme {
@@ -33,7 +37,7 @@ class ThemeProvider with ChangeNotifier {
         surface: Colors.white,
         background: Color.fromARGB(255, 143, 221, 200),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
@@ -60,7 +64,7 @@ class ThemeProvider with ChangeNotifier {
         surface: Color(0xFF1E1E1E),
         background: Color(0xFF121212),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         color: Color(0xFF2C2C2C),
