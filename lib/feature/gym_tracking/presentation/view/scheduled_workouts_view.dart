@@ -1,3 +1,5 @@
+import 'package:fittnes_tracker/core/app_database.dart';
+import 'package:fittnes_tracker/feature/gym_tracking/presentation/providers/workout_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/scheduled_workout_provider.dart';
@@ -85,12 +87,48 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
           floatingActionButton: FloatingActionButton(
             child: const Icon(Icons.add),
             onPressed: () async {
-              // For now schedule a simple placeholder workout with id=1
-              await provider.scheduleWorkout(
-                workoutId: 1,
-                scheduledDate: selectedDate,
-                notes: 'Added from UI',
+              final workoutProvider = context.read<WorkoutProvider>();
+              // Ensure templates are loaded
+              if (workoutProvider.templates.isEmpty) {
+                await workoutProvider.loadTemplates();
+              }
+
+              if (workoutProvider.templates.isEmpty) {
+                // Show friendly message if no templates
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('No workout templates available.'),
+                  ),
+                );
+                return;
+              }
+
+              final selected = await showModalBottomSheet<WorkoutTableData>(
+                context: context,
+                builder: (ctx) {
+                  final list = workoutProvider.templates;
+                  return ListView.separated(
+                    itemCount: list.length,
+                    separatorBuilder: (_, __) => const Divider(),
+                    itemBuilder: (ctx, idx) {
+                      final t = list[idx];
+                      return ListTile(
+                        title: Text(t.name),
+                        subtitle: Text(t.description ?? ''),
+                        onTap: () => Navigator.of(ctx).pop(t),
+                      );
+                    },
+                  );
+                },
               );
+
+              if (selected != null) {
+                await provider.scheduleWorkout(
+                  workoutId: selected.id,
+                  scheduledDate: selectedDate,
+                  notes: 'Scheduled from template: ${selected.name}',
+                );
+              }
             },
           ),
         );
