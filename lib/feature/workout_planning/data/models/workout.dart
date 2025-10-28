@@ -8,8 +8,8 @@ class Workout {
   final int? id;
   final String name;
   final String? description;
-  final WorkoutDifficulty difficulty;
-  final int estimatedDurationMinutes; // Estimated time to complete
+  final WorkoutDifficulty? difficulty;
+  final int? estimatedDurationMinutes; // Estimated time to complete
   final bool isTemplate; // Whether this is a template or a scheduled workout
   final DateTime?
   scheduledDate; // The date this workout is scheduled (null for templates)
@@ -21,8 +21,8 @@ class Workout {
     this.id,
     required this.name,
     this.description,
-    required this.difficulty,
-    required this.estimatedDurationMinutes,
+    this.difficulty,
+    this.estimatedDurationMinutes,
     this.isTemplate = true,
     this.scheduledDate,
     this.completedDate,
@@ -58,7 +58,7 @@ class Workout {
       if (id != null) 'id': id,
       'name': name,
       'description': description ?? '',
-      'difficulty': difficulty.index,
+      'difficulty': difficulty?.index,
       'estimatedDurationMinutes': estimatedDurationMinutes,
       'isTemplate': isTemplate ? 1 : 0,
       'scheduledDate': scheduledDate?.toIso8601String(),
