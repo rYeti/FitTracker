@@ -127,5 +127,6 @@
     }
   },
   "noFoodAdded": "No foods added yet",
-  "calculateAndSave": "Calculated and saved calorie goal"
+  "calculateAndSave": "Calculated and saved calorie goal",
+  "workoutName": "Workout name"
 }

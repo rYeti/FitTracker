@@ -103,35 +103,34 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                               Navigator.of(context).pop();
 
                               // Show the date selection sheet
-                              final pickedDates =
-                                  await showModalBottomSheet<List<DateTime>>(
-                                    context: context,
-                                    isScrollControlled:
-                                        true, // Allows the sheet to be taller
-                                    shape: const RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.vertical(
-                                        top: Radius.circular(16),
-                                      ),
-                                    ),
-                                    builder:
-                                        (_) => const FractionallySizedBox(
-                                          heightFactor:
-                                              0.85, // 85% of screen height
-                                          child: DateSelectionSheet(),
-                                        ),
-                                  );
+                              // final pickedDates =
+                              //     await showModalBottomSheet<List<DateTime>>(
+                              //       context: context,
+                              //       isScrollControlled:
+                              //           true, // Allows the sheet to be taller
+                              //       shape: const RoundedRectangleBorder(
+                              //         borderRadius: BorderRadius.vertical(
+                              //           top: Radius.circular(16),
+                              //         ),
+                              //       ),
+                              //       builder:
+                              //           (_) => const FractionallySizedBox(
+                              //             heightFactor:
+                              //                 0.85, // 85% of screen height
+                              //             child: DateSelectionSheet(),
+                              //           ),
+                              //     );
 
-                              // If user cancelled or selected nothing, stop
-                              if (pickedDates == null || pickedDates.isEmpty) {
-                                return;
-                              }
+                              // // If user cancelled or selected nothing, stop
+                              // if (pickedDates == null || pickedDates.isEmpty) {
+                              //   return;
+                              // }
 
                               // Navigate to CreateWorkoutView with the dates
                               Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder:
                                       (_) => CreateWorkoutView(
-                                        selectedDates: pickedDates,
                                       ),
                                 ),
                               );

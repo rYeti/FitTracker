@@ -2900,7 +2900,7 @@ class WorkoutTableData extends DataClass
   final String name;
   final String? description;
   final int difficulty;
-  final int estimatedDurationMinutes;
+  final int? estimatedDurationMinutes;
   final bool isTemplate;
   final DateTime? scheduledDate;
   final DateTime? completedDate;
@@ -2982,9 +2982,7 @@ class WorkoutTableData extends DataClass
       'name': serializer.toJson<String>(name),
       'description': serializer.toJson<String?>(description),
       'difficulty': serializer.toJson<int>(difficulty),
-      'estimatedDurationMinutes': serializer.toJson<int>(
-        estimatedDurationMinutes,
-      ),
+      'estimatedDurationMinutes': serializer.toJson<int?>(estimatedDurationMinutes),
       'isTemplate': serializer.toJson<bool>(isTemplate),
       'scheduledDate': serializer.toJson<DateTime?>(scheduledDate),
       'completedDate': serializer.toJson<DateTime?>(completedDate),
@@ -3020,13 +3018,13 @@ class WorkoutTableData extends DataClass
       description:
           data.description.present ? data.description.value : this.description,
       difficulty:
-          data.difficulty.present ? data.difficulty.value : this.difficulty,
+          data.difficulty.present ? data.difficulty.value! : this.difficulty,
       estimatedDurationMinutes:
           data.estimatedDurationMinutes.present
               ? data.estimatedDurationMinutes.value
               : this.estimatedDurationMinutes,
       isTemplate:
-          data.isTemplate.present ? data.isTemplate.value : this.isTemplate,
+          data.isTemplate.present ? data.isTemplate.value! : this.isTemplate,
       scheduledDate:
           data.scheduledDate.present
               ? data.scheduledDate.value
@@ -3082,9 +3080,9 @@ class WorkoutTableCompanion extends UpdateCompanion<WorkoutTableData> {
   final Value<int> id;
   final Value<String> name;
   final Value<String?> description;
-  final Value<int> difficulty;
-  final Value<int> estimatedDurationMinutes;
-  final Value<bool> isTemplate;
+  final Value<int?> difficulty;
+  final Value<int?> estimatedDurationMinutes;
+  final Value<bool?> isTemplate;
   final Value<DateTime?> scheduledDate;
   final Value<DateTime?> completedDate;
   const WorkoutTableCompanion({

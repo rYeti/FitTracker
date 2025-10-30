@@ -552,11 +552,10 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                 if (_isSearching) {
                   return const Center(child: CircularProgressIndicator());
                 } else if (!_isSearching && _searchController.text.isNotEmpty) {
-                  // REMOVE the SizedBox(height: 400)
                   return ListView.builder(
                     shrinkWrap: true,
                     physics:
-                        const NeverScrollableScrollPhysics(), // parent scrolls
+                        const NeverScrollableScrollPhysics(),
                     itemCount: _searchResults.length,
                     itemBuilder: (context, index) {
                       final result = _searchResults[index];
@@ -568,7 +567,6 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                     },
                   );
                 } else {
-                  // REMOVE the SizedBox(height: 400)
                   return StreamBuilder<List<FoodItemData>>(
                     stream: db.foodItemDao.watchAllFoodItems(),
                     builder: (context, snapshot) {
@@ -579,7 +577,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                       return ListView.builder(
                         shrinkWrap: true,
                         physics:
-                            const NeverScrollableScrollPhysics(), // parent scrolls
+                            const NeverScrollableScrollPhysics(),
                         itemCount: foodItems.length,
                         itemBuilder: (context, index) {
                           final item = foodItems[index];

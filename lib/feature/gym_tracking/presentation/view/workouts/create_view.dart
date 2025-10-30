@@ -1,3 +1,4 @@
+import 'package:fittnes_tracker/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fittnes_tracker/core/app_database.dart';
@@ -19,30 +20,32 @@ class CreateWorkoutView extends StatefulWidget {
 class _CreateWorkoutViewState extends State<CreateWorkoutView> {
   final _workoutNameController = TextEditingController();
   int _currentStep = 0;
-  int _numberOfDays = 2;
-  List<TextEditingController> _dayControllers = [];
+  List<TextEditingController> _workoutControllers = [];
+  List<TextEditingController> _workoutExerciseControllers = [];
+  Map<DateTime, int> _dateToWorkoutIndex = {};
 
   @override
   Widget build(BuildContext context) {
-    final selected = widget.selectedDates;
-    final hasDates = selected != null && selected.isNotEmpty;
-
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(title: const Text('Create Workout')),
-      body: Center(
+      body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text("Step ${_currentStep + 1} of 4"),
+              Text(
+                "Step ${_currentStep + 1} of 3",
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
               SizedBox(height: 20),
               Expanded(child: _buildStepContent()),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   if (_currentStep > 0)
-                    TextButton(onPressed: _goBack, child: Text("back")),
+                    ElevatedButton(onPressed: _goBack, child: Text("Back")),
                   ElevatedButton(
                     onPressed: _nextOrSave,
                     child: Text(_currentStep == 2 ? "Save" : "Next"),
@@ -52,10 +55,6 @@ class _CreateWorkoutViewState extends State<CreateWorkoutView> {
             ],
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _saveWorkout,
-        child: const Icon(Icons.save),
       ),
     );
   }
@@ -83,6 +82,9 @@ class _CreateWorkoutViewState extends State<CreateWorkoutView> {
   @override
   void dispose() {
     _workoutNameController.dispose();
+    for (var controller in _workoutControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -94,9 +96,40 @@ class _CreateWorkoutViewState extends State<CreateWorkoutView> {
     });
   }
 
-  _nextOrSave() {
+  void _nextOrSave() {
+    if (_currentStep == 0) {
+      if (_workoutNameController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a workout name')),
+        );
+        return;
+      }
+    } else if (_currentStep == 1) {
+      if (_workoutControllers.isEmpty ||
+          _workoutControllers.any((c) => c.text.trim().isEmpty)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter names for all workout days'),
+          ),
+        );
+        return;
+      }
+    } else if (_currentStep == 2) {
+      if (widget.selectedDates != null) {
+        for (var date in widget.selectedDates!) {
+          if (!_dateToWorkoutIndex.containsKey(date)) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please assign a workout to all selected dates'),
+              ),
+            );
+            return;
+          }
+        }
+      }
+    }
     setState(() {
-      if (_currentStep < 2) {
+      if (_currentStep <= 2) {
         _currentStep++;
       } else {
         _saveWorkout();
@@ -118,14 +151,106 @@ class _CreateWorkoutViewState extends State<CreateWorkoutView> {
   }
 
   Widget _workoutName() {
-    return Center(child: );
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _workoutNameController,
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context)!.workoutName,
+              icon: const Icon(Icons.fitness_center),
+            ),
+          ),
+          SizedBox(height: 20),
+          Text(
+            widget.selectedDates != null
+                ? 'Training on ${widget.selectedDates!.length} days'
+                : 'No dates selected',
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _workoutDayNames() {
-    return Center(child: Text('Step 2: Name days'));
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Expanded(
+            child: ListView.builder(
+              itemCount: _workoutControllers.length,
+              itemBuilder: (context, index) {
+                return Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _workoutControllers[index],
+                        decoration: InputDecoration(
+                          icon: const Icon(Icons.fitness_center),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () {
+                        setState(() {
+                          _workoutControllers[index].dispose();
+                          _workoutControllers.removeAt(index);
+                        });
+                      },
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: _addWorkoutForDay,
+            child: Text('Add Workout'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _reviewWorkout() {
-    return Center(child: Text('Step 3: Review'));
+    return Center(
+      child: ListView.builder(
+        itemCount: widget.selectedDates?.length ?? 0,
+        itemBuilder: (context, index) {
+          final date = widget.selectedDates![index];
+          return ListTile(
+            title: Text('${date.day}/${date.month}/${date.year}'),
+            trailing: DropdownButton<int>(
+              value: _dateToWorkoutIndex[date],
+              hint: Text('Select Workout'),
+              items:
+                  _workoutControllers.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final controller = entry.value;
+                    return DropdownMenuItem<int>(
+                      value: index,
+                      child: Text(controller.text),
+                    );
+                  }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _dateToWorkoutIndex[date] = value!;
+                });
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _addWorkoutForDay() {
+    setState(() {
+      _workoutControllers.add(TextEditingController());
+    });
   }
 }

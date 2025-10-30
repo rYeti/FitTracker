@@ -782,7 +782,7 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
         id: workout.id == null ? const Value.absent() : Value(workout.id!),
         name: Value(workout.name),
         description: Value(workout.description),
-        difficulty: Value(workout.difficulty.index),
+        difficulty: Value(workout.difficulty?.index),
         estimatedDurationMinutes: Value(workout.estimatedDurationMinutes),
         isTemplate: Value(workout.isTemplate),
         scheduledDate: Value(workout.scheduledDate),

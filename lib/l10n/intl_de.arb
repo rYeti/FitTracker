@@ -127,6 +127,6 @@
       }
     },
     "noFoodAdded": "Noch nichts hinzugefügt",
-    "calculateAndSave": "Kalorienziel berechnet und gespeichert"
-
+    "calculateAndSave": "Kalorienziel berechnet und gespeichert",
+    "workoutName": "Workout Name"
   }

@@ -91,15 +91,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get pleaseEnterValidAgeAndHeight =>
-      'Please enter valid age and height';
+  String get pleaseEnterValidAgeAndHeight => 'Please enter valid age and height';
 
   @override
   String get pleaseEnterValidNumber => 'Please enter a valid number';
 
   @override
-  String get calculatedAndSavedCalorieGoal =>
-      'Calculated and saved calorie goal';
+  String get calculatedAndSavedCalorieGoal => 'Calculated and saved calorie goal';
 
   @override
   String failedToSaveProfile(Object error) {
@@ -219,4 +217,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get calculateAndSave => 'Calculated and saved calorie goal';
+
+  @override
+  String get workoutName => 'Workout name';
 }
