@@ -1,8 +1,7 @@
+import 'package:ForgeForm/core/app_database.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fittnes_tracker/core/app_database.dart';
 import '../../data/repositories/nutrition_repository.dart';
-import 'package:fittnes_tracker/l10n/app_localizations.dart';
 import 'package:drift/drift.dart' as drift;
 
 class FoodSearchScreen extends StatefulWidget {

@@ -1,7 +1,7 @@
-import 'package:fittnes_tracker/core/app_database.dart';
-import 'package:fittnes_tracker/feature/workout_planning/data/models/exercise.dart';
-import 'package:fittnes_tracker/feature/workout_planning/data/models/workout.dart';
-import 'package:fittnes_tracker/feature/workout_planning/data/models/workout_set.dart';
+import 'package:ForgeForm/core/app_database.dart';
+import 'package:ForgeForm/feature/workout_planning/data/models/exercise.dart';
+import 'package:ForgeForm/feature/workout_planning/data/models/workout.dart';
+import 'package:ForgeForm/feature/workout_planning/data/models/workout_set.dart';
 
 class WorkoutRepository {
   final AppDatabase db;

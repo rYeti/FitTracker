@@ -496,6 +496,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Workout name'**
   String get workoutName;
+
+  /// No description provided for @createWorkout.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Workout'**
+  String get createWorkout;
+
+  /// No description provided for @workoutSavedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Workout saved successfully'**
+  String get workoutSavedSuccessfully;
+
+  /// No description provided for @pleaseEnterWorkoutName.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a workout name'**
+  String get pleaseEnterWorkoutName;
+
+  /// No description provided for @pleaseEnterAtLeastOneWorkoutDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter at least one workout day in the cycle'**
+  String get pleaseEnterAtLeastOneWorkoutDay;
+
+  /// No description provided for @pleaseSelectStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a start date'**
+  String get pleaseSelectStartDate;
+
+  /// No description provided for @dayRestDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Day {day}: Rest Day'**
+  String dayRestDay(int day);
+
+  /// No description provided for @dayWorkout.
+  ///
+  /// In en, this message translates to:
+  /// **'Day {day}: {workout}'**
+  String dayWorkout(int day, String workout);
+
+  /// No description provided for @noExercisesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No exercises yet'**
+  String get noExercisesYet;
+
+  /// No description provided for @addWorkout.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Workout'**
+  String get addWorkout;
+
+  /// No description provided for @addRestDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Rest Day'**
+  String get addRestDay;
+
+  /// No description provided for @workoutNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Workout Name'**
+  String get workoutNameLabel;
+
+  /// No description provided for @add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get add;
+
+  /// No description provided for @selectStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Start Date'**
+  String get selectStartDate;
+
+  /// No description provided for @back.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get back;
+
+  /// No description provided for @next.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get next;
+
+  /// No description provided for @stepXofY.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {current} of {total}'**
+  String stepXofY(int current, int total);
+
+  /// No description provided for @noScheduledWorkouts.
+  ///
+  /// In en, this message translates to:
+  /// **'No scheduled workouts'**
+  String get noScheduledWorkouts;
+
+  /// No description provided for @unknownWorkout.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown Workout'**
+  String get unknownWorkout;
+
+  /// No description provided for @workouts.
+  ///
+  /// In en, this message translates to:
+  /// **'Workouts'**
+  String get workouts;
+
+  /// No description provided for @seedWorkoutTemplates.
+  ///
+  /// In en, this message translates to:
+  /// **'Seed workout templates (debug)'**
+  String get seedWorkoutTemplates;
+
+  /// No description provided for @seedingTemplates.
+  ///
+  /// In en, this message translates to:
+  /// **'Seeding templates...'**
+  String get seedingTemplates;
+
+  /// No description provided for @seedingFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Seeding failed: {error}'**
+  String seedingFailed(Object error);
+
+  /// No description provided for @createOrEditWorkouts.
+  ///
+  /// In en, this message translates to:
+  /// **'Create or edit workouts'**
+  String get createOrEditWorkouts;
+
+  /// No description provided for @newWorkout.
+  ///
+  /// In en, this message translates to:
+  /// **'New Workout'**
+  String get newWorkout;
+
+  /// No description provided for @viewWorkouts.
+  ///
+  /// In en, this message translates to:
+  /// **'View workouts'**
+  String get viewWorkouts;
+
+  /// No description provided for @minutesShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String minutesShort(int minutes);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

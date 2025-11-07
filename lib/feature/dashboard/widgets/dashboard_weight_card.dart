@@ -1,6 +1,6 @@
+import 'package:ForgeForm/core/providers/user_goals_provider.dart';
+import 'package:ForgeForm/feature/weight_tracking/presentation/widgets/weight_progress_card.dart';
 import 'package:flutter/material.dart';
-import 'package:fittnes_tracker/feature/weight_tracking/presentation/widgets/weight_progress_card.dart';
-import 'package:fittnes_tracker/core/providers/user_goals_provider.dart';
 
 class DashboardWeightCard extends StatefulWidget {
   final UserGoalsProvider goalsProvider;

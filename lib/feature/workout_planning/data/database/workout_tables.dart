@@ -1,5 +1,5 @@
+import 'package:ForgeForm/core/app_database.dart';
 import 'package:drift/drift.dart';
-import 'package:fittnes_tracker/core/app_database.dart';
 
 /// Table for storing exercise definitions
 class ExerciseTable extends Table {

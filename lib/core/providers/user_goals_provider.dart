@@ -1,6 +1,6 @@
+import 'package:ForgeForm/core/app_database.dart';
 import 'package:flutter/material.dart';
 import '../../feature/food_tracking/data/repositories/nutrition_repository.dart';
-import 'package:fittnes_tracker/core/app_database.dart';
 import '../../feature/weight_tracking/data/repositories/weight_repository.dart';
 import 'enums.dart';
 

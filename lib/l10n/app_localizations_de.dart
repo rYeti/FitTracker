@@ -220,4 +220,92 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get workoutName => 'Workout Name';
+
+  @override
+  String get createWorkout => 'Training erstellen';
+
+  @override
+  String get workoutSavedSuccessfully => 'Training erfolgreich gespeichert';
+
+  @override
+  String get pleaseEnterWorkoutName => 'Bitte geben Sie einen Trainingsnamen ein';
+
+  @override
+  String get pleaseEnterAtLeastOneWorkoutDay => 'Bitte fügen Sie mindestens einen Trainingstag zum Zyklus hinzu';
+
+  @override
+  String get pleaseSelectStartDate => 'Bitte wählen Sie ein Startdatum';
+
+  @override
+  String dayRestDay(int day) {
+    return 'Tag $day: Ruhetag';
+  }
+
+  @override
+  String dayWorkout(int day, String workout) {
+    return 'Tag $day: $workout';
+  }
+
+  @override
+  String get noExercisesYet => 'Noch keine Übungen';
+
+  @override
+  String get addWorkout => 'Training hinzufügen';
+
+  @override
+  String get addRestDay => 'Ruhetag hinzufügen';
+
+  @override
+  String get workoutNameLabel => 'Trainingsname';
+
+  @override
+  String get add => 'Hinzufügen';
+
+  @override
+  String get selectStartDate => 'Startdatum wählen';
+
+  @override
+  String get back => 'Zurück';
+
+  @override
+  String get next => 'Weiter';
+
+  @override
+  String stepXofY(int current, int total) {
+    return 'Schritt $current von $total';
+  }
+
+  @override
+  String get noScheduledWorkouts => 'Keine geplanten Trainings';
+
+  @override
+  String get unknownWorkout => 'Unbekanntes Training';
+
+  @override
+  String get workouts => 'Trainings';
+
+  @override
+  String get seedWorkoutTemplates => 'Trainingsvorlagen laden (Debug)';
+
+  @override
+  String get seedingTemplates => 'Lade Vorlagen...';
+
+  @override
+  String seedingFailed(Object error) {
+    return 'Laden fehlgeschlagen: $error';
+  }
+
+  @override
+  String get createOrEditWorkouts => 'Trainings erstellen oder bearbeiten';
+
+  @override
+  String get newWorkout => 'Neues Training';
+
+  @override
+  String get viewWorkouts => 'Trainings ansehen';
+
+  @override
+  String minutesShort(int minutes) {
+    return '$minutes Min';
+  }
 }

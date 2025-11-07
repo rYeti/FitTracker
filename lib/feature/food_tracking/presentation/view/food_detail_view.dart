@@ -1,11 +1,9 @@
+import 'package:ForgeForm/core/app_database.dart';
+import 'package:ForgeForm/l10n/app_localizations.dart';
 import 'package:drift/drift.dart' show Value;
-// lib/feature/presentation/view/food_detail_view.dart
 import 'package:flutter/material.dart';
-import 'package:fittnes_tracker/l10n/app_localizations.dart';
-
 import '../../data/models/food_item_model.dart';
 import '../../data/repositories/nutrition_repository.dart';
-import 'package:fittnes_tracker/core/app_database.dart';
 
 class FoodDetailsScreen extends StatefulWidget {
   final FoodItemModel foodItem;

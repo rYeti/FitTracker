@@ -1,6 +1,6 @@
+import 'package:ForgeForm/core/app_database.dart';
+import 'package:ForgeForm/core/di/service_locator.dart';
 import 'package:flutter/foundation.dart';
-import 'package:fittnes_tracker/core/app_database.dart';
-import 'package:fittnes_tracker/core/di/service_locator.dart';
 
 class WorkoutProvider extends ChangeNotifier {
   final WorkoutDao _dao = sl<AppDatabase>().workoutDao;

@@ -23,6 +23,7 @@ part 'app_database.g.dart';
     // Workout planning tables
     ExerciseTable,
     WorkoutTable,
+    WorkoutPlanTable,
     WorkoutExerciseTable,
     WorkoutSetTable,
     WorkoutPlanTable,
@@ -52,7 +53,7 @@ class AppDatabase extends _$AppDatabase {
   // Workout planning DAOs will be added here after code generation
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -179,6 +180,29 @@ class AppDatabase extends _$AppDatabase {
           print('Error creating scheduled_workout_table during migration: $e');
         }
       }
+      if (from < 10) {
+        // Create the new WorkoutPlanTable
+        await m.createTable(workoutPlanTable);
+
+        // Add workoutPlanId column to existing ScheduledWorkoutTable
+        // Add nullable column using raw SQL
+        await customStatement(
+          'ALTER TABLE scheduled_workout_table ADD COLUMN workout_plan_id INTEGER REFERENCES workout_plan_table(id)',
+        );
+
+        // Create a "Legacy Workouts" plan for old data
+        await customStatement('''
+  INSERT INTO workout_plan_table (name, created_at, is_active, cycle_pattern_json, start_date)
+  VALUES ('Legacy Workouts', strftime('%s', 'now'), 0, '[]', strftime('%s', 'now'));
+''');
+
+        // Assign all orphaned workouts to this plan
+        await customStatement('''
+    UPDATE scheduled_workout_table 
+    SET workout_plan_id = (SELECT id FROM workout_plan_table WHERE name = 'Legacy Workouts')
+    WHERE workout_plan_id IS NULL;
+  ''');
+      }
     },
   );
 
@@ -213,6 +237,98 @@ class ScheduledWorkoutDao extends DatabaseAccessor<AppDatabase>
 
   Future<List<ScheduledWorkoutTableData>> getAll() =>
       select(scheduledWorkoutTable).get();
+
+  Future<List<ScheduledWorkoutWithDetails>> getScheduledWithDetailsForDate(
+    DateTime date,
+  ) async {
+    final query = select(scheduledWorkoutTable).join([
+      leftOuterJoin(
+        workoutTable,
+        workoutTable.id.equalsExp(scheduledWorkoutTable.workoutId),
+      ),
+    ])..where(scheduledWorkoutTable.scheduledDate.equals(date));
+
+    final results = await query.get();
+
+    return results.map((row) {
+      return ScheduledWorkoutWithDetails(
+        scheduled: row.readTable(scheduledWorkoutTable),
+        workout: row.readTableOrNull(workoutTable),
+      );
+    }).toList();
+  }
+
+  Stream<List<ScheduledWorkoutWithDetails>> watchScheduledWithDetailsForDate(
+    DateTime date,
+  ) {
+    // Create a custom stream that watches both scheduled_workout_table and workout_plan_table
+    // The readsFrom parameter ensures the stream updates when any of these tables change
+    return customSelect(
+      '''
+      SELECT 
+        sw.id as sw_id,
+        sw.workout_id,
+        sw.scheduled_date,
+        sw.is_completed,
+        sw.workout_plan_id,
+        sw.created_at,
+        w.id as w_id,
+        w.name as w_name,
+        w.description as w_description,
+        w.difficulty as w_difficulty,
+        w.estimated_duration_minutes,
+        w.is_template,
+        wp.is_active
+      FROM scheduled_workout_table sw
+      LEFT JOIN workout_table w ON w.id = sw.workout_id
+      LEFT JOIN workout_plan_table wp ON wp.id = sw.workout_plan_id
+      WHERE sw.scheduled_date = ?
+      ''',
+      variables: [Variable.withDateTime(date)],
+      readsFrom: {scheduledWorkoutTable, workoutTable, workoutPlanTable},
+    ).watch().map((rows) {
+      return rows
+          .where((row) {
+            final isActive = row.readNullable<bool>('is_active');
+            return isActive == true;
+          })
+          .map((row) {
+            return ScheduledWorkoutWithDetails(
+              scheduled: ScheduledWorkoutTableData(
+                id: row.read<int>('sw_id'),
+                workoutId: row.read<int>('workout_id'),
+                scheduledDate: row.read<DateTime>('scheduled_date'),
+                isCompleted: row.read<bool>('is_completed'),
+                workoutPlanId: row.readNullable<int>('workout_plan_id'),
+                createdAt: row.read<DateTime>('created_at'),
+              ),
+              workout:
+                  row.readNullable<int>('w_id') != null
+                      ? WorkoutTableData(
+                        id: row.read<int>('w_id'),
+                        name: row.read<String>('w_name'),
+                        description: row.readNullable<String>('w_description'),
+                        isTemplate: row.read<bool>('is_template'),
+                        difficulty: row.read<int>('w_difficulty'),
+                        estimatedDurationMinutes: row.read<int>(
+                          'estimated_duration_minutes',
+                        ),
+                        scheduledDate: null,
+                        completedDate: null,
+                      )
+                      : null,
+            );
+          })
+          .toList();
+    });
+  }
+}
+
+class ScheduledWorkoutWithDetails {
+  final ScheduledWorkoutTableData scheduled;
+  final WorkoutTableData? workout;
+
+  ScheduledWorkoutWithDetails({required this.scheduled, this.workout});
 }
 
 class FoodItem extends Table {
@@ -533,8 +649,10 @@ class WorkoutPlanTable extends Table {
   TextColumn get name => text()();
   TextColumn get description => text().nullable()();
   DateTimeColumn get startDate => dateTime()();
-  DateTimeColumn get endDate => dateTime().nullable()();
-  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+  BoolColumn get isActive => boolean().withDefault(const Constant(false))();
+  TextColumn get cyclePatternJson => text()();
 }
 
 /// Table for linking workouts to plans (many-to-many)
@@ -550,6 +668,8 @@ class ScheduledWorkoutTable extends Table {
 
   /// Links to the workout template or workout entry
   IntColumn get workoutId => integer().references(WorkoutTable, #id)();
+  IntColumn get workoutPlanId =>
+      integer().nullable().references(WorkoutPlanTable, #id)();
 
   /// The date/time this workout is scheduled for
   DateTimeColumn get scheduledDate => dateTime()();
@@ -782,8 +902,8 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
         id: workout.id == null ? const Value.absent() : Value(workout.id!),
         name: Value(workout.name),
         description: Value(workout.description),
-        difficulty: Value(workout.difficulty?.index),
-        estimatedDurationMinutes: Value(workout.estimatedDurationMinutes),
+        difficulty: Value(workout.difficulty!.index),
+        estimatedDurationMinutes: Value(workout.estimatedDurationMinutes ?? 30),
         isTemplate: Value(workout.isTemplate),
         scheduledDate: Value(workout.scheduledDate),
         completedDate: Value(workout.completedDate),
@@ -877,6 +997,11 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
       return rowsDeleted > 0;
     });
   }
+
+  Future<WorkoutTableData?> getWorkoutByNameOrNull(String name) {
+    return (select(workoutTable)
+      ..where((w) => w.name.equals(name))).getSingleOrNull();
+  }
 }
 
 @DriftAccessor(tables: [WorkoutPlanTable, WorkoutPlanWorkoutTable])
@@ -924,7 +1049,6 @@ class WorkoutPlanDao extends DatabaseAccessor<AppDatabase>
       name: planData.name,
       description: planData.description,
       startDate: planData.startDate,
-      endDate: planData.endDate,
       workouts: workouts,
       isActive: planData.isActive,
     );
@@ -939,7 +1063,6 @@ class WorkoutPlanDao extends DatabaseAccessor<AppDatabase>
         name: Value(plan.name),
         description: Value(plan.description),
         startDate: Value(plan.startDate),
-        endDate: Value(plan.endDate),
         isActive: Value(plan.isActive),
       );
 

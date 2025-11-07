@@ -1,6 +1,6 @@
+import 'package:ForgeForm/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:fittnes_tracker/l10n/app_localizations.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../data/data_sources/food_api.dart';
 import '../../data/models/food_item_model.dart';

@@ -1,7 +1,7 @@
+import 'package:ForgeForm/core/app_database.dart';
 import 'package:get_it/get_it.dart';
 import '../network/api_client.dart';
 import '../../feature/food_tracking/data/data_sources/food_api.dart';
-import 'package:fittnes_tracker/core/app_database.dart';
 // Note: AppDatabase and scheduled workout provider registration removed to
 // preserve previous runtime behaviour. Add back when DB migration is verified.
 

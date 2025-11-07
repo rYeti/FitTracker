@@ -1,9 +1,7 @@
-import 'package:drift/drift.dart' hide Column;
+import 'package:ForgeForm/feature/weight_tracking/presentation/providers/weight_provider.dart';
+import 'package:ForgeForm/feature/weight_tracking/presentation/widgets/weight_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fittnes_tracker/core/providers/user_goals_provider.dart';
-import 'package:fittnes_tracker/feature/weight_tracking/presentation/providers/weight_provider.dart';
-import 'package:fittnes_tracker/feature/weight_tracking/presentation/widgets/weight_chart.dart';
 import 'package:intl/intl.dart';
 
 class WeightTrackingScreen extends StatelessWidget {

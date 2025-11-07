@@ -1,9 +1,9 @@
-import 'package:fittnes_tracker/core/providers/user_goals_provider.dart';
-import 'package:fittnes_tracker/core/providers/enums.dart';
+import 'package:ForgeForm/core/providers/enums.dart';
+import 'package:ForgeForm/core/providers/user_goals_provider.dart';
+import 'package:ForgeForm/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:fittnes_tracker/l10n/app_localizations.dart';
 
 // Sex
 extension SexLocalizations on Sex {

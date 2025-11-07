@@ -1,8 +1,8 @@
 import 'dart:convert';
+import 'package:ForgeForm/core/app_database.dart';
+import 'package:ForgeForm/feature/food_tracking/data/models/daily_nutrition_model.dart';
+import 'package:ForgeForm/feature/food_tracking/data/models/meal_template.dart';
 import 'package:drift/drift.dart';
-import 'package:fittnes_tracker/core/app_database.dart';
-import 'package:fittnes_tracker/feature/food_tracking/data/models/daily_nutrition_model.dart';
-import 'package:fittnes_tracker/feature/food_tracking/data/models/meal_template.dart';
 import 'package:dio/dio.dart';
 
 // Lightweight cached entry for search results

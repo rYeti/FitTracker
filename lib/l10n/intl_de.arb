@@ -128,5 +128,74 @@
     },
     "noFoodAdded": "Noch nichts hinzugefügt",
     "calculateAndSave": "Kalorienziel berechnet und gespeichert",
-    "workoutName": "Workout Name"
-  }
+    "workoutName": "Workout Name",
+    "createWorkout": "Training erstellen",
+    "workoutSavedSuccessfully": "Training erfolgreich gespeichert",
+    "pleaseEnterWorkoutName": "Bitte geben Sie einen Trainingsnamen ein",
+    "pleaseEnterAtLeastOneWorkoutDay": "Bitte fügen Sie mindestens einen Trainingstag zum Zyklus hinzu",
+    "pleaseSelectStartDate": "Bitte wählen Sie ein Startdatum",
+    "noExercisesYet": "Noch keine Übungen",
+    "addWorkout": "Training hinzufügen",
+    "addRestDay": "Ruhetag hinzufügen",
+    "workoutNameLabel": "Trainingsname",
+    "cancel": "Abbrechen",
+    "add": "Hinzufügen",
+    "selectStartDate": "Startdatum wählen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "save": "Speichern",
+    "stepXofY": "Schritt {current} von {total}",
+    "@stepXofY": {
+        "placeholders": {
+            "current": {
+                "type": "int"
+            },
+            "total": {
+                "type": "int"
+            }
+        }
+    },
+    "dayRestDay": "Tag {day}: Ruhetag",
+    "@dayRestDay": {
+        "placeholders": {
+            "day": {
+                "type": "int"
+            }
+        }
+    },
+    "dayWorkout": "Tag {day}: {workout}",
+    "@dayWorkout": {
+        "placeholders": {
+            "day": {
+                "type": "int"
+            },
+            "workout": {
+                "type": "String"
+            }
+        }
+    },
+    "noScheduledWorkouts": "Keine geplanten Trainings",
+    "unknownWorkout": "Unbekanntes Training",
+    "workouts": "Trainings",
+    "seedWorkoutTemplates": "Trainingsvorlagen laden (Debug)",
+    "seedingTemplates": "Lade Vorlagen...",
+    "seedingFailed": "Laden fehlgeschlagen: {error}",
+    "@seedingFailed": {
+        "placeholders": {
+            "error": {
+                "type": "Object"
+            }
+        }
+    },
+    "createOrEditWorkouts": "Trainings erstellen oder bearbeiten",
+    "newWorkout": "Neues Training",
+    "viewWorkouts": "Trainings ansehen",
+    "minutesShort": "{minutes} Min",
+    "@minutesShort": {
+        "placeholders": {
+            "minutes": {
+                "type": "int"
+            }
+        }
+    }
+}

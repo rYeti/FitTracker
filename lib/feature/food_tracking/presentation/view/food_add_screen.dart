@@ -1,12 +1,12 @@
 // lib/feature/presentation/view/food_add_screen.dart
+import 'package:ForgeForm/core/app_database.dart';
+import 'package:ForgeForm/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:fittnes_tracker/l10n/app_localizations.dart';
 import 'dart:async';
 import '../../data/models/food_item_model.dart';
 import '../../data/repositories/nutrition_repository.dart';
 import 'barcode_scanner_view.dart';
-import 'package:fittnes_tracker/core/app_database.dart';
 import 'food_detail_view.dart';
 
 class FoodAddScreen extends StatefulWidget {

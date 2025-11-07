@@ -1,5 +1,4 @@
-import 'package:fittnes_tracker/core/app_database.dart';
-import 'package:flutter/foundation.dart';
+import 'package:ForgeForm/core/app_database.dart';
 import 'package:drift/drift.dart';
 
 class WeightRepository {

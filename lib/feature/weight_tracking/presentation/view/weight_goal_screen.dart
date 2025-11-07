@@ -1,7 +1,6 @@
+import 'package:ForgeForm/core/providers/user_goals_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:fittnes_tracker/core/providers/user_goals_provider.dart';
 import 'package:provider/provider.dart';
-import '../widgets/weight_progress_card.dart';
 
 class WeightGoalScreen extends StatefulWidget {
   const WeightGoalScreen({Key? key}) : super(key: key);

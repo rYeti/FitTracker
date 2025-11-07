@@ -1,5 +1,5 @@
-import 'package:fittnes_tracker/feature/gym_tracking/presentation/providers/scheduled_workout_provider.dart';
-import 'package:fittnes_tracker/feature/gym_tracking/presentation/providers/workout_provider.dart';
+import 'package:ForgeForm/feature/gym_tracking/presentation/providers/scheduled_workout_provider.dart';
+import 'package:ForgeForm/feature/gym_tracking/presentation/providers/workout_provider.dart';
 import 'package:flutter/material.dart';
 import 'scheduled_workouts_view.dart';
 import 'package:provider/provider.dart';

@@ -128,5 +128,74 @@
   },
   "noFoodAdded": "No foods added yet",
   "calculateAndSave": "Calculated and saved calorie goal",
-  "workoutName": "Workout name"
+  "workoutName": "Workout name",
+  "createWorkout": "Create Workout",
+  "workoutSavedSuccessfully": "Workout saved successfully",
+  "pleaseEnterWorkoutName": "Please enter a workout name",
+  "pleaseEnterAtLeastOneWorkoutDay": "Please enter at least one workout day in the cycle",
+  "pleaseSelectStartDate": "Please select a start date",
+  "dayRestDay": "Day {day}: Rest Day",
+  "@dayRestDay": {
+    "placeholders": {
+      "day": {
+        "type": "int"
+      }
+    }
+  },
+  "dayWorkout": "Day {day}: {workout}",
+  "@dayWorkout": {
+    "placeholders": {
+      "day": {
+        "type": "int"
+      },
+      "workout": {
+        "type": "String"
+      }
+    }
+  },
+  "noExercisesYet": "No exercises yet",
+  "addWorkout": "Add Workout",
+  "addRestDay": "Add Rest Day",
+  "workoutNameLabel": "Workout Name",
+  "cancel": "Cancel",
+  "add": "Add",
+  "selectStartDate": "Select Start Date",
+  "back": "Back",
+  "next": "Next",
+  "save": "Save",
+  "stepXofY": "Step {current} of {total}",
+  "@stepXofY": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "noScheduledWorkouts": "No scheduled workouts",
+  "unknownWorkout": "Unknown Workout",
+  "workouts": "Workouts",
+  "seedWorkoutTemplates": "Seed workout templates (debug)",
+  "seedingTemplates": "Seeding templates...",
+  "seedingFailed": "Seeding failed: {error}",
+  "@seedingFailed": {
+    "placeholders": {
+      "error": {
+        "type": "Object"
+      }
+    }
+  },
+  "createOrEditWorkouts": "Create or edit workouts",
+  "newWorkout": "New Workout",
+  "viewWorkouts": "View workouts",
+  "minutesShort": "{minutes} min",
+  "@minutesShort": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  }
 }

@@ -1,5 +1,5 @@
-import 'package:fittnes_tracker/core/app_database.dart';
-import 'package:fittnes_tracker/core/dao/meal_template_dao.dart';
+import 'package:ForgeForm/core/app_database.dart';
+import 'package:ForgeForm/core/dao/meal_template_dao.dart';
 import '../models/meal_template.dart';
 
 class MealTemplateRepository {

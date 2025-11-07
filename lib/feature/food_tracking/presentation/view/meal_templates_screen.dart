@@ -1,6 +1,6 @@
+import 'package:ForgeForm/core/app_database.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fittnes_tracker/core/app_database.dart';
 import '../../data/models/meal_template.dart';
 import '../../data/repositories/meal_template_repository.dart';
 import '../../data/repositories/nutrition_repository.dart';

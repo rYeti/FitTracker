@@ -1,7 +1,7 @@
 import 'dart:math';
+import 'package:ForgeForm/core/app_database.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:fittnes_tracker/core/app_database.dart';
 import 'package:intl/intl.dart';
 
 class WeightChart extends StatelessWidget {

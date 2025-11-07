@@ -220,4 +220,92 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workoutName => 'Workout name';
+
+  @override
+  String get createWorkout => 'Create Workout';
+
+  @override
+  String get workoutSavedSuccessfully => 'Workout saved successfully';
+
+  @override
+  String get pleaseEnterWorkoutName => 'Please enter a workout name';
+
+  @override
+  String get pleaseEnterAtLeastOneWorkoutDay => 'Please enter at least one workout day in the cycle';
+
+  @override
+  String get pleaseSelectStartDate => 'Please select a start date';
+
+  @override
+  String dayRestDay(int day) {
+    return 'Day $day: Rest Day';
+  }
+
+  @override
+  String dayWorkout(int day, String workout) {
+    return 'Day $day: $workout';
+  }
+
+  @override
+  String get noExercisesYet => 'No exercises yet';
+
+  @override
+  String get addWorkout => 'Add Workout';
+
+  @override
+  String get addRestDay => 'Add Rest Day';
+
+  @override
+  String get workoutNameLabel => 'Workout Name';
+
+  @override
+  String get add => 'Add';
+
+  @override
+  String get selectStartDate => 'Select Start Date';
+
+  @override
+  String get back => 'Back';
+
+  @override
+  String get next => 'Next';
+
+  @override
+  String stepXofY(int current, int total) {
+    return 'Step $current of $total';
+  }
+
+  @override
+  String get noScheduledWorkouts => 'No scheduled workouts';
+
+  @override
+  String get unknownWorkout => 'Unknown Workout';
+
+  @override
+  String get workouts => 'Workouts';
+
+  @override
+  String get seedWorkoutTemplates => 'Seed workout templates (debug)';
+
+  @override
+  String get seedingTemplates => 'Seeding templates...';
+
+  @override
+  String seedingFailed(Object error) {
+    return 'Seeding failed: $error';
+  }
+
+  @override
+  String get createOrEditWorkouts => 'Create or edit workouts';
+
+  @override
+  String get newWorkout => 'New Workout';
+
+  @override
+  String get viewWorkouts => 'View workouts';
+
+  @override
+  String minutesShort(int minutes) {
+    return '$minutes min';
+  }
 }

@@ -1,7 +1,7 @@
-import 'package:fittnes_tracker/core/providers/user_goals_provider.dart';
+import 'package:ForgeForm/core/app_database.dart';
+import 'package:ForgeForm/core/providers/user_goals_provider.dart';
+import 'package:ForgeForm/feature/weight_tracking/data/repositories/weight_repository.dart';
 import 'package:flutter/foundation.dart';
-import 'package:fittnes_tracker/core/app_database.dart';
-import 'package:fittnes_tracker/feature/weight_tracking/data/repositories/weight_repository.dart';
 
 class WeightProvider with ChangeNotifier {
   final WeightRepository _repository;

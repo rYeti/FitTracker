@@ -1,4 +1,5 @@
-import 'package:fittnes_tracker/core/app_database.dart';
+import 'package:ForgeForm/core/app_database.dart';
+import 'package:ForgeForm/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/di/service_locator.dart';
@@ -15,7 +16,6 @@ import 'feature/settings/settings_screen.dart';
 import 'feature/weight_tracking/presentation/view/weight_tracking_screen.dart';
 import 'feature/weight_tracking/presentation/view/weight_goal_screen.dart';
 import 'feature/food_tracking/presentation/view/meal_templates_screen.dart';
-import 'package:fittnes_tracker/l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 

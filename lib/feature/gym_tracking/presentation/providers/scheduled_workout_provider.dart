@@ -1,22 +1,22 @@
+import 'package:ForgeForm/core/app_database.dart';
+import 'package:ForgeForm/core/di/service_locator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart';
-import 'package:fittnes_tracker/core/app_database.dart';
-import 'package:fittnes_tracker/core/di/service_locator.dart';
 import 'dart:async';
 
 /// Provider that exposes scheduled workouts via the ScheduledWorkoutDao.
 class ScheduleWorkoutProvider extends ChangeNotifier {
   final ScheduledWorkoutDao _dao = sl<AppDatabase>().scheduledWorkoutDao;
 
-  StreamSubscription<List<ScheduledWorkoutTableData>>? _subscription;
+  StreamSubscription<List<ScheduledWorkoutWithDetails>>? _subscription;
 
   DateTime _dateOnly(DateTime dateTime) {
     return DateTime(dateTime.year, dateTime.month, dateTime.day);
   }
 
-  List<ScheduledWorkoutTableData> _items = [];
+  List<ScheduledWorkoutWithDetails> _items = [];
 
-  List<ScheduledWorkoutTableData> get scheduled => _items;
+  List<ScheduledWorkoutWithDetails> get scheduled => _items;
 
   @override
   void dispose() {
@@ -59,8 +59,17 @@ class ScheduleWorkoutProvider extends ChangeNotifier {
   void _subscribeToDate(DateTime date) {
     _subscription?.cancel();
     final normalizedDate = _dateOnly(date);
-    _subscription = _dao.watchForDate(normalizedDate).listen((items) {
-      _items = items;
+    print('Subscribing to date: $normalizedDate');
+    _subscription = _dao.watchScheduledWithDetailsForDate(normalizedDate).listen((
+      items,
+    ) {
+      print('Received ${items.length} scheduled workouts');
+      for (var item in items) {
+        print(
+          '  - Workout: ${item.workout?.name ?? "NULL"}, Date: ${item.scheduled.scheduledDate}',
+        );
+      }
+      _items = List.from(items);
       notifyListeners();
     });
   }
