@@ -25,7 +25,6 @@
     "age": "Alter",
     "heightCm": "Größe (cm)",
     "dailyCalorieGoal": "Tägliches Kalorienziel",
-    "save": "Speichern",
     "saveCalorieGoal": "Kalorienziel gespeichert",
 
     "addFood": "{category}",
@@ -197,5 +196,29 @@
                 "type": "int"
             }
         }
+    },
+
+    "noSetTemplates": "Keine Sätze konfiguriert",
+    "setTemplatesCount": "{count, plural, =1{1 Satz} other{{count} Sätze}}",
+    "copyToAll": "Auf alle kopieren",
+"repsHelperText": "z.B. 8-12 oder 10",
+"addSet": "Satz hinzufügen",
+"noSetsConfigured": "Keine Sätze konfiguriert",
+"sets": "Sätze",
+"reps": "Wiederholungen",
+"removeSet": "Satz entfernen",
+"setLabel": "Set",
+"previous": "Vorheriges",
+"kg": "KG",
+"weight": "Gewicht",
+"noExercisesForWorkout": "Keine Übungen für dieses Training konfiguriert",
+"errorLoadingExercises": "Fehler beim Laden der Übungen: {error}",
+"@errorLoadingExercises": {
+  "placeholders": {
+    "error": {
+      "type": "Object"
     }
+  }
+},
+"target": "Ziel"
 }

@@ -18,7 +18,7 @@ import 'app_localizations_en.dart';
 /// `supportedLocales` list. For example:
 ///
 /// ```dart
-/// import 'gen_l10n/app_localizations.dart';
+/// import 'l10n/app_localizations.dart';
 ///
 /// return MaterialApp(
 ///   localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -652,6 +652,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{minutes} min'**
   String minutesShort(int minutes);
+
+  /// No description provided for @noSetTemplates.
+  ///
+  /// In en, this message translates to:
+  /// **'No sets configured'**
+  String get noSetTemplates;
+
+  /// No description provided for @setTemplatesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 set} other{{count} sets}}'**
+  String setTemplatesCount(int count);
+
+  /// No description provided for @copyToAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy to all'**
+  String get copyToAll;
+
+  /// No description provided for @repsHelperText.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g., 8-12 or 10'**
+  String get repsHelperText;
+
+  /// No description provided for @addSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Set'**
+  String get addSet;
+
+  /// No description provided for @noSetsConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'No sets configured'**
+  String get noSetsConfigured;
+
+  /// No description provided for @sets.
+  ///
+  /// In en, this message translates to:
+  /// **'sets'**
+  String get sets;
+
+  /// No description provided for @reps.
+  ///
+  /// In en, this message translates to:
+  /// **'Reps'**
+  String get reps;
+
+  /// No description provided for @removeSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Set'**
+  String get removeSet;
+
+  /// No description provided for @setLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Set'**
+  String get setLabel;
+
+  /// No description provided for @previous.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get previous;
+
+  /// No description provided for @kg.
+  ///
+  /// In en, this message translates to:
+  /// **'KG'**
+  String get kg;
+
+  /// No description provided for @weight.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight'**
+  String get weight;
+
+  /// No description provided for @noExercisesForWorkout.
+  ///
+  /// In en, this message translates to:
+  /// **'No exercises configured for this workout'**
+  String get noExercisesForWorkout;
+
+  /// No description provided for @errorLoadingExercises.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading exercises: {error}'**
+  String errorLoadingExercises(Object error);
+
+  /// No description provided for @target.
+  ///
+  /// In en, this message translates to:
+  /// **'Target'**
+  String get target;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

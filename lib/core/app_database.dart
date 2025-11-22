@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:drift/drift.dart';
 import 'app_database_connection.dart'
     if (dart.library.io) 'app_database_connection_native.dart'
@@ -29,6 +31,7 @@ part 'app_database.g.dart';
     WorkoutPlanTable,
     WorkoutPlanWorkoutTable,
     ScheduledWorkoutTable,
+    WorkoutSetTemplateTable,
   ],
   daos: [
     FoodItemDao,
@@ -53,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   // Workout planning DAOs will be added here after code generation
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -203,6 +206,9 @@ class AppDatabase extends _$AppDatabase {
     WHERE workout_plan_id IS NULL;
   ''');
       }
+      if (from < 11) {
+        await m.createTable(workoutSetTemplateTable);
+      }
     },
   );
 
@@ -261,65 +267,103 @@ class ScheduledWorkoutDao extends DatabaseAccessor<AppDatabase>
   Stream<List<ScheduledWorkoutWithDetails>> watchScheduledWithDetailsForDate(
     DateTime date,
   ) {
-    // Create a custom stream that watches both scheduled_workout_table and workout_plan_table
-    // The readsFrom parameter ensures the stream updates when any of these tables change
-    return customSelect(
-      '''
-      SELECT 
-        sw.id as sw_id,
-        sw.workout_id,
-        sw.scheduled_date,
-        sw.is_completed,
-        sw.workout_plan_id,
-        sw.created_at,
-        w.id as w_id,
-        w.name as w_name,
-        w.description as w_description,
-        w.difficulty as w_difficulty,
-        w.estimated_duration_minutes,
-        w.is_template,
-        wp.is_active
-      FROM scheduled_workout_table sw
-      LEFT JOIN workout_table w ON w.id = sw.workout_id
-      LEFT JOIN workout_plan_table wp ON wp.id = sw.workout_plan_id
-      WHERE sw.scheduled_date = ?
-      ''',
-      variables: [Variable.withDateTime(date)],
-      readsFrom: {scheduledWorkoutTable, workoutTable, workoutPlanTable},
-    ).watch().map((rows) {
-      return rows
-          .where((row) {
-            final isActive = row.readNullable<bool>('is_active');
-            return isActive == true;
-          })
-          .map((row) {
-            return ScheduledWorkoutWithDetails(
-              scheduled: ScheduledWorkoutTableData(
-                id: row.read<int>('sw_id'),
-                workoutId: row.read<int>('workout_id'),
-                scheduledDate: row.read<DateTime>('scheduled_date'),
-                isCompleted: row.read<bool>('is_completed'),
-                workoutPlanId: row.readNullable<int>('workout_plan_id'),
-                createdAt: row.read<DateTime>('created_at'),
-              ),
-              workout:
-                  row.readNullable<int>('w_id') != null
-                      ? WorkoutTableData(
-                        id: row.read<int>('w_id'),
-                        name: row.read<String>('w_name'),
-                        description: row.readNullable<String>('w_description'),
-                        isTemplate: row.read<bool>('is_template'),
-                        difficulty: row.read<int>('w_difficulty'),
-                        estimatedDurationMinutes: row.read<int>(
-                          'estimated_duration_minutes',
-                        ),
-                        scheduledDate: null,
-                        completedDate: null,
-                      )
-                      : null,
-            );
-          })
-          .toList();
+    // Create a function to fetch the current data
+    Future<List<ScheduledWorkoutWithDetails>> fetchData() async {
+      final results =
+          await customSelect(
+            '''
+        SELECT
+          sw.id as sw_id,
+          sw.workout_id,
+          sw.scheduled_date,
+          sw.is_completed,
+          sw.workout_plan_id,
+          sw.created_at,
+          w.id as w_id,
+          w.name as w_name,
+          w.description as w_description,
+          w.difficulty as w_difficulty,
+          w.estimated_duration_minutes,
+          w.is_template,
+          wp.is_active
+        FROM scheduled_workout_table sw
+        LEFT JOIN workout_table w ON w.id = sw.workout_id
+        LEFT JOIN workout_plan_table wp ON wp.id = sw.workout_plan_id
+        WHERE sw.scheduled_date = ? AND wp.is_active = 1
+        ORDER BY sw.created_at DESC
+        ''',
+            variables: [Variable.withDateTime(date)],
+          ).get();
+
+      return results.map((row) {
+        return ScheduledWorkoutWithDetails(
+          scheduled: ScheduledWorkoutTableData(
+            id: row.read<int>('sw_id'),
+            workoutId: row.read<int>('workout_id'),
+            scheduledDate: row.read<DateTime>('scheduled_date'),
+            isCompleted: row.read<bool>('is_completed'),
+            workoutPlanId: row.readNullable<int>('workout_plan_id'),
+            createdAt: row.read<DateTime>('created_at'),
+          ),
+          workout:
+              row.readNullable<int>('w_id') != null
+                  ? WorkoutTableData(
+                    id: row.read<int>('w_id'),
+                    name: row.read<String>('w_name'),
+                    description: row.readNullable<String>('w_description'),
+                    isTemplate: row.read<bool>('is_template'),
+                    difficulty: row.read<int>('w_difficulty'),
+                    estimatedDurationMinutes: row.read<int>(
+                      'estimated_duration_minutes',
+                    ),
+                    scheduledDate: null,
+                    completedDate: null,
+                  )
+                  : null,
+        );
+      }).toList();
+    }
+
+    // Watch both tables and merge their streams
+    final scheduledStream = select(scheduledWorkoutTable).watch();
+    final planStream = select(workoutPlanTable).watch();
+
+    // Use async* generator to create a stream that responds to either table
+    return Stream.multi((controller) {
+      StreamSubscription? scheduledSub;
+      StreamSubscription? planSub;
+      Timer? debounceTimer;
+
+      void emitData() async {
+        // Cancel any pending emission
+        debounceTimer?.cancel();
+
+        // Debounce to avoid rapid multiple emissions
+        debounceTimer = Timer(Duration(milliseconds: 100), () async {
+          try {
+            final data = await fetchData();
+            controller.add(data);
+          } catch (e) {
+            controller.addError(e);
+          }
+        });
+      }
+
+      scheduledSub = scheduledStream.listen((_) {
+        emitData();
+      });
+      planSub = planStream.listen((_) {
+        emitData();
+      });
+
+      controller.onCancel = () {
+        debounceTimer?.cancel();
+        scheduledSub?.cancel();
+        planSub?.cancel();
+      };
+
+      // Emit initial data
+      emitData();
     });
   }
 }
@@ -684,6 +728,24 @@ class ScheduledWorkoutTable extends Table {
   BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
 }
 
+@DataClassName('WorkoutSetTemplateData')
+class WorkoutSetTemplateTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  // Links to the workout-exercise relationship
+  IntColumn get workoutExerciseId =>
+      integer().references(WorkoutExerciseTable, #id)();
+
+  // Which set number (1, 2, 3, etc.)
+  IntColumn get setNumber => integer()();
+
+  // Target reps as string (e.g., "8-12", "10", "15-20")
+  TextColumn get targetReps => text()();
+
+  // Order position for sorting
+  IntColumn get orderPosition => integer()();
+}
+
 // Weight tracking DAO
 @DriftAccessor(tables: [WeightRecord])
 class WeightRecordDao extends DatabaseAccessor<AppDatabase>
@@ -743,6 +805,46 @@ class ExerciseDao extends DatabaseAccessor<AppDatabase>
   Future<List<ExerciseTableData>> getExercisesByType(ExerciseType type) =>
       (select(exerciseTable)..where((e) => e.type.equals(type.index))).get();
 
+  // Get exercises by muscle group
+  Future<List<ExerciseTableData>> getExercisesByMuscleGroup(
+    MuscleGroup muscleGroup,
+  ) async {
+    final allExercises = await getAllExercises();
+    return allExercises.where((exercise) {
+      final muscleGroups =
+          exercise.targetMuscleGroups
+              .split(',')
+              .map((e) => int.tryParse(e.trim()))
+              .where((e) => e != null)
+              .cast<int>()
+              .toList();
+      return muscleGroups.contains(muscleGroup.index);
+    }).toList();
+  }
+
+  // Search exercises by name
+  Future<List<ExerciseTableData>> searchExercises(String query) async {
+    final lowerQuery = query.toLowerCase();
+    final allExercises = await getAllExercises();
+    return allExercises
+        .where((e) => e.name.toLowerCase().contains(lowerQuery))
+        .toList();
+  }
+
+  // Get exercises by muscle group with search
+  Future<List<ExerciseTableData>> searchExercisesByMuscleGroup(
+    MuscleGroup muscleGroup,
+    String query,
+  ) async {
+    final exercises = await getExercisesByMuscleGroup(muscleGroup);
+    if (query.isEmpty) return exercises;
+
+    final lowerQuery = query.toLowerCase();
+    return exercises
+        .where((e) => e.name.toLowerCase().contains(lowerQuery))
+        .toList();
+  }
+
   // Insert or update an exercise
   Future<int> saveExercise(ExerciseTableCompanion exercise) =>
       into(exerciseTable).insert(exercise, mode: InsertMode.insertOrReplace);
@@ -789,7 +891,15 @@ class ExerciseDao extends DatabaseAccessor<AppDatabase>
   }
 }
 
-@DriftAccessor(tables: [WorkoutTable, WorkoutExerciseTable, WorkoutSetTable])
+@DriftAccessor(
+  tables: [
+    WorkoutTable,
+    WorkoutExerciseTable,
+    WorkoutSetTable,
+    WorkoutSetTemplateTable,
+    ScheduledWorkoutTable,
+  ],
+)
 class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
   WorkoutDao(AppDatabase db) : super(db);
 
@@ -891,6 +1001,33 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
       completedDate: workoutData.completedDate,
       exercises: workoutExercises,
     );
+  }
+
+  Future<List<(ExerciseTableData, List<WorkoutSetTemplateData>)>>
+  getWorkoutExercisesWithTemplates(int workoutId) async {
+    final workoutExercises =
+        await (select(workoutExerciseTable)
+              ..where((we) => we.workoutId.equals(workoutId))
+              ..orderBy([(we) => OrderingTerm.asc(we.orderPosition)]))
+            .get();
+    final results = <(ExerciseTableData, List<WorkoutSetTemplateData>)>[];
+
+    for (final workoutExercise in workoutExercises) {
+      final exercise =
+          await (select(exerciseTable)..where(
+            (e) => e.id.equals(workoutExercise.exerciseId),
+          )).getSingleOrNull();
+
+      final templates =
+          await (select(workoutSetTemplateTable)..where(
+            (t) => t.workoutExerciseId.equals(workoutExercise.id),
+          )).get();
+      if (exercise != null) {
+        results.add((exercise, templates));
+      }
+    }
+
+    return results;
   }
 
   // Save a complete workout with exercises and sets
@@ -1001,6 +1138,44 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
   Future<WorkoutTableData?> getWorkoutByNameOrNull(String name) {
     return (select(workoutTable)
       ..where((w) => w.name.equals(name))).getSingleOrNull();
+  }
+
+  Future<List<WorkoutSetTableData>> getPreviousWorkoutSetsForExercise({
+    required int exerciseId,
+    required DateTime beforeDate,
+  }) async {
+    // Find the most recent completed scheduled workout that contains this exercise
+    final previousScheduledWorkout =
+        await (select(scheduledWorkoutTable)
+              ..where(
+                (sw) =>
+                    sw.scheduledDate.isSmallerThanValue(beforeDate) &
+                    sw.isCompleted.equals(true),
+              )
+              ..orderBy([(sw) => OrderingTerm.desc(sw.scheduledDate)]))
+            .getSingleOrNull();
+
+    if (previousScheduledWorkout == null) {
+      return [];
+    }
+
+    //Find the WorkoutExercise entry for this exercise in that workout
+    final workoutExercise =
+        await (select(workoutExerciseTable)..where(
+          (we) =>
+              we.workoutId.equals(previousScheduledWorkout.workoutId) &
+              we.exerciseId.equals(exerciseId),
+        )).getSingleOrNull();
+
+    if (workoutExercise == null) {
+      return [];
+    }
+
+    //Get all sets for that exercise instance
+    return await (select(workoutSetTable)
+          ..where((ws) => ws.exerciseInstanceId.equals(workoutExercise.id))
+          ..orderBy([(ws) => OrderingTerm.asc(ws.setNumber)]))
+        .get();
   }
 }
 

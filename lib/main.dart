@@ -1,4 +1,5 @@
 import 'package:ForgeForm/core/app_database.dart';
+import 'package:ForgeForm/core/seed_exercises.dart';
 import 'package:ForgeForm/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -24,6 +25,9 @@ void main() async {
   await initializeDateFormatting();
   setupLocator();
   final db = AppDatabase();
+
+  // Seed exercises if database is empty
+  await seedExercisesIfEmpty(db);
 
   runApp(
     MultiProvider(

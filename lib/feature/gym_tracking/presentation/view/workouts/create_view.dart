@@ -2,10 +2,13 @@ import 'package:drift/drift.dart' as drift hide Column;
 import 'dart:convert';
 import 'package:ForgeForm/core/app_database.dart';
 import 'package:ForgeForm/feature/workout_planning/data/models/workout.dart';
+import 'package:ForgeForm/feature/workout_planning/data/models/exercise.dart';
+import 'package:ForgeForm/feature/gym_tracking/presentation/widgets/exercise_selection_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:ForgeForm/l10n/app_localizations.dart';
+import 'package:ForgeForm/feature/gym_tracking/data/models/set_template.dart';
 
 class CreateWorkoutView extends StatefulWidget {
   // This is like a constructor parameter in C#
@@ -25,7 +28,10 @@ class _CreateWorkoutViewState extends State<CreateWorkoutView> {
   int _currentStep = 0;
 
   List<String?> _cyclePattern = []; // null = rest day, 0/1/2... = workout index
-  DateTime? _startDate;
+  DateTime? _startDate = DateTime.now(); // Default to today
+
+  // Map to store exercises for each workout name
+  Map<String, List<(Exercise, List<SetTemplates>)>> _workoutExercises = {};
 
   @override
   Widget build(BuildContext context) {
@@ -101,15 +107,68 @@ class _CreateWorkoutViewState extends State<CreateWorkoutView> {
     }
 
     for (var workoutName in workouts) {
+      // Get exercises for this workout, or empty list if none added
+      final exercises = _workoutExercises[workoutName] ?? [];
+
       final workout = Workout(
         name: workoutName!,
         isTemplate: true,
-        exercises: [],
+        exercises: [], // Will be populated after saving
         difficulty: WorkoutDifficulty.intermediate,
         estimatedDurationMinutes: 60,
       );
       final savedWorkout = await db.workoutDao.saveCompleteWorkout(workout);
       workoutMap[workoutName] = savedWorkout;
+
+      // Now add exercises to the saved workout if any were selected
+      if (exercises.isNotEmpty) {
+        for (int i = 0; i < exercises.length; i++) {
+          final (exercise, sets) = exercises[i];
+
+          // Save exercise if it doesn't have an ID yet
+          int exerciseId;
+          if (exercise.id == null) {
+            exerciseId = await db.exerciseDao.saveExercise(
+              db.exerciseDao.modelToEntity(exercise),
+            );
+          } else {
+            exerciseId = exercise.id!;
+          }
+
+          final workoutExerciseId = await db
+              .into(db.workoutExerciseTable)
+              .insert(
+                WorkoutExerciseTableCompanion.insert(
+                  workoutId: savedWorkout,
+                  exerciseId: exerciseId,
+                  orderPosition: i,
+                ),
+              );
+
+          // Save set templates for this exercise
+          final exerciseSets = sets;
+          if (exerciseSets.isNotEmpty) {
+            await db.batch((batch) {
+              for (
+                int setIndex = 0;
+                setIndex < exerciseSets.length;
+                setIndex++
+              ) {
+                final set = exerciseSets[setIndex];
+                batch.insert(
+                  db.workoutSetTemplateTable,
+                  WorkoutSetTemplateTableCompanion.insert(
+                    workoutExerciseId: workoutExerciseId,
+                    setNumber: set.setNumber,
+                    targetReps: set.targetReps,
+                    orderPosition: setIndex,
+                  ),
+                );
+              }
+            });
+          }
+        }
+      }
     }
 
     for (int day = 0; day < 30; day++) {
@@ -244,18 +303,62 @@ class _CreateWorkoutViewState extends State<CreateWorkoutView> {
                 return ExpansionTile(
                   leading: Icon(Icons.fitness_center),
                   title: Text(l10n.dayWorkout(index + 1, entry!)),
+                  subtitle:
+                      _workoutExercises[entry]?.isNotEmpty == true
+                          ? Text(
+                            '${_workoutExercises[entry]!.length} exercise(s)',
+                            style: TextStyle(fontSize: 12),
+                          )
+                          : null,
                   trailing: IconButton(
                     icon: Icon(Icons.delete),
                     onPressed: () {
                       setState(() {
                         _cyclePattern.removeAt(index);
+                        _workoutExercises.remove(entry);
                       });
                     },
                   ),
                   children: [
+                    if (_workoutExercises[entry]?.isEmpty ?? true)
+                      Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Text(l10n.noExercisesYet),
+                      ),
+                    if (_workoutExercises[entry]?.isNotEmpty == true)
+                      ..._workoutExercises[entry]!.asMap().entries.map((e) {
+                        final exerciseIndex = e.key;
+                        return _ExerciseSetConfigItem(
+                          exerciseTuple: e.value,
+                          workoutName: entry,
+                          exerciseIndex: exerciseIndex,
+                          onSetsChanged: (newSets) {
+                            setState(() {
+                              final (exercise, _) =
+                                  _workoutExercises[entry]![exerciseIndex];
+                              _workoutExercises[entry]![exerciseIndex] = (
+                                exercise,
+                                newSets,
+                              );
+                            });
+                          },
+                          onDelete: () {
+                            setState(() {
+                              _workoutExercises[entry]!.removeAt(exerciseIndex);
+                            });
+                          },
+                        );
+                      }).toList(),
                     Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Text(l10n.noExercisesYet),
+                      padding: const EdgeInsets.all(8.0),
+                      child: ElevatedButton.icon(
+                        onPressed: () => _addExerciseToWorkout(entry),
+                        icon: Icon(Icons.add),
+                        label: Text('Add Exercise'),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: Size(double.infinity, 40),
+                        ),
+                      ),
                     ),
                   ],
                 );
@@ -313,6 +416,19 @@ class _CreateWorkoutViewState extends State<CreateWorkoutView> {
     });
   }
 
+  Future<void> _addExerciseToWorkout(String workoutName) async {
+    final exercise = await ExerciseSelectionModal.show(context);
+
+    if (exercise != null) {
+      setState(() {
+        if (_workoutExercises[workoutName] == null) {
+          _workoutExercises[workoutName] = [];
+        }
+        _workoutExercises[workoutName]!.add((exercise, []));
+      });
+    }
+  }
+
   Widget _dateSelection() {
     final l10n = AppLocalizations.of(context)!;
     return Center(
@@ -347,5 +463,185 @@ class _CreateWorkoutViewState extends State<CreateWorkoutView> {
         ],
       ),
     );
+  }
+}
+
+class _ExerciseSetConfigItem extends StatefulWidget {
+  final (Exercise, List<SetTemplates>) exerciseTuple;
+  final String workoutName;
+  final int exerciseIndex;
+  final Function(List<SetTemplates>) onSetsChanged;
+  final VoidCallback onDelete;
+
+  const _ExerciseSetConfigItem({
+    required this.exerciseTuple,
+    required this.workoutName,
+    required this.exerciseIndex,
+    required this.onSetsChanged,
+    required this.onDelete,
+  });
+
+  @override
+  State<_ExerciseSetConfigItem> createState() => _ExerciseSetConfigItemState();
+}
+
+class _ExerciseSetConfigItemState extends State<_ExerciseSetConfigItem> {
+  late List<TextEditingController> _controllers;
+  late List<SetTemplates> _sets;
+
+  @override
+  void initState() {
+    super.initState();
+    final (_, sets) = widget.exerciseTuple;
+    _sets = List.from(sets);
+
+    _controllers =
+        _sets
+            .map((set) => TextEditingController(text: set.targetReps))
+            .toList();
+  }
+
+  @override
+  void dispose() {
+    for (var controller in _controllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  void _notifyParent() {
+    final updatedSets = List.generate(
+      _sets.length,
+      (i) => SetTemplates(
+        setNumber: i + 1,
+        targetRange: _sets[i].targetRange,
+        targetReps: _controllers[i].text.trim(),
+      ),
+    );
+    widget.onSetsChanged(updatedSets);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (exercise, _) = widget.exerciseTuple;
+    final l10n = AppLocalizations.of(context)!;
+
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+      child: ExpansionTile(
+        leading: Text('${widget.exerciseIndex + 1}.'),
+        title: Text(exercise.name),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (exercise.description != null &&
+                exercise.description!.isNotEmpty)
+              Text(
+                exercise.description!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12),
+              ),
+            if (_sets.isEmpty)
+              Text(
+                l10n.noSetsConfigured,
+                style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+              )
+            else
+              Text(
+                '${_sets.length} ${l10n.sets}',
+                style: TextStyle(fontSize: 12),
+              ),
+          ],
+        ),
+        trailing: IconButton(
+          icon: Icon(Icons.delete, size: 20),
+          onPressed: widget.onDelete,
+        ),
+        children: [
+          ..._sets.asMap().entries.map((entry) {
+            final index = entry.key;
+            final set = entry.value;
+            final controller = _controllers[index];
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Text('Set ${set.setNumber}:'),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: controller,
+                      decoration: InputDecoration(
+                        labelText: l10n.reps,
+                        hintText: l10n.repsHelperText,
+                      ),
+                      onChanged: (value) => _notifyParent(),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                setState(() {
+                  final newSetNumber = _sets.length + 1;
+                  _sets.add(
+                    SetTemplates(
+                      setNumber: newSetNumber,
+                      targetRange: '',
+                      targetReps: '',
+                    ),
+                  );
+                  _controllers.add(TextEditingController());
+                  _notifyParent();
+                });
+              },
+              icon: Icon(Icons.add),
+              label: Text(l10n.addSet),
+              style: ElevatedButton.styleFrom(
+                minimumSize: Size(double.infinity, 40),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                _removeSet(_sets.length - 1);
+              },
+              icon: Icon(Icons.remove),
+              label: Text(l10n.removeSet),
+              style: ElevatedButton.styleFrom(
+                minimumSize: Size(double.infinity, 40),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _removeSet(int index) {
+    setState(() {
+      if (_sets.length > 1) {
+        _sets.removeAt(index);
+        _controllers[index].dispose();
+        _controllers.removeAt(index);
+
+        for (int i = 0; i < _sets.length; i++) {
+          _sets[i] = SetTemplates(
+            setNumber: i + 1,
+            targetRange: _sets[i].targetRange,
+            targetReps: _sets[i].targetReps,
+          );
+        }
+        _notifyParent();
+      }
+    });
   }
 }

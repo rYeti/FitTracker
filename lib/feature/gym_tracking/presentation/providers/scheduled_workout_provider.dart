@@ -9,6 +9,8 @@ class ScheduleWorkoutProvider extends ChangeNotifier {
   final ScheduledWorkoutDao _dao = sl<AppDatabase>().scheduledWorkoutDao;
 
   StreamSubscription<List<ScheduledWorkoutWithDetails>>? _subscription;
+  DateTime? _currentDate;
+  bool _isRefreshing = false;
 
   DateTime _dateOnly(DateTime dateTime) {
     return DateTime(dateTime.year, dateTime.month, dateTime.day);
@@ -17,6 +19,7 @@ class ScheduleWorkoutProvider extends ChangeNotifier {
   List<ScheduledWorkoutWithDetails> _items = [];
 
   List<ScheduledWorkoutWithDetails> get scheduled => _items;
+  bool get isRefreshing => _isRefreshing;
 
   @override
   void dispose() {
@@ -27,6 +30,19 @@ class ScheduleWorkoutProvider extends ChangeNotifier {
   /// Load scheduled items for the given date (exact match)
   Future<void> loadForDate(DateTime date) async {
     _subscribeToDate(date);
+  }
+
+  /// Refresh the current subscription (useful after creating/editing workouts)
+  void refresh() {
+    print('[PROVIDER] ========== Manual refresh triggered ==========');
+    // Set refreshing flag and clear items immediately
+    _isRefreshing = true;
+    _items = [];
+    notifyListeners();
+    // Cancel and re-subscribe to force a refresh
+    if (_currentDate != null) {
+      _subscribeToDate(_currentDate!);
+    }
   }
 
   Stream<List<ScheduledWorkoutTableData>> watchForDate(DateTime date) {
@@ -58,8 +74,12 @@ class ScheduleWorkoutProvider extends ChangeNotifier {
 
   void _subscribeToDate(DateTime date) {
     _subscription?.cancel();
+    _items = []; // Clear immediately before subscribing
     final normalizedDate = _dateOnly(date);
-    print('Subscribing to date: $normalizedDate');
+    _currentDate = normalizedDate; // Track the current date
+    print(
+      '[PROVIDER] ========== Subscribing to date: $normalizedDate ==========',
+    );
     _subscription = _dao.watchScheduledWithDetailsForDate(normalizedDate).listen((
       items,
     ) {
@@ -70,6 +90,7 @@ class ScheduleWorkoutProvider extends ChangeNotifier {
         );
       }
       _items = List.from(items);
+      _isRefreshing = false; // Clear refreshing flag when data arrives
       notifyListeners();
     });
   }

@@ -308,4 +308,62 @@ class AppLocalizationsEn extends AppLocalizations {
   String minutesShort(int minutes) {
     return '$minutes min';
   }
+
+  @override
+  String get noSetTemplates => 'No sets configured';
+
+  @override
+  String setTemplatesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sets',
+      one: '1 set',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get copyToAll => 'Copy to all';
+
+  @override
+  String get repsHelperText => 'e.g., 8-12 or 10';
+
+  @override
+  String get addSet => 'Add Set';
+
+  @override
+  String get noSetsConfigured => 'No sets configured';
+
+  @override
+  String get sets => 'sets';
+
+  @override
+  String get reps => 'Reps';
+
+  @override
+  String get removeSet => 'Remove Set';
+
+  @override
+  String get setLabel => 'Set';
+
+  @override
+  String get previous => 'Previous';
+
+  @override
+  String get kg => 'KG';
+
+  @override
+  String get weight => 'Weight';
+
+  @override
+  String get noExercisesForWorkout => 'No exercises configured for this workout';
+
+  @override
+  String errorLoadingExercises(Object error) {
+    return 'Error loading exercises: $error';
+  }
+
+  @override
+  String get target => 'Target';
 }

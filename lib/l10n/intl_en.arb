@@ -157,12 +157,10 @@
   "addWorkout": "Add Workout",
   "addRestDay": "Add Rest Day",
   "workoutNameLabel": "Workout Name",
-  "cancel": "Cancel",
   "add": "Add",
   "selectStartDate": "Select Start Date",
   "back": "Back",
   "next": "Next",
-  "save": "Save",
   "stepXofY": "Step {current} of {total}",
   "@stepXofY": {
     "placeholders": {
@@ -197,5 +195,35 @@
         "type": "int"
       }
     }
-  }
+  },
+  "noSetTemplates": "No sets configured",
+  "setTemplatesCount": "{count, plural, =1{1 set} other{{count} sets}}",
+  "@setTemplatesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "copyToAll": "Copy to all",
+  "repsHelperText": "e.g., 8-12 or 10",
+  "addSet": "Add Set",
+  "noSetsConfigured": "No sets configured",
+  "sets": "sets",
+  "reps": "Reps",
+  "removeSet": "Remove Set",
+  "setLabel": "Set",
+  "previous": "Previous",
+  "kg": "KG",
+  "weight": "Weight",
+  "noExercisesForWorkout": "No exercises configured for this workout",
+  "errorLoadingExercises": "Error loading exercises: {error}",
+  "@errorLoadingExercises": {
+    "placeholders": {
+      "error": {
+        "type": "Object"
+      }
+    }
+  },
+  "target": "Target"
 }

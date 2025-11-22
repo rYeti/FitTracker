@@ -308,4 +308,62 @@ class AppLocalizationsDe extends AppLocalizations {
   String minutesShort(int minutes) {
     return '$minutes Min';
   }
+
+  @override
+  String get noSetTemplates => 'Keine Sätze konfiguriert';
+
+  @override
+  String setTemplatesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Sätze',
+      one: '1 Satz',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get copyToAll => 'Auf alle kopieren';
+
+  @override
+  String get repsHelperText => 'z.B. 8-12 oder 10';
+
+  @override
+  String get addSet => 'Satz hinzufügen';
+
+  @override
+  String get noSetsConfigured => 'Keine Sätze konfiguriert';
+
+  @override
+  String get sets => 'Sätze';
+
+  @override
+  String get reps => 'Wiederholungen';
+
+  @override
+  String get removeSet => 'Satz entfernen';
+
+  @override
+  String get setLabel => 'Set';
+
+  @override
+  String get previous => 'Vorheriges';
+
+  @override
+  String get kg => 'KG';
+
+  @override
+  String get weight => 'Gewicht';
+
+  @override
+  String get noExercisesForWorkout => 'Keine Übungen für dieses Training konfiguriert';
+
+  @override
+  String errorLoadingExercises(Object error) {
+    return 'Fehler beim Laden der Übungen: $error';
+  }
+
+  @override
+  String get target => 'Ziel';
 }
