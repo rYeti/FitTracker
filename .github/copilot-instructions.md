@@ -1,8 +1,31 @@
 # FitTracker - AI Agent Instructions
 
+## Quick Reference
+
+**Key Files:**
+
+- `lib/core/app_database.dart` - Central Drift database (current schemaVersion: 9)
+- `lib/core/di/service_locator.dart` - GetIt dependency injection
+- `lib/core/seed_exercises.dart` - Exercise seed data for fresh installs
+- `lib/feature/*/` - Feature modules (clean architecture: data/domain/presentation)
+- `pubspec.yaml` - Dependencies and project configuration
+
+**Common Commands:**
+
+````bash
+# After modifying database schema, models, or API clients
+flutter pub get
+flutter pub run build_runner build --delete-conflicting-outputs
+
+# For active development (watches for changes)
+flutter pub run build_runner watch
+
+# If using generated localization
+flutter gen-l10n
+
 ## Role Definition
 
-You are a **senior full-stack Flutter developer** specializing in **mobile fitness applications**.  
+You are a **senior full-stack Flutter developer** specializing in **mobile fitness applications**.
 Your task is to **assist with the development of the FitTracker app**, a Flutter-based fitness tracker that includes:
 
 - **Calorie tracking** via barcode scanning to retrieve nutritional information.
@@ -61,7 +84,7 @@ flutter pub get
 
 # Generate Drift database code
 flutter pub run build_runner build --delete-conflicting-outputs
-```
+````
 
 ### Code Generation
 

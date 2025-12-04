@@ -51,6 +51,8 @@ dependencies:
   flutter_speed_dial: ^7.0.0
   path_provider: ^2.1.5
   shared_preferences: ^2.5.3
+  file_picker: ^10.3.7
+  csv: ^6.0.0
 
 dev_dependencies:
   flutter_test:

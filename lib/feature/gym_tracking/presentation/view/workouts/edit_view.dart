@@ -1,4 +1,12 @@
+import 'package:ForgeForm/core/app_database.dart';
+import 'package:ForgeForm/core/di/service_locator.dart';
+import 'package:ForgeForm/feature/workout_planning/data/models/exercise.dart';
+import 'package:ForgeForm/feature/workout_planning/data/models/workout.dart';
+import 'package:ForgeForm/feature/workout_planning/data/models/workout_exercise.dart';
+import 'package:ForgeForm/feature/workout_planning/data/models/workout_set.dart';
+import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
+import 'package:ForgeForm/l10n/app_localizations.dart';
 
 class EditWorkoutView extends StatefulWidget {
   final int workoutId;
@@ -9,12 +17,592 @@ class EditWorkoutView extends StatefulWidget {
 }
 
 class _EditWorkoutViewState extends State<EditWorkoutView> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _durationController = TextEditingController();
+
+  WorkoutDifficulty _difficulty = WorkoutDifficulty.beginner;
+  Workout? _workout;
+  bool _loading = true;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWorkout();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    _durationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadWorkout() async {
+    final dao = sl<AppDatabase>().workoutDao;
+    final workout = await dao.getCompleteWorkoutById(widget.workoutId);
+
+    if (workout != null) {
+      // Don't pre-populate form fields - let user edit freely
+      // _nameController.text = workout.name;
+      // _descriptionController.text = workout.description ?? '';
+      // _durationController.text = workout.estimatedDurationMinutes?.toString() ?? '';
+      // _difficulty = workout.difficulty ?? WorkoutDifficulty.beginner;
+      _workout = workout;
+    }
+
+    setState(() => _loading = false);
+  }
+
+  Future<void> _saveWorkout() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _saving = true);
+
+    try {
+      final dao = sl<AppDatabase>().workoutDao;
+      final duration = int.tryParse(_durationController.text) ?? 30;
+
+      // First, ensure all exercises exist in the database
+      final updatedExercises = <WorkoutExercise>[];
+      for (final exercise in _workout!.exercises) {
+        if (exercise.exerciseId == -1 && exercise.exercise != null) {
+          // This is a new exercise that needs to be created
+          final exerciseCompanion = ExerciseTableCompanion(
+            name: Value(exercise.exercise!.name),
+            description: Value('Added to workout'),
+            type: Value(exercise.exercise!.type.index),
+            targetMuscleGroups: Value(
+              exercise.exercise!.targetMuscleGroups
+                  .map((m) => m.index.toString())
+                  .join(','),
+            ),
+            imageUrl: Value(exercise.exercise!.imageUrl),
+            isCustom: Value(exercise.exercise!.isCustom),
+          );
+
+          final exerciseId = await sl<AppDatabase>().exerciseDao.saveExercise(
+            exerciseCompanion,
+          );
+          updatedExercises.add(
+            WorkoutExercise(
+              id: exercise.id,
+              workoutId: exercise.workoutId,
+              exerciseId: exerciseId,
+              orderPosition: exercise.orderPosition,
+              exercise: exercise.exercise,
+              sets: exercise.sets,
+              notes: exercise.notes,
+            ),
+          );
+        } else {
+          updatedExercises.add(exercise);
+        }
+      }
+
+      final updatedWorkout = Workout(
+        id: widget.workoutId,
+        name: _nameController.text,
+        description: _descriptionController.text,
+        difficulty: _difficulty,
+        estimatedDurationMinutes: duration,
+        isTemplate: true,
+        exercises: updatedExercises,
+      );
+
+      await dao.saveCompleteWorkout(updatedWorkout);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.workoutUpdatedSuccessfully,
+            ),
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.saveFailed(e.toString()),
+            ),
+          ),
+        );
+      }
+    } finally {
+      setState(() => _saving = false);
+    }
+  }
+
+  void _addExercise() async {
+    final l10n = AppLocalizations.of(context)!;
+    final exerciseNameController = TextEditingController();
+
+    final result = await showDialog<String>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Text(l10n.addExercise),
+            content: TextField(
+              controller: exerciseNameController,
+              decoration: const InputDecoration(labelText: 'Exercise Name'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(l10n.cancel),
+              ),
+              TextButton(
+                onPressed:
+                    () => Navigator.pop(context, exerciseNameController.text),
+                child: Text(l10n.addButton),
+              ),
+            ],
+          ),
+    );
+
+    if (result != null && result.isNotEmpty && _workout != null) {
+      // Create a basic exercise object in memory (don't save to DB yet)
+      final basicExercise = Exercise(
+        name: result,
+        type: ExerciseType.strength,
+        targetMuscleGroups: [], // Will be set when saved
+        isCustom: true,
+      );
+
+      // Add to workout in memory
+      final newExercise = WorkoutExercise(
+        workoutId: _workout!.id!,
+        exerciseId: -1, // Temporary ID, will be replaced when saved
+        orderPosition: _workout!.exercises.length + 1,
+        exercise: basicExercise,
+        sets: [
+          WorkoutSet(
+            exerciseInstanceId: -1, // Temporary ID
+            setNumber: 1,
+            reps: 10,
+            weight: 0,
+            weightUnit: 'kg',
+            isCompleted: false,
+          ),
+        ],
+      );
+
+      setState(() {
+        _workout = Workout(
+          id: _workout!.id,
+          name: _workout!.name,
+          description: _workout!.description,
+          difficulty: _workout!.difficulty,
+          estimatedDurationMinutes: _workout!.estimatedDurationMinutes,
+          isTemplate: _workout!.isTemplate,
+          scheduledDate: _workout!.scheduledDate,
+          completedDate: _workout!.completedDate,
+          exercises: [..._workout!.exercises, newExercise],
+        );
+      });
+    }
+  }
+
+  void _removeExercise(WorkoutExercise exercise) {
+    if (_workout == null) return;
+
+    setState(() {
+      _workout = Workout(
+        id: _workout!.id,
+        name: _workout!.name,
+        description: _workout!.description,
+        difficulty: _workout!.difficulty,
+        estimatedDurationMinutes: _workout!.estimatedDurationMinutes,
+        isTemplate: _workout!.isTemplate,
+        scheduledDate: _workout!.scheduledDate,
+        completedDate: _workout!.completedDate,
+        exercises:
+            _workout!.exercises.where((e) => e.id != exercise.id).toList(),
+      );
+    });
+  }
+
+  void _addSetToExercise(WorkoutExercise exercise) {
+    if (_workout == null) return;
+
+    final newSet = WorkoutSet(
+      exerciseInstanceId: exercise.id ?? 0,
+      setNumber: exercise.sets.length + 1,
+      reps: 10,
+      weight: 0,
+      weightUnit: 'kg',
+      isCompleted: false,
+    );
+
+    setState(() {
+      final updatedExercises =
+          _workout!.exercises.map((e) {
+            if (e.id == exercise.id) {
+              return WorkoutExercise(
+                id: e.id,
+                workoutId: e.workoutId,
+                exerciseId: e.exerciseId,
+                orderPosition: e.orderPosition,
+                exercise: e.exercise,
+                sets: [...e.sets, newSet],
+                notes: e.notes,
+              );
+            }
+            return e;
+          }).toList();
+
+      _workout = Workout(
+        id: _workout!.id,
+        name: _workout!.name,
+        description: _workout!.description,
+        difficulty: _workout!.difficulty,
+        estimatedDurationMinutes: _workout!.estimatedDurationMinutes,
+        isTemplate: _workout!.isTemplate,
+        scheduledDate: _workout!.scheduledDate,
+        completedDate: _workout!.completedDate,
+        exercises: updatedExercises,
+      );
+    });
+  }
+
+  void _removeSet(WorkoutSet set) {
+    if (_workout == null) return;
+
+    setState(() {
+      final updatedExercises =
+          _workout!.exercises.map((exercise) {
+            if (exercise.sets.any((s) => s.id == set.id)) {
+              return WorkoutExercise(
+                id: exercise.id,
+                workoutId: exercise.workoutId,
+                exerciseId: exercise.exerciseId,
+                orderPosition: exercise.orderPosition,
+                exercise: exercise.exercise,
+                sets: exercise.sets.where((s) => s.id != set.id).toList(),
+                notes: exercise.notes,
+              );
+            }
+            return exercise;
+          }).toList();
+
+      _workout = Workout(
+        id: _workout!.id,
+        name: _workout!.name,
+        description: _workout!.description,
+        difficulty: _workout!.difficulty,
+        estimatedDurationMinutes: _workout!.estimatedDurationMinutes,
+        isTemplate: _workout!.isTemplate,
+        scheduledDate: _workout!.scheduledDate,
+        completedDate: _workout!.completedDate,
+        exercises: updatedExercises,
+      );
+    });
+  }
+
+  void _editSet(WorkoutSet set) {
+    final l10n = AppLocalizations.of(context)!;
+    final repsController = TextEditingController(
+      text: set.reps?.toString() ?? '',
+    );
+    final weightController = TextEditingController(
+      text: set.weight?.toString() ?? '',
+    );
+    String weightUnit = set.weightUnit ?? 'kg';
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Text(l10n.editSet(set.setNumber)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: repsController,
+                  decoration: InputDecoration(labelText: l10n.repsLabel),
+                  keyboardType: TextInputType.number,
+                ),
+                TextField(
+                  controller: weightController,
+                  decoration: InputDecoration(labelText: l10n.weightLabel),
+                  keyboardType: TextInputType.number,
+                ),
+                DropdownButtonFormField<String>(
+                  value: weightUnit,
+                  decoration: InputDecoration(labelText: l10n.unit),
+                  items:
+                      ['kg', 'lbs'].map((unit) {
+                        return DropdownMenuItem(value: unit, child: Text(unit));
+                      }).toList(),
+                  onChanged: (value) {
+                    if (value != null) weightUnit = value;
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(l10n.cancel),
+              ),
+              TextButton(
+                onPressed: () {
+                  final reps =
+                      int.tryParse(repsController.text) ?? set.reps ?? 0;
+                  final weight =
+                      double.tryParse(weightController.text) ??
+                      set.weight ??
+                      0.0;
+
+                  _updateSet(set, reps, weight, weightUnit);
+                  Navigator.pop(context);
+                },
+                child: Text(l10n.saveButton),
+              ),
+            ],
+          ),
+    );
+  }
+
+  void _updateSet(
+    WorkoutSet oldSet,
+    int reps,
+    double weight,
+    String weightUnit,
+  ) {
+    if (_workout == null) return;
+
+    setState(() {
+      final updatedExercises =
+          _workout!.exercises.map((exercise) {
+            if (exercise.sets.any((s) => s.id == oldSet.id)) {
+              final updatedSets =
+                  exercise.sets.map((s) {
+                    if (s.id == oldSet.id) {
+                      return WorkoutSet(
+                        id: s.id,
+                        exerciseInstanceId: s.exerciseInstanceId,
+                        setNumber: s.setNumber,
+                        reps: reps,
+                        weight: weight,
+                        weightUnit: weightUnit,
+                        durationSeconds: s.durationSeconds,
+                        isCompleted: s.isCompleted,
+                        notes: s.notes,
+                      );
+                    }
+                    return s;
+                  }).toList();
+
+              return WorkoutExercise(
+                id: exercise.id,
+                workoutId: exercise.workoutId,
+                exerciseId: exercise.exerciseId,
+                orderPosition: exercise.orderPosition,
+                exercise: exercise.exercise,
+                sets: updatedSets,
+                notes: exercise.notes,
+              );
+            }
+            return exercise;
+          }).toList();
+
+      _workout = Workout(
+        id: _workout!.id,
+        name: _workout!.name,
+        description: _workout!.description,
+        difficulty: _workout!.difficulty,
+        estimatedDurationMinutes: _workout!.estimatedDurationMinutes,
+        isTemplate: _workout!.isTemplate,
+        scheduledDate: _workout!.scheduledDate,
+        completedDate: _workout!.completedDate,
+        exercises: updatedExercises,
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final workoutId = widget.workoutId;
+    final l10n = AppLocalizations.of(context)!;
+    if (_loading) {
+      return Scaffold(
+        appBar: AppBar(title: Text(l10n.editWorkout)),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Workout')),
-      body: Center(child: Text('Edit Workout Form for Workout ID: $workoutId')),
+      appBar: AppBar(
+        title: Text(l10n.editWorkout),
+        actions: [
+          if (_saving)
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else
+            IconButton(icon: const Icon(Icons.save), onPressed: _saveWorkout),
+        ],
+      ),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(16.0),
+          children: [
+            TextFormField(
+              controller: _nameController,
+              decoration: InputDecoration(labelText: l10n.workoutName),
+              validator: (value) {
+                if (value?.isEmpty ?? true) {
+                  return l10n.pleaseEnterWorkoutName;
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _descriptionController,
+              decoration: InputDecoration(labelText: l10n.description),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<WorkoutDifficulty>(
+              value: _difficulty,
+              decoration: InputDecoration(labelText: l10n.difficulty),
+              items:
+                  WorkoutDifficulty.values.map((difficulty) {
+                    return DropdownMenuItem(
+                      value: difficulty,
+                      child: Text(difficulty.name),
+                    );
+                  }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _difficulty = value);
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _durationController,
+              decoration: InputDecoration(
+                labelText: l10n.duration,
+                suffixText: 'minutes',
+              ),
+              keyboardType: TextInputType.number,
+              validator: (value) {
+                if (value?.isEmpty ?? true) {
+                  return 'Please enter duration';
+                }
+                final duration = int.tryParse(value!);
+                if (duration == null || duration <= 0) {
+                  return 'Please enter a valid duration';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 24),
+            Text(
+              l10n.exercises,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            if (_workout?.exercises.isEmpty ?? true)
+              Text(l10n.noExercisesInWorkout)
+            else
+              ..._workout!.exercises.map(
+                (exercise) => Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ExpansionTile(
+                    initiallyExpanded: true,
+                    title: Text(exercise.exercise?.name ?? 'Unknown Exercise'),
+                    subtitle: Text('${exercise.sets.length} ${l10n.setsLabel}'),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${l10n.setsLabel}:',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.add),
+                                      onPressed:
+                                          () => _addSetToExercise(exercise),
+                                      tooltip: l10n.addSet,
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete),
+                                      onPressed:
+                                          () => _removeExercise(exercise),
+                                      tooltip: l10n.delete,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${l10n.setsLabel} (${exercise.sets.length}):',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            ...exercise.sets.map(
+                              (set) => Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Set ${set.setNumber}: ${set.reps ?? 0} ${l10n.repsLabel} @ ${set.weight ?? 0}${set.weightUnit ?? 'kg'}',
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.edit),
+                                    onPressed: () => _editSet(set),
+                                    tooltip: l10n.edit,
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete),
+                                    onPressed: () => _removeSet(set),
+                                    tooltip: l10n.delete,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (exercise.sets.isEmpty) Text(l10n.noSetsFound),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _addExercise,
+              icon: const Icon(Icons.add),
+              label: Text(l10n.addExercise),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -748,6 +748,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Target'**
   String get target;
+
+  /// No description provided for @saveWorkout.
+  ///
+  /// In en, this message translates to:
+  /// **'Save workout'**
+  String get saveWorkout;
+
+  /// No description provided for @workoutSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Workout has been saved.'**
+  String get workoutSaved;
+
+  /// No description provided for @restDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Rest day'**
+  String get restDay;
+
+  /// No description provided for @editWorkout.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Workout'**
+  String get editWorkout;
+
+  /// No description provided for @workoutUpdatedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Workout updated successfully'**
+  String get workoutUpdatedSuccessfully;
+
+  /// No description provided for @saveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Save failed: {error}'**
+  String saveFailed(Object error);
+
+  /// No description provided for @addExercise.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Exercise'**
+  String get addExercise;
+
+  /// No description provided for @editSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Set {setNumber}'**
+  String editSet(int setNumber);
+
+  /// No description provided for @noExercisesInWorkout.
+  ///
+  /// In en, this message translates to:
+  /// **'No exercises in this workout'**
+  String get noExercisesInWorkout;
+
+  /// No description provided for @setsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sets'**
+  String get setsLabel;
+
+  /// No description provided for @noSetsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No sets found for this exercise'**
+  String get noSetsFound;
+
+  /// No description provided for @exerciseName.
+  ///
+  /// In en, this message translates to:
+  /// **'Exercise Name'**
+  String get exerciseName;
+
+  /// No description provided for @description.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get description;
+
+  /// No description provided for @duration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get duration;
+
+  /// No description provided for @difficulty.
+  ///
+  /// In en, this message translates to:
+  /// **'Difficulty'**
+  String get difficulty;
+
+  /// No description provided for @repsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reps'**
+  String get repsLabel;
+
+  /// No description provided for @weightLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight'**
+  String get weightLabel;
+
+  /// No description provided for @unit.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit'**
+  String get unit;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get edit;
+
+  /// No description provided for @addButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get addButton;
+
+  /// No description provided for @saveButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get saveButton;
+
+  /// No description provided for @exercises.
+  ///
+  /// In en, this message translates to:
+  /// **'Exercises'**
+  String get exercises;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

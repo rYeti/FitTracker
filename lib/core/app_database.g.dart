@@ -4936,6 +4936,17 @@ class $ScheduledWorkoutTableTable extends ScheduledWorkoutTable
       'REFERENCES workout_plan_table (id)',
     ),
   );
+  static const VerificationMeta _templateWorkoutIdMeta = const VerificationMeta(
+    'templateWorkoutId',
+  );
+  @override
+  late final GeneratedColumn<int> templateWorkoutId = GeneratedColumn<int>(
+    'template_workout_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _scheduledDateMeta = const VerificationMeta(
     'scheduledDate',
   );
@@ -4989,6 +5000,7 @@ class $ScheduledWorkoutTableTable extends ScheduledWorkoutTable
     id,
     workoutId,
     workoutPlanId,
+    templateWorkoutId,
     scheduledDate,
     createdAt,
     notes,
@@ -5023,6 +5035,15 @@ class $ScheduledWorkoutTableTable extends ScheduledWorkoutTable
         workoutPlanId.isAcceptableOrUnknown(
           data['workout_plan_id']!,
           _workoutPlanIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('template_workout_id')) {
+      context.handle(
+        _templateWorkoutIdMeta,
+        templateWorkoutId.isAcceptableOrUnknown(
+          data['template_workout_id']!,
+          _templateWorkoutIdMeta,
         ),
       );
     }
@@ -5084,6 +5105,10 @@ class $ScheduledWorkoutTableTable extends ScheduledWorkoutTable
         DriftSqlType.int,
         data['${effectivePrefix}workout_plan_id'],
       ),
+      templateWorkoutId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}template_workout_id'],
+      ),
       scheduledDate:
           attachedDatabase.typeMapping.read(
             DriftSqlType.dateTime,
@@ -5119,6 +5144,7 @@ class ScheduledWorkoutTableData extends DataClass
   /// Links to the workout template or workout entry
   final int workoutId;
   final int? workoutPlanId;
+  final int? templateWorkoutId;
 
   /// The date/time this workout is scheduled for
   final DateTime scheduledDate;
@@ -5132,6 +5158,7 @@ class ScheduledWorkoutTableData extends DataClass
     required this.id,
     required this.workoutId,
     this.workoutPlanId,
+    this.templateWorkoutId,
     required this.scheduledDate,
     required this.createdAt,
     this.notes,
@@ -5144,6 +5171,9 @@ class ScheduledWorkoutTableData extends DataClass
     map['workout_id'] = Variable<int>(workoutId);
     if (!nullToAbsent || workoutPlanId != null) {
       map['workout_plan_id'] = Variable<int>(workoutPlanId);
+    }
+    if (!nullToAbsent || templateWorkoutId != null) {
+      map['template_workout_id'] = Variable<int>(templateWorkoutId);
     }
     map['scheduled_date'] = Variable<DateTime>(scheduledDate);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -5162,6 +5192,10 @@ class ScheduledWorkoutTableData extends DataClass
           workoutPlanId == null && nullToAbsent
               ? const Value.absent()
               : Value(workoutPlanId),
+      templateWorkoutId:
+          templateWorkoutId == null && nullToAbsent
+              ? const Value.absent()
+              : Value(templateWorkoutId),
       scheduledDate: Value(scheduledDate),
       createdAt: Value(createdAt),
       notes:
@@ -5179,6 +5213,7 @@ class ScheduledWorkoutTableData extends DataClass
       id: serializer.fromJson<int>(json['id']),
       workoutId: serializer.fromJson<int>(json['workoutId']),
       workoutPlanId: serializer.fromJson<int?>(json['workoutPlanId']),
+      templateWorkoutId: serializer.fromJson<int?>(json['templateWorkoutId']),
       scheduledDate: serializer.fromJson<DateTime>(json['scheduledDate']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       notes: serializer.fromJson<String?>(json['notes']),
@@ -5192,6 +5227,7 @@ class ScheduledWorkoutTableData extends DataClass
       'id': serializer.toJson<int>(id),
       'workoutId': serializer.toJson<int>(workoutId),
       'workoutPlanId': serializer.toJson<int?>(workoutPlanId),
+      'templateWorkoutId': serializer.toJson<int?>(templateWorkoutId),
       'scheduledDate': serializer.toJson<DateTime>(scheduledDate),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'notes': serializer.toJson<String?>(notes),
@@ -5203,6 +5239,7 @@ class ScheduledWorkoutTableData extends DataClass
     int? id,
     int? workoutId,
     Value<int?> workoutPlanId = const Value.absent(),
+    Value<int?> templateWorkoutId = const Value.absent(),
     DateTime? scheduledDate,
     DateTime? createdAt,
     Value<String?> notes = const Value.absent(),
@@ -5212,6 +5249,10 @@ class ScheduledWorkoutTableData extends DataClass
     workoutId: workoutId ?? this.workoutId,
     workoutPlanId:
         workoutPlanId.present ? workoutPlanId.value : this.workoutPlanId,
+    templateWorkoutId:
+        templateWorkoutId.present
+            ? templateWorkoutId.value
+            : this.templateWorkoutId,
     scheduledDate: scheduledDate ?? this.scheduledDate,
     createdAt: createdAt ?? this.createdAt,
     notes: notes.present ? notes.value : this.notes,
@@ -5227,6 +5268,10 @@ class ScheduledWorkoutTableData extends DataClass
           data.workoutPlanId.present
               ? data.workoutPlanId.value
               : this.workoutPlanId,
+      templateWorkoutId:
+          data.templateWorkoutId.present
+              ? data.templateWorkoutId.value
+              : this.templateWorkoutId,
       scheduledDate:
           data.scheduledDate.present
               ? data.scheduledDate.value
@@ -5244,6 +5289,7 @@ class ScheduledWorkoutTableData extends DataClass
           ..write('id: $id, ')
           ..write('workoutId: $workoutId, ')
           ..write('workoutPlanId: $workoutPlanId, ')
+          ..write('templateWorkoutId: $templateWorkoutId, ')
           ..write('scheduledDate: $scheduledDate, ')
           ..write('createdAt: $createdAt, ')
           ..write('notes: $notes, ')
@@ -5257,6 +5303,7 @@ class ScheduledWorkoutTableData extends DataClass
     id,
     workoutId,
     workoutPlanId,
+    templateWorkoutId,
     scheduledDate,
     createdAt,
     notes,
@@ -5269,6 +5316,7 @@ class ScheduledWorkoutTableData extends DataClass
           other.id == this.id &&
           other.workoutId == this.workoutId &&
           other.workoutPlanId == this.workoutPlanId &&
+          other.templateWorkoutId == this.templateWorkoutId &&
           other.scheduledDate == this.scheduledDate &&
           other.createdAt == this.createdAt &&
           other.notes == this.notes &&
@@ -5280,6 +5328,7 @@ class ScheduledWorkoutTableCompanion
   final Value<int> id;
   final Value<int> workoutId;
   final Value<int?> workoutPlanId;
+  final Value<int?> templateWorkoutId;
   final Value<DateTime> scheduledDate;
   final Value<DateTime> createdAt;
   final Value<String?> notes;
@@ -5288,6 +5337,7 @@ class ScheduledWorkoutTableCompanion
     this.id = const Value.absent(),
     this.workoutId = const Value.absent(),
     this.workoutPlanId = const Value.absent(),
+    this.templateWorkoutId = const Value.absent(),
     this.scheduledDate = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.notes = const Value.absent(),
@@ -5297,6 +5347,7 @@ class ScheduledWorkoutTableCompanion
     this.id = const Value.absent(),
     required int workoutId,
     this.workoutPlanId = const Value.absent(),
+    this.templateWorkoutId = const Value.absent(),
     required DateTime scheduledDate,
     this.createdAt = const Value.absent(),
     this.notes = const Value.absent(),
@@ -5307,6 +5358,7 @@ class ScheduledWorkoutTableCompanion
     Expression<int>? id,
     Expression<int>? workoutId,
     Expression<int>? workoutPlanId,
+    Expression<int>? templateWorkoutId,
     Expression<DateTime>? scheduledDate,
     Expression<DateTime>? createdAt,
     Expression<String>? notes,
@@ -5316,6 +5368,7 @@ class ScheduledWorkoutTableCompanion
       if (id != null) 'id': id,
       if (workoutId != null) 'workout_id': workoutId,
       if (workoutPlanId != null) 'workout_plan_id': workoutPlanId,
+      if (templateWorkoutId != null) 'template_workout_id': templateWorkoutId,
       if (scheduledDate != null) 'scheduled_date': scheduledDate,
       if (createdAt != null) 'created_at': createdAt,
       if (notes != null) 'notes': notes,
@@ -5327,6 +5380,7 @@ class ScheduledWorkoutTableCompanion
     Value<int>? id,
     Value<int>? workoutId,
     Value<int?>? workoutPlanId,
+    Value<int?>? templateWorkoutId,
     Value<DateTime>? scheduledDate,
     Value<DateTime>? createdAt,
     Value<String?>? notes,
@@ -5336,6 +5390,7 @@ class ScheduledWorkoutTableCompanion
       id: id ?? this.id,
       workoutId: workoutId ?? this.workoutId,
       workoutPlanId: workoutPlanId ?? this.workoutPlanId,
+      templateWorkoutId: templateWorkoutId ?? this.templateWorkoutId,
       scheduledDate: scheduledDate ?? this.scheduledDate,
       createdAt: createdAt ?? this.createdAt,
       notes: notes ?? this.notes,
@@ -5354,6 +5409,9 @@ class ScheduledWorkoutTableCompanion
     }
     if (workoutPlanId.present) {
       map['workout_plan_id'] = Variable<int>(workoutPlanId.value);
+    }
+    if (templateWorkoutId.present) {
+      map['template_workout_id'] = Variable<int>(templateWorkoutId.value);
     }
     if (scheduledDate.present) {
       map['scheduled_date'] = Variable<DateTime>(scheduledDate.value);
@@ -5376,6 +5434,7 @@ class ScheduledWorkoutTableCompanion
           ..write('id: $id, ')
           ..write('workoutId: $workoutId, ')
           ..write('workoutPlanId: $workoutPlanId, ')
+          ..write('templateWorkoutId: $templateWorkoutId, ')
           ..write('scheduledDate: $scheduledDate, ')
           ..write('createdAt: $createdAt, ')
           ..write('notes: $notes, ')
@@ -10440,6 +10499,7 @@ typedef $$ScheduledWorkoutTableTableCreateCompanionBuilder =
       Value<int> id,
       required int workoutId,
       Value<int?> workoutPlanId,
+      Value<int?> templateWorkoutId,
       required DateTime scheduledDate,
       Value<DateTime> createdAt,
       Value<String?> notes,
@@ -10450,6 +10510,7 @@ typedef $$ScheduledWorkoutTableTableUpdateCompanionBuilder =
       Value<int> id,
       Value<int> workoutId,
       Value<int?> workoutPlanId,
+      Value<int?> templateWorkoutId,
       Value<DateTime> scheduledDate,
       Value<DateTime> createdAt,
       Value<String?> notes,
@@ -10525,6 +10586,11 @@ class $$ScheduledWorkoutTableTableFilterComposer
   });
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get templateWorkoutId => $composableBuilder(
+    column: $table.templateWorkoutId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10609,6 +10675,11 @@ class $$ScheduledWorkoutTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get templateWorkoutId => $composableBuilder(
+    column: $table.templateWorkoutId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get scheduledDate => $composableBuilder(
     column: $table.scheduledDate,
     builder: (column) => ColumnOrderings(column),
@@ -10687,6 +10758,11 @@ class $$ScheduledWorkoutTableTableAnnotationComposer
   });
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get templateWorkoutId => $composableBuilder(
+    column: $table.templateWorkoutId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get scheduledDate => $composableBuilder(
     column: $table.scheduledDate,
@@ -10793,6 +10869,7 @@ class $$ScheduledWorkoutTableTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> workoutId = const Value.absent(),
                 Value<int?> workoutPlanId = const Value.absent(),
+                Value<int?> templateWorkoutId = const Value.absent(),
                 Value<DateTime> scheduledDate = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
@@ -10801,6 +10878,7 @@ class $$ScheduledWorkoutTableTableTableManager
                 id: id,
                 workoutId: workoutId,
                 workoutPlanId: workoutPlanId,
+                templateWorkoutId: templateWorkoutId,
                 scheduledDate: scheduledDate,
                 createdAt: createdAt,
                 notes: notes,
@@ -10811,6 +10889,7 @@ class $$ScheduledWorkoutTableTableTableManager
                 Value<int> id = const Value.absent(),
                 required int workoutId,
                 Value<int?> workoutPlanId = const Value.absent(),
+                Value<int?> templateWorkoutId = const Value.absent(),
                 required DateTime scheduledDate,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
@@ -10819,6 +10898,7 @@ class $$ScheduledWorkoutTableTableTableManager
                 id: id,
                 workoutId: workoutId,
                 workoutPlanId: workoutPlanId,
+                templateWorkoutId: templateWorkoutId,
                 scheduledDate: scheduledDate,
                 createdAt: createdAt,
                 notes: notes,

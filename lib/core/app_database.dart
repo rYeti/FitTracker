@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:csv/csv.dart';
 import 'package:drift/drift.dart';
 import 'app_database_connection.dart'
     if (dart.library.io) 'app_database_connection_native.dart'
@@ -56,7 +57,7 @@ class AppDatabase extends _$AppDatabase {
   // Workout planning DAOs will be added here after code generation
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -209,6 +210,12 @@ class AppDatabase extends _$AppDatabase {
       if (from < 11) {
         await m.createTable(workoutSetTemplateTable);
       }
+      if (from < 12) {
+        await m.addColumn(
+          scheduledWorkoutTable,
+          scheduledWorkoutTable.templateWorkoutId,
+        );
+      }
     },
   );
 
@@ -279,6 +286,7 @@ class ScheduledWorkoutDao extends DatabaseAccessor<AppDatabase>
           sw.is_completed,
           sw.workout_plan_id,
           sw.created_at,
+          sw.template_workout_id,
           w.id as w_id,
           w.name as w_name,
           w.description as w_description,
@@ -304,6 +312,7 @@ class ScheduledWorkoutDao extends DatabaseAccessor<AppDatabase>
             isCompleted: row.read<bool>('is_completed'),
             workoutPlanId: row.readNullable<int>('workout_plan_id'),
             createdAt: row.read<DateTime>('created_at'),
+            templateWorkoutId: row.readNullable<int>('template_workout_id'),
           ),
           workout:
               row.readNullable<int>('w_id') != null
@@ -714,6 +723,7 @@ class ScheduledWorkoutTable extends Table {
   IntColumn get workoutId => integer().references(WorkoutTable, #id)();
   IntColumn get workoutPlanId =>
       integer().nullable().references(WorkoutPlanTable, #id)();
+  IntColumn get templateWorkoutId => integer().nullable()();
 
   /// The date/time this workout is scheduled for
   DateTimeColumn get scheduledDate => dateTime()();
@@ -914,6 +924,31 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
   Future<List<WorkoutTableData>> getScheduledWorkouts() =>
       (select(workoutTable)..where((w) => w.isTemplate.equals(false))).get();
 
+  Future<String> getScheduledWorkoutName(DateTime date) async {
+    final start = DateTime(date.year, date.month, date.day);
+    final end = start.add(Duration(days: 1));
+    final scheduledList =
+        await (select(scheduledWorkoutTable)..where(
+          (sw) => sw.scheduledDate.isBetweenValues(
+            start,
+            end.subtract(Duration(milliseconds: 1)),
+          ),
+        )).get();
+
+    if (scheduledList.isEmpty) {
+      return "";
+    }
+
+    // Pick the latest or the first, depending on your logic
+    final scheduled = scheduledList.first;
+
+    final workout =
+        await (select(workoutTable)
+          ..where((w) => w.id.equals(scheduled.workoutId))).getSingleOrNull();
+
+    return workout?.name ?? 'Workout';
+  }
+
   // Get scheduled workouts for a date range
   Future<List<WorkoutTableData>> getWorkoutsInDateRange(
     DateTime startDate,
@@ -1003,14 +1038,29 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
     );
   }
 
-  Future<List<(ExerciseTableData, List<WorkoutSetTemplateData>)>>
+  Future<
+    List<
+      (
+        ExerciseTableData,
+        List<WorkoutSetTemplateData>,
+        WorkoutExerciseTableData,
+      )
+    >
+  >
   getWorkoutExercisesWithTemplates(int workoutId) async {
     final workoutExercises =
         await (select(workoutExerciseTable)
               ..where((we) => we.workoutId.equals(workoutId))
               ..orderBy([(we) => OrderingTerm.asc(we.orderPosition)]))
             .get();
-    final results = <(ExerciseTableData, List<WorkoutSetTemplateData>)>[];
+    final results =
+        <
+          (
+            ExerciseTableData,
+            List<WorkoutSetTemplateData>,
+            WorkoutExerciseTableData,
+          )
+        >[];
 
     for (final workoutExercise in workoutExercises) {
       final exercise =
@@ -1022,8 +1072,9 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
           await (select(workoutSetTemplateTable)..where(
             (t) => t.workoutExerciseId.equals(workoutExercise.id),
           )).get();
+
       if (exercise != null) {
-        results.add((exercise, templates));
+        results.add((exercise, templates, workoutExercise));
       }
     }
 
@@ -1143,39 +1194,157 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
   Future<List<WorkoutSetTableData>> getPreviousWorkoutSetsForExercise({
     required int exerciseId,
     required DateTime beforeDate,
+    required int templateWorkoutId,
+    int? excludeScheduledWorkoutId,
   }) async {
-    // Find the most recent completed scheduled workout that contains this exercise
+    final scheduledQuery = select(scheduledWorkoutTable)..where(
+      (sw) =>
+          sw.scheduledDate.isSmallerThanValue(beforeDate) &
+          sw.isCompleted.equals(true) &
+          sw.templateWorkoutId.equals(templateWorkoutId),
+    );
+    if (excludeScheduledWorkoutId != null) {
+      scheduledQuery.where((sw) => sw.id.isNotIn([excludeScheduledWorkoutId]));
+    }
     final previousScheduledWorkout =
-        await (select(scheduledWorkoutTable)
-              ..where(
-                (sw) =>
-                    sw.scheduledDate.isSmallerThanValue(beforeDate) &
-                    sw.isCompleted.equals(true),
-              )
-              ..orderBy([(sw) => OrderingTerm.desc(sw.scheduledDate)]))
+        await (scheduledQuery
+              ..orderBy([(sw) => OrderingTerm.desc(sw.scheduledDate)])
+              ..limit(1))
             .getSingleOrNull();
 
-    if (previousScheduledWorkout == null) {
-      return [];
-    }
+    if (previousScheduledWorkout == null) return [];
 
-    //Find the WorkoutExercise entry for this exercise in that workout
-    final workoutExercise =
+    final workoutExercises =
         await (select(workoutExerciseTable)..where(
           (we) =>
               we.workoutId.equals(previousScheduledWorkout.workoutId) &
               we.exerciseId.equals(exerciseId),
-        )).getSingleOrNull();
+        )).get();
 
-    if (workoutExercise == null) {
-      return [];
+    if (workoutExercises.isEmpty) return [];
+
+    final allSets = <WorkoutSetTableData>[];
+    for (final workoutExercise in workoutExercises) {
+      final sets =
+          await (select(workoutSetTable)
+                ..where(
+                  (ws) => ws.exerciseInstanceId.equals(workoutExercise.id),
+                )
+                ..orderBy([(ws) => OrderingTerm.asc(ws.setNumber)]))
+              .get();
+      allSets.addAll(sets);
     }
 
-    //Get all sets for that exercise instance
-    return await (select(workoutSetTable)
-          ..where((ws) => ws.exerciseInstanceId.equals(workoutExercise.id))
-          ..orderBy([(ws) => OrderingTerm.asc(ws.setNumber)]))
-        .get();
+    return allSets;
+  }
+
+  Future<void> importCsvWorkouts(String csvContent) async {
+    final rows = const CsvToListConverter().convert(csvContent);
+
+    if (rows.isEmpty) return;
+
+    // Skip header row
+    final dataRows = rows.skip(1);
+
+    // Group by date
+    final workoutsByDate = <String, List<List<dynamic>>>{};
+
+    for (final row in dataRows) {
+      if (row.length < 9) continue;
+
+      final date = row[0].toString();
+      if (!workoutsByDate.containsKey(date)) {
+        workoutsByDate[date] = [];
+      }
+      workoutsByDate[date]!.add(row);
+    }
+
+    for (final entry in workoutsByDate.entries) {
+      final date = entry.key;
+      final workoutRows = entry.value;
+
+      // Group exercises by name
+      final exercisesByName = <String, List<List<dynamic>>>{};
+
+      for (final row in workoutRows) {
+        final exerciseName = row[1].toString();
+        if (!exercisesByName.containsKey(exerciseName)) {
+          exercisesByName[exerciseName] = [];
+        }
+        exercisesByName[exerciseName]!.add(row);
+      }
+
+      // Create workout
+      final workoutName = 'Workout on $date';
+      final workoutCompanion = WorkoutTableCompanion(
+        name: Value(workoutName),
+        description: Value('Imported from CSV'),
+        difficulty: Value(1), // Beginner
+        estimatedDurationMinutes: Value(60),
+        isTemplate: Value(true),
+      );
+
+      final workoutId = await into(workoutTable).insert(workoutCompanion);
+
+      int orderPosition = 0;
+      for (final exerciseEntry in exercisesByName.entries) {
+        final exerciseName = exerciseEntry.key;
+        final exerciseRows = exerciseEntry.value;
+
+        // Find or create exercise
+        var exercise =
+            await (select(exerciseTable)
+              ..where((e) => e.name.equals(exerciseName))).getSingleOrNull();
+
+        if (exercise == null) {
+          // Create basic exercise
+          final exerciseCompanion = ExerciseTableCompanion(
+            name: Value(exerciseName),
+            description: Value('Imported exercise'),
+            type: Value(ExerciseType.strength.index),
+            targetMuscleGroups: Value(''), // Empty string for now
+            imageUrl: Value.absent(),
+            isCustom: Value(true),
+          );
+          final exerciseId = await into(
+            exerciseTable,
+          ).insert(exerciseCompanion);
+          exercise =
+              await (select(exerciseTable)
+                ..where((e) => e.id.equals(exerciseId))).getSingle();
+        }
+
+        // Add exercise to workout
+        final exerciseCompanion = WorkoutExerciseTableCompanion(
+          workoutId: Value(workoutId),
+          exerciseId: Value(exercise.id),
+          orderPosition: Value(orderPosition++),
+        );
+
+        final exerciseInstanceId = await into(
+          workoutExerciseTable,
+        ).insert(exerciseCompanion);
+
+        // Add sets
+        int setNumber = 1;
+        for (final row in exerciseRows) {
+          final weight = double.tryParse(row[3].toString()) ?? 0.0;
+          final weightUnit = row[4].toString();
+          final reps = int.tryParse(row[5].toString()) ?? 0;
+
+          final setCompanion = WorkoutSetTableCompanion(
+            exerciseInstanceId: Value(exerciseInstanceId),
+            setNumber: Value(setNumber++),
+            reps: Value(reps),
+            weight: Value(weight),
+            weightUnit: Value(weightUnit),
+            isCompleted: Value(false),
+          );
+
+          await into(workoutSetTable).insert(setCompanion);
+        }
+      }
+    }
   }
 }
 

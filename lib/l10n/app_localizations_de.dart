@@ -366,4 +366,77 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get target => 'Ziel';
+
+  @override
+  String get saveWorkout => 'Workout Speichern';
+
+  @override
+  String get workoutSaved => 'Training wurde gespeichert.';
+
+  @override
+  String get restDay => 'Ruhetag';
+
+  @override
+  String get editWorkout => 'Training bearbeiten';
+
+  @override
+  String get workoutUpdatedSuccessfully => 'Training erfolgreich aktualisiert';
+
+  @override
+  String saveFailed(Object error) {
+    return 'Speichern fehlgeschlagen: $error';
+  }
+
+  @override
+  String get addExercise => 'Übung hinzufügen';
+
+  @override
+  String editSet(int setNumber) {
+    return 'Satz $setNumber bearbeiten';
+  }
+
+  @override
+  String get noExercisesInWorkout => 'Keine Übungen in diesem Training';
+
+  @override
+  String get setsLabel => 'Sätze';
+
+  @override
+  String get noSetsFound => 'Keine Sätze für diese Übung gefunden';
+
+  @override
+  String get exerciseName => 'Übungsname';
+
+  @override
+  String get description => 'Beschreibung';
+
+  @override
+  String get duration => 'Dauer';
+
+  @override
+  String get difficulty => 'Schwierigkeit';
+
+  @override
+  String get repsLabel => 'Wiederholungen';
+
+  @override
+  String get weightLabel => 'Gewicht';
+
+  @override
+  String get unit => 'Einheit';
+
+  @override
+  String get delete => 'Löschen';
+
+  @override
+  String get edit => 'Bearbeiten';
+
+  @override
+  String get addButton => 'Hinzufügen';
+
+  @override
+  String get saveButton => 'Speichern';
+
+  @override
+  String get exercises => 'Übungen';
 }

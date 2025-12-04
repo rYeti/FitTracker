@@ -1,9 +1,11 @@
+import 'package:ForgeForm/core/app_database.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/providers/user_goals_provider.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import '../widgets/dashboard_weight_card.dart';
+import 'package:ForgeForm/l10n/app_localizations.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -17,6 +19,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _loadDashboardData();
+  }
+
+  Future<String> getScheduledWorkoutNameOrRestDay() async {
+    DateTime onlyDate(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
+    final db = context.read<AppDatabase>();
+    final scheduledWorkoutDao = db.workoutDao;
+    final l10n = AppLocalizations.of(context)!;
+
+    final today = onlyDate(DateTime.now());
+    final workoutName = await scheduledWorkoutDao.getScheduledWorkoutName(
+      today,
+    );
+    if (workoutName.isNotEmpty) {
+      return workoutName;
+    } else {
+      return l10n.restDay;
+    }
   }
 
   @override
@@ -315,18 +334,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _todayWorkout(ThemeData theme) {
     return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Today\'s Workout',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                Icon(
+                  Icons.fitness_center,
+                  color: theme.colorScheme.primary,
+                  size: 32,
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Today's Workout",
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                ),
+              ],
             ),
-            // TODO: Add workout details
+            const SizedBox(height: 16),
+            FutureBuilder(
+              future: getScheduledWorkoutNameOrRestDay(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final workoutName = snapshot.data?.toString() ?? '';
+                return Text(
+                  workoutName,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.secondary,
+                  ),
+                );
+              },
+            ),
           ],
         ),
       ),

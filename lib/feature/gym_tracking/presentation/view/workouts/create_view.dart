@@ -179,6 +179,7 @@ class _CreateWorkoutViewState extends State<CreateWorkoutView> {
 
       final scheduledWorkout = ScheduledWorkoutTableCompanion.insert(
         workoutId: workoutId!,
+        templateWorkoutId: drift.Value(workoutId),
         scheduledDate: date,
         workoutPlanId: drift.Value(planId),
       );

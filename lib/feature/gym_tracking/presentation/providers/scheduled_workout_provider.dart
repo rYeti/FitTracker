@@ -34,7 +34,6 @@ class ScheduleWorkoutProvider extends ChangeNotifier {
 
   /// Refresh the current subscription (useful after creating/editing workouts)
   void refresh() {
-    print('[PROVIDER] ========== Manual refresh triggered ==========');
     // Set refreshing flag and clear items immediately
     _isRefreshing = true;
     _items = [];
@@ -77,21 +76,12 @@ class ScheduleWorkoutProvider extends ChangeNotifier {
     _items = []; // Clear immediately before subscribing
     final normalizedDate = _dateOnly(date);
     _currentDate = normalizedDate; // Track the current date
-    print(
-      '[PROVIDER] ========== Subscribing to date: $normalizedDate ==========',
-    );
-    _subscription = _dao.watchScheduledWithDetailsForDate(normalizedDate).listen((
-      items,
-    ) {
-      print('Received ${items.length} scheduled workouts');
-      for (var item in items) {
-        print(
-          '  - Workout: ${item.workout?.name ?? "NULL"}, Date: ${item.scheduled.scheduledDate}',
-        );
-      }
-      _items = List.from(items);
-      _isRefreshing = false; // Clear refreshing flag when data arrives
-      notifyListeners();
-    });
+    _subscription = _dao
+        .watchScheduledWithDetailsForDate(normalizedDate)
+        .listen((items) {
+          _items = List.from(items);
+          _isRefreshing = false; // Clear refreshing flag when data arrives
+          notifyListeners();
+        });
   }
 }

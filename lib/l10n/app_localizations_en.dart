@@ -366,4 +366,77 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get target => 'Target';
+
+  @override
+  String get saveWorkout => 'Save workout';
+
+  @override
+  String get workoutSaved => 'Workout has been saved.';
+
+  @override
+  String get restDay => 'Rest day';
+
+  @override
+  String get editWorkout => 'Edit Workout';
+
+  @override
+  String get workoutUpdatedSuccessfully => 'Workout updated successfully';
+
+  @override
+  String saveFailed(Object error) {
+    return 'Save failed: $error';
+  }
+
+  @override
+  String get addExercise => 'Add Exercise';
+
+  @override
+  String editSet(int setNumber) {
+    return 'Edit Set $setNumber';
+  }
+
+  @override
+  String get noExercisesInWorkout => 'No exercises in this workout';
+
+  @override
+  String get setsLabel => 'Sets';
+
+  @override
+  String get noSetsFound => 'No sets found for this exercise';
+
+  @override
+  String get exerciseName => 'Exercise Name';
+
+  @override
+  String get description => 'Description';
+
+  @override
+  String get duration => 'Duration';
+
+  @override
+  String get difficulty => 'Difficulty';
+
+  @override
+  String get repsLabel => 'Reps';
+
+  @override
+  String get weightLabel => 'Weight';
+
+  @override
+  String get unit => 'Unit';
+
+  @override
+  String get delete => 'Delete';
+
+  @override
+  String get edit => 'Edit';
+
+  @override
+  String get addButton => 'Add';
+
+  @override
+  String get saveButton => 'Save';
+
+  @override
+  String get exercises => 'Exercises';
 }

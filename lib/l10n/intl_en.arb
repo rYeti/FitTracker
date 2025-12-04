@@ -225,5 +225,45 @@
       }
     }
   },
-  "target": "Target"
+  "target": "Target",
+  "saveWorkout": "Save workout",
+  "workoutSaved": "Workout has been saved.",
+  "restDay": "Rest day",
+  "editWorkout": "Edit Workout",
+  "workoutUpdatedSuccessfully": "Workout updated successfully",
+  "saveFailed": "Save failed: {error}",
+  "@saveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "Object"
+      }
+    }
+  },
+  "addExercise": "Add Exercise",
+  "cancel": "Cancel",
+  "editSet": "Edit Set {setNumber}",
+  "@editSet": {
+    "placeholders": {
+      "setNumber": {
+        "type": "int"
+      }
+    }
+  },
+  "save": "Save",
+  "noExercisesInWorkout": "No exercises in this workout",
+  "setsLabel": "Sets",
+  "noSetsFound": "No sets found for this exercise",
+  "exerciseName": "Exercise Name",
+  "description": "Description",
+  "duration": "Duration",
+  "difficulty": "Difficulty",
+  "repsLabel": "Reps",
+  "weightLabel": "Weight",
+  "unit": "Unit",
+  "delete": "Delete",
+  "edit": "Edit",
+  "addSet": "Add Set",
+  "addButton": "Add",
+  "saveButton": "Save",
+  "exercises": "Exercises"
 }

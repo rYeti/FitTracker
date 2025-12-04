@@ -8,6 +8,7 @@ import 'core/providers/theme_provider.dart';
 import 'core/providers/user_goals_provider.dart';
 import 'feature/weight_tracking/presentation/providers/weight_provider.dart';
 import 'feature/food_tracking/data/repositories/meal_template_repository.dart';
+import 'feature/gym_tracking/presentation/providers/workout_provider.dart';
 import 'feature/gym_tracking/presentation/view/gym_tracking_screen.dart';
 import 'feature/food_tracking/presentation/view/food_tracking_screen.dart';
 import 'feature/food_tracking/presentation/view/nutrition_progress_dashboard.dart';
@@ -52,6 +53,9 @@ void main() async {
         ),
         Provider<MealTemplateRepository>(
           create: (_) => MealTemplateRepository(db),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => WorkoutProvider()..loadTemplates(),
         ),
       ],
       child: const MyApp(),

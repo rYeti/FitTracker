@@ -220,5 +220,46 @@
     }
   }
 },
-"target": "Ziel"
+"target": "Ziel",
+"saveWorkout": "Workout Speichern",
+"SaveWorkout": "Workout wurde gespeichert",
+"restDay": "Ruhetag",
+  "editWorkout": "Training bearbeiten",
+  "workoutUpdatedSuccessfully": "Training erfolgreich aktualisiert",
+  "saveFailed": "Speichern fehlgeschlagen: {error}",
+  "@saveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "Object"
+      }
+    }
+  },
+  "addExercise": "Übung hinzufügen",
+  "cancel": "Abbrechen",
+  "editSet": "Satz {setNumber} bearbeiten",
+  "@editSet": {
+    "placeholders": {
+      "setNumber": {
+        "type": "int"
+      }
+    }
+  },
+  "save": "Speichern",
+  "noExercisesInWorkout": "Keine Übungen in diesem Training",
+  "setsLabel": "Sätze",
+  "noSetsFound": "Keine Sätze für diese Übung gefunden",
+  "exerciseName": "Übungsname",
+  "description": "Beschreibung",
+  "duration": "Dauer",
+  "difficulty": "Schwierigkeit",
+  "repsLabel": "Wiederholungen",
+  "weightLabel": "Gewicht",
+  "unit": "Einheit",
+  "delete": "Löschen",
+  "addSet": "Satz hinzufügen",
+  "exercises": "Übungen",
+  "edit": "Bearbeiten",
+  "addButton": "Hinzufügen",
+  "saveButton": "Speichern",
+  "workoutSaved": "Training wurde gespeichert."
 }
