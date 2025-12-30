@@ -120,6 +120,23 @@ class _CreateWorkoutViewState extends State<CreateWorkoutView> {
       final savedWorkout = await db.workoutDao.saveCompleteWorkout(workout);
       workoutMap[workoutName] = savedWorkout;
 
+      // Link the newly created workout to the plan so it shows up in plan views
+      try {
+        await db
+            .into(db.workoutPlanWorkoutTable)
+            .insert(
+              WorkoutPlanWorkoutTableCompanion(
+                planId: drift.Value(planId),
+                workoutId: drift.Value(savedWorkout),
+              ),
+            );
+        print('Created junction: plan $planId -> workout $savedWorkout');
+      } catch (e) {
+        print(
+          'Failed to create plan->workout junction for plan $planId workout $savedWorkout: $e',
+        );
+      }
+
       // Now add exercises to the saved workout if any were selected
       if (exercises.isNotEmpty) {
         for (int i = 0; i < exercises.length; i++) {
@@ -171,7 +188,7 @@ class _CreateWorkoutViewState extends State<CreateWorkoutView> {
       }
     }
 
-    for (int day = 0; day < 30; day++) {
+    for (int day = 0; day < 360; day++) {
       final date = _startDate!.add(Duration(days: day));
       final cycleIndex = day % _cyclePattern.length;
       final workoutName = _cyclePattern[cycleIndex];

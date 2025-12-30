@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:csv/csv.dart';
 import 'package:drift/drift.dart';
 import 'app_database_connection.dart'
@@ -276,6 +275,11 @@ class ScheduledWorkoutDao extends DatabaseAccessor<AppDatabase>
   ) {
     // Create a function to fetch the current data
     Future<List<ScheduledWorkoutWithDetails>> fetchData() async {
+      // Use a half-open date range (start <= scheduled_date < end) so
+      // scheduled entries are matched regardless of their time-of-day.
+      final start = DateTime(date.year, date.month, date.day);
+      final end = start.add(const Duration(days: 1));
+
       final results =
           await customSelect(
             '''
@@ -287,48 +291,102 @@ class ScheduledWorkoutDao extends DatabaseAccessor<AppDatabase>
           sw.workout_plan_id,
           sw.created_at,
           sw.template_workout_id,
+
+          -- primary workout (may be NULL if deleted)
           w.id as w_id,
           w.name as w_name,
           w.description as w_description,
           w.difficulty as w_difficulty,
-          w.estimated_duration_minutes,
-          w.is_template,
+          w.estimated_duration_minutes as w_estimated_duration_minutes,
+          w.is_template as w_is_template,
+
+          -- fallback template workout (use when primary is NULL)
+          tw.id as tw_id,
+          tw.name as tw_name,
+          tw.description as tw_description,
+          tw.difficulty as tw_difficulty,
+          tw.estimated_duration_minutes as tw_estimated_duration_minutes,
+          tw.is_template as tw_is_template,
+
           wp.is_active
         FROM scheduled_workout_table sw
         LEFT JOIN workout_table w ON w.id = sw.workout_id
+        LEFT JOIN workout_table tw ON tw.id = sw.template_workout_id
         LEFT JOIN workout_plan_table wp ON wp.id = sw.workout_plan_id
-        WHERE sw.scheduled_date = ? AND wp.is_active = 1
+        WHERE sw.scheduled_date >= ? AND sw.scheduled_date < ?
         ORDER BY sw.created_at DESC
         ''',
-            variables: [Variable.withDateTime(date)],
+            variables: [
+              Variable.withDateTime(start),
+              Variable.withDateTime(end),
+            ],
           ).get();
 
       return results.map((row) {
+        final scheduled = ScheduledWorkoutTableData(
+          id: row.read<int>('sw_id'),
+          workoutId: row.read<int>('workout_id'),
+          scheduledDate: row.read<DateTime>('scheduled_date'),
+          isCompleted: row.read<bool>('is_completed'),
+          workoutPlanId: row.readNullable<int>('workout_plan_id'),
+          createdAt: row.read<DateTime>('created_at'),
+          templateWorkoutId: row.readNullable<int>('template_workout_id'),
+        );
+
+        // Prefer the actual workout row (w_*). If missing, fall back to the
+        // template workout (tw_*). This prevents the UI showing "Unknown Workout"
+        // when a scheduled entry references a (deleted) workout but still has a
+        // template available.
+        WorkoutTableData? workout;
+        if (row.readNullable<int>('w_id') != null) {
+          workout = WorkoutTableData(
+            id: row.read<int>('w_id'),
+            name: row.read<String>('w_name'),
+            description: row.readNullable<String>('w_description'),
+            isTemplate: row.read<bool>('w_is_template'),
+            difficulty: row.read<int>('w_difficulty'),
+            estimatedDurationMinutes: row.read<int>(
+              'w_estimated_duration_minutes',
+            ),
+            scheduledDate: null,
+            completedDate: null,
+          );
+        } else if (row.readNullable<int>('tw_id') != null) {
+          workout = WorkoutTableData(
+            id: row.read<int>('tw_id'),
+            name: row.read<String>('tw_name'),
+            description: row.readNullable<String>('tw_description'),
+            isTemplate: row.read<bool>('tw_is_template'),
+            difficulty: row.read<int>('tw_difficulty'),
+            estimatedDurationMinutes: row.read<int>(
+              'tw_estimated_duration_minutes',
+            ),
+            scheduledDate: null,
+            completedDate: null,
+          );
+        } else {
+          workout = null;
+        }
+
+        // Helpful debug output to understand why a scheduled entry may
+        // not have a resolved workout row. This prints when the
+        // scheduled row references ids but no workout row could be
+        // resolved for either the primary or the template.
+        try {
+          final wId = row.readNullable<int>('w_id');
+          final twId = row.readNullable<int>('tw_id');
+          if (workout == null) {
+            print(
+              'Debug: scheduled sw.id=${scheduled.id} workoutId=${scheduled.workoutId} templateWorkoutId=${scheduled.templateWorkoutId} -> joined w_id=$wId tw_id=$twId',
+            );
+          }
+        } catch (e) {
+          print('Debug: failed to log scheduled row mapping: $e');
+        }
+
         return ScheduledWorkoutWithDetails(
-          scheduled: ScheduledWorkoutTableData(
-            id: row.read<int>('sw_id'),
-            workoutId: row.read<int>('workout_id'),
-            scheduledDate: row.read<DateTime>('scheduled_date'),
-            isCompleted: row.read<bool>('is_completed'),
-            workoutPlanId: row.readNullable<int>('workout_plan_id'),
-            createdAt: row.read<DateTime>('created_at'),
-            templateWorkoutId: row.readNullable<int>('template_workout_id'),
-          ),
-          workout:
-              row.readNullable<int>('w_id') != null
-                  ? WorkoutTableData(
-                    id: row.read<int>('w_id'),
-                    name: row.read<String>('w_name'),
-                    description: row.readNullable<String>('w_description'),
-                    isTemplate: row.read<bool>('is_template'),
-                    difficulty: row.read<int>('w_difficulty'),
-                    estimatedDurationMinutes: row.read<int>(
-                      'estimated_duration_minutes',
-                    ),
-                    scheduledDate: null,
-                    completedDate: null,
-                  )
-                  : null,
+          scheduled: scheduled,
+          workout: workout,
         );
       }).toList();
     }
@@ -336,11 +394,14 @@ class ScheduledWorkoutDao extends DatabaseAccessor<AppDatabase>
     // Watch both tables and merge their streams
     final scheduledStream = select(scheduledWorkoutTable).watch();
     final planStream = select(workoutPlanTable).watch();
+    // Also watch the workout table so edits to workouts trigger a refresh
+    final workoutStream = select(workoutTable).watch();
 
     // Use async* generator to create a stream that responds to either table
     return Stream.multi((controller) {
       StreamSubscription? scheduledSub;
       StreamSubscription? planSub;
+      StreamSubscription? workoutSub;
       Timer? debounceTimer;
 
       void emitData() async {
@@ -364,11 +425,15 @@ class ScheduledWorkoutDao extends DatabaseAccessor<AppDatabase>
       planSub = planStream.listen((_) {
         emitData();
       });
+      workoutSub = workoutStream.listen((_) {
+        emitData();
+      });
 
       controller.onCancel = () {
         debounceTimer?.cancel();
         scheduledSub?.cancel();
         planSub?.cancel();
+        workoutSub?.cancel();
       };
 
       // Emit initial data
@@ -908,6 +973,8 @@ class ExerciseDao extends DatabaseAccessor<AppDatabase>
     WorkoutSetTable,
     WorkoutSetTemplateTable,
     ScheduledWorkoutTable,
+    WorkoutPlanTable,
+    WorkoutPlanWorkoutTable,
   ],
 )
 class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
@@ -1154,6 +1221,23 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
             workoutSetTable,
           ).insert(setCompanion, mode: InsertMode.insertOrReplace);
         }
+
+        // 4. Update templates to match the sets
+        // First, delete existing templates for this exercise instance
+        await (delete(workoutSetTemplateTable)
+          ..where((t) => t.workoutExerciseId.equals(exerciseInstanceId))).go();
+
+        // Then create new templates based on the sets
+        for (final set in exercise.sets) {
+          final templateCompanion = WorkoutSetTemplateTableCompanion(
+            workoutExerciseId: Value(exerciseInstanceId),
+            setNumber: Value(set.setNumber),
+            targetReps: Value((set.reps ?? 10).toString()),
+            orderPosition: Value(set.setNumber - 1),
+          );
+
+          await into(workoutSetTemplateTable).insert(templateCompanion);
+        }
       }
 
       return workoutId;
@@ -1238,113 +1322,179 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
     return allSets;
   }
 
-  Future<void> importCsvWorkouts(String csvContent) async {
+  Future<int?> importCsvWorkouts(
+    String csvContent, {
+    bool createPlan = false,
+    String? planName,
+  }) async {
     final rows = const CsvToListConverter().convert(csvContent);
 
-    if (rows.isEmpty) return;
+    if (rows.isEmpty) return null;
 
-    // Skip header row
-    final dataRows = rows.skip(1);
+    // Do the entire import in a transaction for consistency
+    int? createdPlanId;
+    await transaction(() async {
+      // Skip header row
+      final dataRows = rows.skip(1);
 
-    // Group by date
-    final workoutsByDate = <String, List<List<dynamic>>>{};
+      // Group by date (each date becomes a separate workout)
+      final workoutsByDate = <String, List<List<dynamic>>>{};
 
-    for (final row in dataRows) {
-      if (row.length < 9) continue;
+      for (final row in dataRows) {
+        if (row.length < 2) continue; // minimal columns
 
-      final date = row[0].toString();
-      if (!workoutsByDate.containsKey(date)) {
-        workoutsByDate[date] = [];
-      }
-      workoutsByDate[date]!.add(row);
-    }
-
-    for (final entry in workoutsByDate.entries) {
-      final date = entry.key;
-      final workoutRows = entry.value;
-
-      // Group exercises by name
-      final exercisesByName = <String, List<List<dynamic>>>{};
-
-      for (final row in workoutRows) {
-        final exerciseName = row[1].toString();
-        if (!exercisesByName.containsKey(exerciseName)) {
-          exercisesByName[exerciseName] = [];
+        final date = row[0].toString();
+        if (!workoutsByDate.containsKey(date)) {
+          workoutsByDate[date] = [];
         }
-        exercisesByName[exerciseName]!.add(row);
+        workoutsByDate[date]!.add(row);
       }
 
-      // Create workout
-      final workoutName = 'Workout on $date';
-      final workoutCompanion = WorkoutTableCompanion(
-        name: Value(workoutName),
-        description: Value('Imported from CSV'),
-        difficulty: Value(1), // Beginner
-        estimatedDurationMinutes: Value(60),
-        isTemplate: Value(true),
-      );
+      if (workoutsByDate.isEmpty) return;
 
-      final workoutId = await into(workoutTable).insert(workoutCompanion);
-
-      int orderPosition = 0;
-      for (final exerciseEntry in exercisesByName.entries) {
-        final exerciseName = exerciseEntry.key;
-        final exerciseRows = exerciseEntry.value;
-
-        // Find or create exercise
-        var exercise =
-            await (select(exerciseTable)
-              ..where((e) => e.name.equals(exerciseName))).getSingleOrNull();
-
-        if (exercise == null) {
-          // Create basic exercise
-          final exerciseCompanion = ExerciseTableCompanion(
-            name: Value(exerciseName),
-            description: Value('Imported exercise'),
-            type: Value(ExerciseType.strength.index),
-            targetMuscleGroups: Value(''), // Empty string for now
-            imageUrl: Value.absent(),
-            isCustom: Value(true),
-          );
-          final exerciseId = await into(
-            exerciseTable,
-          ).insert(exerciseCompanion);
-          exercise =
-              await (select(exerciseTable)
-                ..where((e) => e.id.equals(exerciseId))).getSingle();
-        }
-
-        // Add exercise to workout
-        final exerciseCompanion = WorkoutExerciseTableCompanion(
-          workoutId: Value(workoutId),
-          exerciseId: Value(exercise.id),
-          orderPosition: Value(orderPosition++),
+      int? planId;
+      if (createPlan) {
+        // Create a workout plan for this import
+        final firstDate = workoutsByDate.keys.first;
+        final usedPlanName = planName ?? 'Imported Plan ($firstDate)';
+        final planCompanion = WorkoutPlanTableCompanion(
+          name: Value(usedPlanName),
+          description: Value('Imported from CSV'),
+          startDate: Value(DateTime.now()),
+          isActive: Value(true),
         );
 
-        final exerciseInstanceId = await into(
-          workoutExerciseTable,
-        ).insert(exerciseCompanion);
+        // Deactivate existing plans
+        await (update(db.workoutPlanTable)..where(
+          (p) => p.isActive.equals(true),
+        )).write(WorkoutPlanTableCompanion(isActive: Value(false)));
 
-        // Add sets
-        int setNumber = 1;
-        for (final row in exerciseRows) {
-          final weight = double.tryParse(row[3].toString()) ?? 0.0;
-          final weightUnit = row[4].toString();
-          final reps = int.tryParse(row[5].toString()) ?? 0;
+        planId = await into(db.workoutPlanTable).insert(planCompanion);
+        createdPlanId = planId;
+      }
 
-          final setCompanion = WorkoutSetTableCompanion(
-            exerciseInstanceId: Value(exerciseInstanceId),
-            setNumber: Value(setNumber++),
-            reps: Value(reps),
-            weight: Value(weight),
-            weightUnit: Value(weightUnit),
-            isCompleted: Value(false),
+      // For each date, create a workout and its exercises/sets
+      for (final entry in workoutsByDate.entries) {
+        final date = entry.key;
+        final workoutRows = entry.value;
+
+        // Group exercises by name
+        final exercisesByName = <String, List<List<dynamic>>>{};
+
+        for (final row in workoutRows) {
+          final exerciseName = row[1].toString();
+          if (!exercisesByName.containsKey(exerciseName)) {
+            exercisesByName[exerciseName] = [];
+          }
+          exercisesByName[exerciseName]!.add(row);
+        }
+
+        // Create workout (store as historical instance so it can be used in graphs)
+        final workoutName = 'Workout on $date';
+        DateTime? parsedDate;
+        try {
+          parsedDate = DateTime.parse(date);
+        } catch (_) {
+          parsedDate = null;
+        }
+
+        final workoutCompanion = WorkoutTableCompanion(
+          name: Value(workoutName),
+          description: Value('Imported from CSV'),
+          difficulty: Value(1), // Beginner
+          estimatedDurationMinutes: Value(60),
+          // Mark as instance (not a template) so it represents a historical workout
+          isTemplate: Value(false),
+          // Set scheduled and completed dates when available
+          scheduledDate: Value(parsedDate),
+          completedDate: Value(parsedDate),
+        );
+
+        final workoutId = await into(workoutTable).insert(workoutCompanion);
+
+        // Link workout to plan if requested
+        if (planId != null) {
+          await into(db.workoutPlanWorkoutTable).insert(
+            WorkoutPlanWorkoutTableCompanion(
+              planId: Value(planId),
+              workoutId: Value(workoutId),
+            ),
+          );
+        }
+
+        int orderPosition = 0;
+        for (final exerciseEntry in exercisesByName.entries) {
+          final exerciseName = exerciseEntry.key;
+          final exerciseRows = exerciseEntry.value;
+
+          // Find or create exercise
+          var exercise =
+              await (select(exerciseTable)
+                ..where((e) => e.name.equals(exerciseName))).getSingleOrNull();
+
+          if (exercise == null) {
+            // Create basic exercise
+            final exerciseCompanion = ExerciseTableCompanion(
+              name: Value(exerciseName),
+              description: Value('Imported exercise'),
+              type: Value(ExerciseType.strength.index),
+              targetMuscleGroups: Value(''), // Empty string for now
+              imageUrl: Value.absent(),
+              isCustom: Value(true),
+            );
+            final exerciseId = await into(
+              exerciseTable,
+            ).insert(exerciseCompanion);
+            exercise =
+                await (select(exerciseTable)
+                  ..where((e) => e.id.equals(exerciseId))).getSingle();
+          }
+
+          // Add exercise to workout
+          final exerciseCompanion = WorkoutExerciseTableCompanion(
+            workoutId: Value(workoutId),
+            exerciseId: Value(exercise.id),
+            orderPosition: Value(orderPosition++),
           );
 
-          await into(workoutSetTable).insert(setCompanion);
+          final exerciseInstanceId = await into(
+            workoutExerciseTable,
+          ).insert(exerciseCompanion);
+
+          // Add sets
+          int setNumber = 1;
+          for (final row in exerciseRows) {
+            final weight =
+                double.tryParse(row.length > 3 ? row[3].toString() : '') ?? 0.0;
+            final weightUnit = row.length > 4 ? row[4].toString() : 'kg';
+            final reps =
+                int.tryParse(row.length > 5 ? row[5].toString() : '') ?? 0;
+
+            final setCompanion = WorkoutSetTableCompanion(
+              exerciseInstanceId: Value(exerciseInstanceId),
+              setNumber: Value(setNumber++),
+              reps: Value(reps),
+              weight: Value(weight),
+              weightUnit: Value(weightUnit),
+              // Mark sets as completed when importing historical data so graphing can use them
+              isCompleted: Value(true),
+            );
+
+            await into(workoutSetTable).insert(setCompanion);
+          }
         }
       }
-    }
+
+      // If we created a plan, ensure it is active (others were deactivated above)
+      if (planId != null) {
+        final pid = planId;
+        await (update(db.workoutPlanTable)..where(
+          (p) => p.id.equals(pid),
+        )).write(WorkoutPlanTableCompanion(isActive: Value(true)));
+      }
+    });
+
+    return createdPlanId;
   }
 }
 
@@ -1453,5 +1603,16 @@ class WorkoutPlanDao extends DatabaseAccessor<AppDatabase>
 
       return rowsDeleted > 0;
     });
+  }
+
+  // Remove a workout from a plan (delete the relationship, not the workout)
+  Future<bool> removeWorkoutFromPlan(int planId, int workoutId) async {
+    final rowsDeleted =
+        await (delete(workoutPlanWorkoutTable)..where(
+          (link) =>
+              link.planId.equals(planId) & link.workoutId.equals(workoutId),
+        )).go();
+
+    return rowsDeleted > 0;
   }
 }

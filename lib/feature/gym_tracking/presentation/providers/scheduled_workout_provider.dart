@@ -76,12 +76,76 @@ class ScheduleWorkoutProvider extends ChangeNotifier {
     _items = []; // Clear immediately before subscribing
     final normalizedDate = _dateOnly(date);
     _currentDate = normalizedDate; // Track the current date
-    _subscription = _dao
-        .watchScheduledWithDetailsForDate(normalizedDate)
-        .listen((items) {
-          _items = List.from(items);
-          _isRefreshing = false; // Clear refreshing flag when data arrives
-          notifyListeners();
-        });
+    _subscription = _dao.watchScheduledWithDetailsForDate(normalizedDate).listen((
+      items,
+    ) {
+      // Debug: log incoming scheduled items and whether a workout was resolved
+      try {
+        // Lightweight logging for troubleshooting in development
+        if (items.isEmpty) {
+          if (kDebugMode)
+            print('ScheduledWorkoutProvider: no items for $normalizedDate');
+        } else {
+          if (kDebugMode)
+            print(
+              'ScheduledWorkoutProvider: received ${items.length} items for $normalizedDate',
+            );
+          for (final it in items) {
+            final s = it.scheduled;
+            final w = it.workout;
+            if (kDebugMode)
+              print(
+                '  sw.id=${s.id} workoutId=${s.workoutId} templateId=${s.templateWorkoutId} -> workout.name=${w?.name}',
+              );
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) print('ScheduledWorkoutProvider: logging failed: $e');
+      }
+
+      // Filter scheduled items by the currently active plan (if any).
+      try {
+        final db = sl<AppDatabase>();
+        db.workoutPlanDao
+            .getActivePlans()
+            .then((activePlans) {
+              final activePlanId =
+                  activePlans.isNotEmpty ? activePlans.first.id : null;
+              if (kDebugMode)
+                print('ScheduledWorkoutProvider: activePlanId = $activePlanId');
+
+              if (activePlanId != null) {
+                _items =
+                    items
+                        .where(
+                          (it) => it.scheduled.workoutPlanId == activePlanId,
+                        )
+                        .toList();
+              } else {
+                // No active plan defined — show all scheduled items
+                _items = List.from(items);
+              }
+
+              _isRefreshing = false; // Clear refreshing flag when data arrives
+              notifyListeners();
+            })
+            .catchError((e) {
+              if (kDebugMode)
+                print(
+                  'ScheduledWorkoutProvider: failed to query active plan: $e',
+                );
+              _items = List.from(items);
+              _isRefreshing = false;
+              notifyListeners();
+            });
+        return;
+      } catch (e) {
+        if (kDebugMode) print('ScheduledWorkoutProvider: filter error: $e');
+        _items = List.from(items);
+        _isRefreshing = false;
+        notifyListeners();
+        return;
+      }
+    });
   }
 }

@@ -12,7 +12,9 @@ void setupLocator() {
     () => ApiClient(baseUrl: 'https://world.openfoodfacts.org/api/v2/'),
   );
   sl.registerLazySingleton(() => FoodApi(sl<ApiClient>()));
-  // Re-register AppDatabase after verifying migration is safe.
-  sl.registerLazySingleton(() => AppDatabase());
-  // keep original registrations only
+  // Database will be registered after creation in main.dart
+}
+
+void registerDatabase(AppDatabase database) {
+  sl.registerSingleton<AppDatabase>(database);
 }

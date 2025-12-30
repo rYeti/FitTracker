@@ -27,6 +27,9 @@ void main() async {
   setupLocator();
   final db = AppDatabase();
 
+  // Register the database instance with the service locator
+  registerDatabase(db);
+
   // Seed exercises if database is empty
   await seedExercisesIfEmpty(db);
 

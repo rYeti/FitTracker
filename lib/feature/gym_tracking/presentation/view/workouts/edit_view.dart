@@ -1,190 +1,868 @@
 import 'package:ForgeForm/core/app_database.dart';
 import 'package:ForgeForm/core/di/service_locator.dart';
+import 'package:ForgeForm/feature/gym_tracking/presentation/view/workouts/edit_single_view.dart';
+import 'package:ForgeForm/feature/gym_tracking/presentation/view/workouts/workouts_list_view.dart';
+import 'package:ForgeForm/feature/gym_tracking/presentation/widgets/exercise_selection_modal.dart';
 import 'package:ForgeForm/feature/workout_planning/data/models/exercise.dart';
 import 'package:ForgeForm/feature/workout_planning/data/models/workout.dart';
 import 'package:ForgeForm/feature/workout_planning/data/models/workout_exercise.dart';
+import 'package:ForgeForm/feature/workout_planning/data/models/workout_plan.dart';
 import 'package:ForgeForm/feature/workout_planning/data/models/workout_set.dart';
-import 'package:drift/drift.dart' hide Column;
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
-import 'package:ForgeForm/l10n/app_localizations.dart';
 
 class EditWorkoutView extends StatefulWidget {
-  final int workoutId;
-  const EditWorkoutView({super.key, required this.workoutId});
+  final int? planId;
+  const EditWorkoutView({super.key, this.planId});
 
   @override
-  _EditWorkoutViewState createState() => _EditWorkoutViewState();
+  State<EditWorkoutView> createState() => _EditWorkoutViewState();
 }
 
 class _EditWorkoutViewState extends State<EditWorkoutView> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _durationController = TextEditingController();
-
-  WorkoutDifficulty _difficulty = WorkoutDifficulty.beginner;
-  Workout? _workout;
+  List<WorkoutPlan>? _plans;
   bool _loading = true;
-  bool _saving = false;
+  int? _activePlanId;
 
   @override
-  void initState() {
-    super.initState();
-    _loadWorkout();
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _descriptionController.dispose();
-    _durationController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadWorkout() async {
-    final dao = sl<AppDatabase>().workoutDao;
-    final workout = await dao.getCompleteWorkoutById(widget.workoutId);
-
-    if (workout != null) {
-      // Don't pre-populate form fields - let user edit freely
-      // _nameController.text = workout.name;
-      // _descriptionController.text = workout.description ?? '';
-      // _durationController.text = workout.estimatedDurationMinutes?.toString() ?? '';
-      // _difficulty = workout.difficulty ?? WorkoutDifficulty.beginner;
-      _workout = workout;
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_plans == null) {
+      _loadPlans();
     }
-
-    setState(() => _loading = false);
   }
 
-  Future<void> _saveWorkout() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _loadPlans() async {
+    setState(() => _loading = true);
 
-    setState(() => _saving = true);
+    final dao = sl<AppDatabase>().workoutPlanDao;
 
-    try {
-      final dao = sl<AppDatabase>().workoutDao;
-      final duration = int.tryParse(_durationController.text) ?? 30;
+    if (widget.planId != null) {
+      // Load only the specific plan
+      final plan = await dao.getCompletePlanById(widget.planId!);
+      if (plan != null) {
 
-      // First, ensure all exercises exist in the database
-      final updatedExercises = <WorkoutExercise>[];
-      for (final exercise in _workout!.exercises) {
-        if (exercise.exerciseId == -1 && exercise.exercise != null) {
-          // This is a new exercise that needs to be created
-          final exerciseCompanion = ExerciseTableCompanion(
-            name: Value(exercise.exercise!.name),
-            description: Value('Added to workout'),
-            type: Value(exercise.exercise!.type.index),
-            targetMuscleGroups: Value(
-              exercise.exercise!.targetMuscleGroups
-                  .map((m) => m.index.toString())
-                  .join(','),
+        // If the plan has no workouts, dump the junction table and
+        // referenced workout rows to help diagnose missing/stale links.
+        if (plan.workouts.isEmpty) {
+          try {
+            final db = sl<AppDatabase>();
+            final links =
+                await db
+                    .customSelect(
+                      'SELECT * FROM workout_plan_workout_table WHERE plan_id = ?',
+                      variables: [drift.Variable.withInt(plan.id!)],
+                    )
+                    .get();
+           
+          } catch (e) {
+            print('Debug(Edit): failed to inspect junction: $e');
+          }
+        }
+
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Plan "${plan?.name ?? 'Unknown'}" has ${plan?.workouts.length ?? 0} workouts',
             ),
-            imageUrl: Value(exercise.exercise!.imageUrl),
-            isCustom: Value(exercise.exercise!.isCustom),
-          );
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+      if (plan != null) {
+        setState(() {
+          _plans = [plan];
+          _loading = false;
+          _activePlanId = plan.isActive ? plan.id : null;
+        });
+      } else {
+        print(
+          '❌ Plan not found for ID: ${widget.planId} - falling back to loading all plans',
+        );
 
-          final exerciseId = await sl<AppDatabase>().exerciseDao.saveExercise(
-            exerciseCompanion,
-          );
-          updatedExercises.add(
-            WorkoutExercise(
-              id: exercise.id,
-              workoutId: exercise.workoutId,
-              exerciseId: exerciseId,
-              orderPosition: exercise.orderPosition,
-              exercise: exercise.exercise,
-              sets: exercise.sets,
-              notes: exercise.notes,
+        // If a specific planId was requested but not found, fall back to loading
+        // all plans so the user can pick one to edit instead of showing an empty view.
+        final planData = await (sl<AppDatabase>().workoutPlanDao).getAllPlans();
+        final plans = await Future.wait(
+          planData.map(
+            (p) => (sl<AppDatabase>().workoutPlanDao).getCompletePlanById(p.id),
+          ),
+        );
+
+        setState(() {
+          _plans = plans.whereType<WorkoutPlan>().toList();
+          _loading = false;
+        });
+
+        if (_plans!.isEmpty && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Requested plan not found and no plans exist'),
             ),
           );
-        } else {
-          updatedExercises.add(exercise);
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Requested plan not found — showing all plans'),
+            ),
+          );
         }
       }
+    } else {
+      // Load all plans
+      final planData = await (sl<AppDatabase>().workoutPlanDao).getAllPlans();
 
-      final updatedWorkout = Workout(
-        id: widget.workoutId,
-        name: _nameController.text,
-        description: _descriptionController.text,
-        difficulty: _difficulty,
-        estimatedDurationMinutes: duration,
-        isTemplate: true,
-        exercises: updatedExercises,
+
+      final plans = await Future.wait(
+        planData.map(
+          (p) => (sl<AppDatabase>().workoutPlanDao).getCompletePlanById(p.id),
+        ),
       );
-
-      await dao.saveCompleteWorkout(updatedWorkout);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(context)!.workoutUpdatedSuccessfully,
-            ),
-          ),
-        );
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(context)!.saveFailed(e.toString()),
-            ),
-          ),
-        );
-      }
-    } finally {
-      setState(() => _saving = false);
+      setState(() {
+        _plans = plans.whereType<WorkoutPlan>().toList();
+        _loading = false;
+        print('📈 Final plans count: ${_plans!.length}');
+        // Set active plan
+        final activePlan = _plans!.where((p) => p.isActive).firstOrNull;
+        _activePlanId = activePlan?.id;
+        print('🎯 Active plan ID: $_activePlanId');
+      });
     }
   }
 
-  void _addExercise() async {
-    final l10n = AppLocalizations.of(context)!;
-    final exerciseNameController = TextEditingController();
+  Future<void> _setActivePlan(int planId) async {
+    // Deactivate all plans
+    await (sl<AppDatabase>().update(sl<AppDatabase>().workoutPlanTable)..where(
+      (p) => p.isActive.equals(true),
+    )).write(WorkoutPlanTableCompanion(isActive: drift.Value(false)));
 
-    final result = await showDialog<String>(
+    // Activate the selected plan
+    await (sl<AppDatabase>().update(sl<AppDatabase>().workoutPlanTable)..where(
+      (p) => p.id.equals(planId),
+    )).write(WorkoutPlanTableCompanion(isActive: drift.Value(true)));
+
+    setState(() {
+      _activePlanId = planId;
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Workout plan set as active')));
+  }
+
+  Future<void> _activateCurrentPlan() async {
+    final plan = _plans!.first;
+    await _setActivePlan(plan.id!);
+  }
+
+  Future<void> _showDeleteWorkoutDialog(Workout workout) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder:
           (context) => AlertDialog(
-            title: Text(l10n.addExercise),
-            content: TextField(
-              controller: exerciseNameController,
-              decoration: const InputDecoration(labelText: 'Exercise Name'),
+            title: const Text('Remove Workout from Plan'),
+            content: Text(
+              'Are you sure you want to remove "${workout.name}" from this workout plan? The workout template will not be deleted and can be added to other plans.',
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(l10n.cancel),
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
               ),
               TextButton(
-                onPressed:
-                    () => Navigator.pop(context, exerciseNameController.text),
-                child: Text(l10n.addButton),
+                onPressed: () => Navigator.of(context).pop(true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Remove'),
               ),
             ],
           ),
     );
 
-    if (result != null && result.isNotEmpty && _workout != null) {
-      // Create a basic exercise object in memory (don't save to DB yet)
-      final basicExercise = Exercise(
-        name: result,
-        type: ExerciseType.strength,
-        targetMuscleGroups: [], // Will be set when saved
-        isCustom: true,
-      );
+    if (confirmed == true && workout.id != null) {
+      try {
+        final plan = _plans!.first;
+        await sl<AppDatabase>().workoutPlanDao.removeWorkoutFromPlan(
+          plan.id!,
+          workout.id!,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Workout "${workout.name}" removed from plan'),
+          ),
+        );
+        // Reload the plan to reflect the changes
+        _loadPlans();
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to remove workout from plan: $e')),
+        );
+      }
+    }
+  }
 
-      // Add to workout in memory
+  @override
+  Widget build(BuildContext context) {
+    final isEditingSinglePlan = widget.planId != null;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(isEditingSinglePlan ? 'Edit Workouts' : 'Workout Plans'),
+        actions:
+            isEditingSinglePlan
+                ? [
+                  IconButton(
+                    icon: const Icon(Icons.play_arrow),
+                    tooltip: 'Activate This Plan',
+                    onPressed: () => _activateCurrentPlan(),
+                  ),
+                ]
+                : null,
+      ),
+      body:
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _plans == null || _plans!.isEmpty
+              ? Center(child: Text('No workout plans found'))
+              : isEditingSinglePlan
+              ? _buildSinglePlanView()
+              : _buildAllPlansView(),
+      floatingActionButton:
+          isEditingSinglePlan
+              ? _buildAddWorkoutButton()
+              : _buildCreatePlanButton(),
+    );
+  }
+
+  Widget _buildSinglePlanView() {
+    final plan = _plans!.first;
+    return plan.workouts.isEmpty
+        ? _buildEmptyPlanView(plan)
+        : ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: plan.workouts.length,
+          itemBuilder: (context, index) {
+            final workout = plan.workouts[index];
+            return _buildExpandableWorkoutCard(workout, index);
+          },
+        );
+  }
+
+  Widget _buildExpandableWorkoutCard(Workout workout, int workoutIndex) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    workout.name,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${workout.exercises.length} exercises, ${workout.exercises.fold<int>(0, (sum, ex) => sum + ex.sets.length)} sets',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  tooltip: 'Edit workout details',
+                  onPressed: () {
+                    if (workout.id != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (_) =>
+                                  EditSingleWorkoutView(workoutId: workout.id!),
+                        ),
+                      ).then((result) {
+                        _loadPlans();
+                      });
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  tooltip: 'Remove workout from plan',
+                  onPressed: () => _showDeleteWorkoutDialog(workout),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExerciseTile(Workout workout, WorkoutExercise exercise) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  exercise.exercise?.name ?? 'Unknown Exercise',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete, size: 18, color: Colors.red),
+                tooltip: 'Remove exercise',
+                onPressed: () => _removeExerciseFromWorkout(workout, exercise),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Sets list
+          ...exercise.sets.map((set) => _buildSetTile(workout, exercise, set)),
+          // Add set button
+          TextButton.icon(
+            onPressed: () => _addSetToExercise(workout, exercise),
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('Add Set'),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSetTile(
+    Workout workout,
+    WorkoutExercise exercise,
+    WorkoutSet set,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4, left: 8, right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withOpacity(0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                '${set.setNumber}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              '${set.reps ?? 0} reps × ${set.weight ?? 0} ${set.weightUnit ?? 'kg'}',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit, size: 16),
+                tooltip: 'Edit set',
+                onPressed: () => _editSet(workout, exercise, set),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete, size: 16, color: Colors.red),
+                tooltip: 'Remove set',
+                onPressed: () => _removeSetFromExercise(workout, exercise, set),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyPlanView(WorkoutPlan plan) {
+    return FutureBuilder<List<ScheduledWorkoutWithDetails>>(
+      future: _getScheduledWorkoutsForPlan(plan.id!),
+      builder: (context, snapshot) {
+        final scheduledWorkouts = snapshot.data ?? [];
+        final templateWorkoutIds =
+            scheduledWorkouts
+                .map((s) => s.scheduled.templateWorkoutId)
+                .whereType<int>()
+                .toSet();
+
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.fitness_center, size: 64, color: Colors.grey),
+                const SizedBox(height: 16),
+                Text(
+                  'No workouts in "${plan.name}"',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  templateWorkoutIds.isNotEmpty
+                      ? 'Found ${templateWorkoutIds.length} template workout(s) from your scheduled workouts that can be added to this plan.'
+                      : 'To add workouts to this plan:\n\n'
+                          '1. Import workout templates using the CSV import button\n'
+                          '2. Use the + button to add imported workouts to this plan\n'
+                          '3. Scheduled workouts are separate from plan templates',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                if (templateWorkoutIds.isNotEmpty) ...[
+                  ElevatedButton.icon(
+                    onPressed:
+                        () => _addTemplateWorkoutsFromScheduled(
+                          plan.id!,
+                          templateWorkoutIds.toList(),
+                        ),
+                    icon: const Icon(Icons.auto_awesome),
+                    label: const Text('Add from Scheduled Workouts'),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (_) => const WorkoutsListView(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.file_upload),
+                  label: const Text('Import CSV Workouts'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAddWorkoutButton() {
+    return FloatingActionButton(
+      onPressed: _addWorkoutToPlan,
+      tooltip: 'Add Workout',
+      child: const Icon(Icons.add),
+    );
+  }
+
+  Future<void> _addWorkoutToPlan() async {
+    final dao = sl<AppDatabase>().workoutDao;
+    final allWorkouts = await dao.getAllWorkouts();
+
+    print('=== DEBUG: Available workouts for plan addition ===');
+    print('Total workouts in database: ${allWorkouts.length}');
+    for (final workout in allWorkouts) {
+      print(
+        'Workout: "${workout.name}", ID: ${workout.id}, isTemplate: ${workout.isTemplate}, description: ${workout.description}',
+      );
+    }
+
+    // Also check scheduled workouts
+    final scheduledDao = sl<AppDatabase>().scheduledWorkoutDao;
+    final today = DateTime.now();
+    final scheduledWorkouts = await scheduledDao.getScheduledWithDetailsForDate(
+      today,
+    );
+    print('Scheduled workouts for today: ${scheduledWorkouts.length}');
+    for (final scheduled in scheduledWorkouts) {
+      print(
+        '  - Scheduled: "${scheduled.workout?.name}" (ID: ${scheduled.workout?.id}, isTemplate: ${scheduled.workout?.isTemplate})',
+      );
+    }
+
+    if (!mounted) return;
+
+    // Show debug info
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Found ${allWorkouts.length} workouts in database'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+
+    // Filter out workouts that are already in the plan
+    final plan = _plans!.first;
+    final existingWorkoutIds =
+        plan.workouts.map((w) => w.id).whereType<int>().toSet();
+
+    final availableWorkouts =
+        allWorkouts.where((w) => !existingWorkoutIds.contains(w.id)).toList();
+
+    print(
+      'Plan "${plan.name}" already has ${existingWorkoutIds.length} workouts: $existingWorkoutIds',
+    );
+    print('Available workouts to add: ${availableWorkouts.length}');
+    for (final workout in availableWorkouts) {
+      print(
+        '  - Available: "${workout.name}" (ID: ${workout.id}, isTemplate: ${workout.isTemplate})',
+      );
+    }
+
+    if (availableWorkouts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No workouts available to add')),
+      );
+      return;
+    }
+
+    // Show dialog to select workout
+    final selectedWorkout = await showDialog<WorkoutTableData>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Add Workout to Plan'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: availableWorkouts.length,
+                itemBuilder: (context, index) {
+                  final workout = availableWorkouts[index];
+                  return ListTile(
+                    title: Text(workout.name),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (workout.description != null)
+                          Text(workout.description!),
+                        Text(
+                          workout.isTemplate
+                              ? 'Template workout'
+                              : 'Scheduled workout',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color:
+                                workout.isTemplate
+                                    ? Colors.green
+                                    : Colors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                    onTap: () => Navigator.of(context).pop(workout),
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+    );
+
+    if (selectedWorkout != null) {
+      // Add the workout to the plan
+      await _addWorkoutToPlanById(selectedWorkout.id);
+    }
+  }
+
+  Future<List<ScheduledWorkoutWithDetails>> _getScheduledWorkoutsForPlan(
+    int planId,
+  ) async {
+    final scheduledDao = sl<AppDatabase>().scheduledWorkoutDao;
+    final today = DateTime.now();
+    final scheduledWorkouts = await scheduledDao.getScheduledWithDetailsForDate(
+      today,
+    );
+    return scheduledWorkouts
+        .where((s) => s.scheduled.workoutPlanId == planId)
+        .toList();
+  }
+
+  Future<void> _addTemplateWorkoutsFromScheduled(
+    int planId,
+    List<int> templateWorkoutIds,
+  ) async {
+    for (final templateWorkoutId in templateWorkoutIds) {
+      try {
+        await (sl<AppDatabase>().into(
+          sl<AppDatabase>().workoutPlanWorkoutTable,
+        )).insert(
+          WorkoutPlanWorkoutTableCompanion(
+            planId: drift.Value(planId),
+            workoutId: drift.Value(templateWorkoutId),
+          ),
+        );
+        print('Added template workout $templateWorkoutId to plan $planId');
+      } catch (e) {
+        print('Failed to add template workout $templateWorkoutId: $e');
+      }
+    }
+
+    // Reload the plan
+    await _loadPlans();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Added ${templateWorkoutIds.length} workouts from scheduled workouts',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _addWorkoutToPlanById(int workoutId) async {
+    final plan = _plans!.first;
+
+    // Add link between plan and workout
+    await (sl<AppDatabase>().into(
+      sl<AppDatabase>().workoutPlanWorkoutTable,
+    )).insert(
+      WorkoutPlanWorkoutTableCompanion(
+        planId: drift.Value(plan.id!),
+        workoutId: drift.Value(workoutId),
+      ),
+    );
+
+    // Reload the plan
+    await _loadPlans();
+
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Workout added to plan')));
+    }
+  }
+
+  Widget _buildAllPlansView() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _plans!.length,
+      itemBuilder: (context, index) {
+        final plan = _plans![index];
+        final isActive = _activePlanId == plan.id;
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 16),
+          elevation: isActive ? 8 : 2,
+          color:
+              isActive
+                  ? Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer.withOpacity(0.1)
+                  : null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Plan Header
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            plan.name,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.headlineSmall?.copyWith(
+                              color:
+                                  isActive
+                                      ? Theme.of(context).colorScheme.primary
+                                      : null,
+                            ),
+                          ),
+                          if (isActive) ...[
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'ACTIVE PLAN',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    Column(
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => _setActivePlan(plan.id!),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isActive ? Colors.green : null,
+                            foregroundColor: isActive ? Colors.white : null,
+                          ),
+                          child: Text(isActive ? 'Active' : 'Set Active'),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.add),
+                              tooltip: 'Add Workout to Plan',
+                              onPressed:
+                                  () => _addWorkoutToPlanForSpecificPlan(plan),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit),
+                              tooltip: 'Open plan editor',
+                              onPressed: () {
+                                // Open the same EditWorkoutView focused on this plan
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (_) => EditWorkoutView(planId: plan.id),
+                                  ),
+                                );
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              tooltip: 'Delete Plan',
+                              onPressed: () => _deletePlan(plan),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Workouts Section
+              if (plan.workouts.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'No workouts in this plan yet.',
+                        style: TextStyle(fontStyle: FontStyle.italic),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton.icon(
+                        onPressed: () => _addWorkoutToPlanForSpecificPlan(plan),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Workout'),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ...plan.workouts.map(
+                  (workout) =>
+                      _buildExpandableWorkoutCardForPlan(plan, workout),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _addExerciseToWorkout(Workout workout) async {
+    // Use the same selection modal as in create_view to pick an exercise
+    final selectedExercise = await ExerciseSelectionModal.show(context);
+
+    if (selectedExercise == null) return;
+    if (workout.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot add exercise to unsaved workout')),
+      );
+      return;
+    }
+
+    try {
+      // Ensure exercise exists in DB (modal should return an existing exercise with id)
+      int exerciseId;
+      if (selectedExercise.id != null) {
+        exerciseId = selectedExercise.id!;
+      } else {
+        // Fallback: save exercise to DB
+        final companion = ExerciseTableCompanion(
+          name: drift.Value(selectedExercise.name),
+          description: drift.Value(selectedExercise.description),
+          type: drift.Value(selectedExercise.type.index),
+          targetMuscleGroups: drift.Value(
+            selectedExercise.targetMuscleGroups
+                .map((m) => m.index.toString())
+                .join(','),
+          ),
+          imageUrl: drift.Value(selectedExercise.imageUrl),
+          isCustom: drift.Value(selectedExercise.isCustom),
+        );
+        exerciseId = await sl<AppDatabase>().exerciseDao.saveExercise(
+          companion,
+        );
+      }
+
+      // Create a minimal workout exercise entry with one default set
       final newExercise = WorkoutExercise(
-        workoutId: _workout!.id!,
-        exerciseId: -1, // Temporary ID, will be replaced when saved
-        orderPosition: _workout!.exercises.length + 1,
-        exercise: basicExercise,
+        workoutId: workout.id!,
+        exerciseId: exerciseId,
+        orderPosition: workout.exercises.length + 1,
+        exercise: selectedExercise.copyWith(id: exerciseId),
         sets: [
           WorkoutSet(
-            exerciseInstanceId: -1, // Temporary ID
+            exerciseInstanceId: -1,
             setNumber: 1,
             reps: 10,
             weight: 0,
@@ -194,56 +872,87 @@ class _EditWorkoutViewState extends State<EditWorkoutView> {
         ],
       );
 
-      setState(() {
-        _workout = Workout(
-          id: _workout!.id,
-          name: _workout!.name,
-          description: _workout!.description,
-          difficulty: _workout!.difficulty,
-          estimatedDurationMinutes: _workout!.estimatedDurationMinutes,
-          isTemplate: _workout!.isTemplate,
-          scheduledDate: _workout!.scheduledDate,
-          completedDate: _workout!.completedDate,
-          exercises: [..._workout!.exercises, newExercise],
-        );
-      });
+      await sl<AppDatabase>().workoutDao.saveCompleteWorkout(
+        workout.copyWith(exercises: [...workout.exercises, newExercise]),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Exercise "${selectedExercise.name}" added to workout'),
+        ),
+      );
+      _loadPlans();
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to add exercise: $e')));
     }
   }
 
-  void _removeExercise(WorkoutExercise exercise) {
-    if (_workout == null) return;
-
-    setState(() {
-      _workout = Workout(
-        id: _workout!.id,
-        name: _workout!.name,
-        description: _workout!.description,
-        difficulty: _workout!.difficulty,
-        estimatedDurationMinutes: _workout!.estimatedDurationMinutes,
-        isTemplate: _workout!.isTemplate,
-        scheduledDate: _workout!.scheduledDate,
-        completedDate: _workout!.completedDate,
-        exercises:
-            _workout!.exercises.where((e) => e.id != exercise.id).toList(),
-      );
-    });
-  }
-
-  void _addSetToExercise(WorkoutExercise exercise) {
-    if (_workout == null) return;
-
-    final newSet = WorkoutSet(
-      exerciseInstanceId: exercise.id ?? 0,
-      setNumber: exercise.sets.length + 1,
-      reps: 10,
-      weight: 0,
-      weightUnit: 'kg',
-      isCompleted: false,
+  Future<void> _removeExerciseFromWorkout(
+    Workout workout,
+    WorkoutExercise exercise,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Remove Exercise'),
+            content: Text(
+              'Are you sure you want to remove "${exercise.exercise?.name ?? 'this exercise'}" from this workout?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Remove'),
+              ),
+            ],
+          ),
     );
 
-    setState(() {
+    if (confirmed == true && workout.id != null) {
+      try {
+        final updatedExercises =
+            workout.exercises.where((e) => e.id != exercise.id).toList();
+        await sl<AppDatabase>().workoutDao.saveCompleteWorkout(
+          workout.copyWith(exercises: updatedExercises),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Exercise removed from workout')),
+        );
+        _loadPlans();
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to remove exercise: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _addSetToExercise(
+    Workout workout,
+    WorkoutExercise exercise,
+  ) async {
+    if (workout.id == null) return;
+
+    try {
+      final newSet = WorkoutSet(
+        exerciseInstanceId: exercise.id ?? 0,
+        setNumber: exercise.sets.length + 1,
+        reps: 10,
+        weight: 0,
+        weightUnit: 'kg',
+        isCompleted: false,
+      );
+
       final updatedExercises =
-          _workout!.exercises.map((e) {
+          workout.exercises.map((e) {
             if (e.id == exercise.id) {
               return WorkoutExercise(
                 id: e.id,
@@ -258,56 +967,87 @@ class _EditWorkoutViewState extends State<EditWorkoutView> {
             return e;
           }).toList();
 
-      _workout = Workout(
-        id: _workout!.id,
-        name: _workout!.name,
-        description: _workout!.description,
-        difficulty: _workout!.difficulty,
-        estimatedDurationMinutes: _workout!.estimatedDurationMinutes,
-        isTemplate: _workout!.isTemplate,
-        scheduledDate: _workout!.scheduledDate,
-        completedDate: _workout!.completedDate,
-        exercises: updatedExercises,
+      await sl<AppDatabase>().workoutDao.saveCompleteWorkout(
+        workout.copyWith(exercises: updatedExercises),
       );
-    });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Set added to exercise')));
+      _loadPlans();
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to add set: $e')));
+    }
   }
 
-  void _removeSet(WorkoutSet set) {
-    if (_workout == null) return;
+  Future<void> _removeSetFromExercise(
+    Workout workout,
+    WorkoutExercise exercise,
+    WorkoutSet set,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Remove Set'),
+            content: Text(
+              'Are you sure you want to remove set ${set.setNumber} from "${exercise.exercise?.name ?? 'this exercise'}"?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Remove'),
+              ),
+            ],
+          ),
+    );
 
-    setState(() {
-      final updatedExercises =
-          _workout!.exercises.map((exercise) {
-            if (exercise.sets.any((s) => s.id == set.id)) {
-              return WorkoutExercise(
-                id: exercise.id,
-                workoutId: exercise.workoutId,
-                exerciseId: exercise.exerciseId,
-                orderPosition: exercise.orderPosition,
-                exercise: exercise.exercise,
-                sets: exercise.sets.where((s) => s.id != set.id).toList(),
-                notes: exercise.notes,
-              );
-            }
-            return exercise;
-          }).toList();
+    if (confirmed == true && workout.id != null) {
+      try {
+        final updatedExercises =
+            workout.exercises.map((e) {
+              if (e.id == exercise.id) {
+                return WorkoutExercise(
+                  id: e.id,
+                  workoutId: e.workoutId,
+                  exerciseId: e.exerciseId,
+                  orderPosition: e.orderPosition,
+                  exercise: e.exercise,
+                  sets: e.sets.where((s) => s.id != set.id).toList(),
+                  notes: e.notes,
+                );
+              }
+              return e;
+            }).toList();
 
-      _workout = Workout(
-        id: _workout!.id,
-        name: _workout!.name,
-        description: _workout!.description,
-        difficulty: _workout!.difficulty,
-        estimatedDurationMinutes: _workout!.estimatedDurationMinutes,
-        isTemplate: _workout!.isTemplate,
-        scheduledDate: _workout!.scheduledDate,
-        completedDate: _workout!.completedDate,
-        exercises: updatedExercises,
-      );
-    });
+        await sl<AppDatabase>().workoutDao.saveCompleteWorkout(
+          workout.copyWith(exercises: updatedExercises),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Set removed from exercise')),
+        );
+        _loadPlans();
+      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to remove set: $e')));
+      }
+    }
   }
 
-  void _editSet(WorkoutSet set) {
-    final l10n = AppLocalizations.of(context)!;
+  Future<void> _editSet(
+    Workout workout,
+    WorkoutExercise exercise,
+    WorkoutSet set,
+  ) async {
     final repsController = TextEditingController(
       text: set.reps?.toString() ?? '',
     );
@@ -316,27 +1056,27 @@ class _EditWorkoutViewState extends State<EditWorkoutView> {
     );
     String weightUnit = set.weightUnit ?? 'kg';
 
-    showDialog(
+    final result = await showDialog<bool>(
       context: context,
       builder:
           (context) => AlertDialog(
-            title: Text(l10n.editSet(set.setNumber)),
+            title: Text('Edit Set ${set.setNumber}'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: repsController,
-                  decoration: InputDecoration(labelText: l10n.repsLabel),
+                  decoration: const InputDecoration(labelText: 'Reps'),
                   keyboardType: TextInputType.number,
                 ),
                 TextField(
                   controller: weightController,
-                  decoration: InputDecoration(labelText: l10n.weightLabel),
+                  decoration: const InputDecoration(labelText: 'Weight'),
                   keyboardType: TextInputType.number,
                 ),
                 DropdownButtonFormField<String>(
                   value: weightUnit,
-                  decoration: InputDecoration(labelText: l10n.unit),
+                  decoration: const InputDecoration(labelText: 'Unit'),
                   items:
                       ['kg', 'lbs'].map((unit) {
                         return DropdownMenuItem(value: unit, child: Text(unit));
@@ -349,260 +1089,329 @@ class _EditWorkoutViewState extends State<EditWorkoutView> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(l10n.cancel),
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
               ),
               TextButton(
-                onPressed: () {
-                  final reps =
-                      int.tryParse(repsController.text) ?? set.reps ?? 0;
-                  final weight =
-                      double.tryParse(weightController.text) ??
-                      set.weight ??
-                      0.0;
-
-                  _updateSet(set, reps, weight, weightUnit);
-                  Navigator.pop(context);
-                },
-                child: Text(l10n.saveButton),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Save'),
               ),
             ],
           ),
     );
+
+    if (result == true && workout.id != null) {
+      try {
+        final updatedSet = WorkoutSet(
+          id: set.id,
+          exerciseInstanceId: set.exerciseInstanceId,
+          setNumber: set.setNumber,
+          reps: int.tryParse(repsController.text) ?? set.reps,
+          weight: double.tryParse(weightController.text) ?? set.weight,
+          weightUnit: weightUnit,
+          isCompleted: set.isCompleted,
+        );
+
+        final updatedExercises =
+            workout.exercises.map((e) {
+              if (e.id == exercise.id) {
+                return WorkoutExercise(
+                  id: e.id,
+                  workoutId: e.workoutId,
+                  exerciseId: e.exerciseId,
+                  orderPosition: e.orderPosition,
+                  exercise: e.exercise,
+                  sets:
+                      e.sets
+                          .map((s) => s.id == set.id ? updatedSet : s)
+                          .toList(),
+                  notes: e.notes,
+                );
+              }
+              return e;
+            }).toList();
+
+        await sl<AppDatabase>().workoutDao.saveCompleteWorkout(
+          workout.copyWith(exercises: updatedExercises),
+        );
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Set updated')));
+        _loadPlans();
+      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to update set: $e')));
+      }
+    }
   }
 
-  void _updateSet(
-    WorkoutSet oldSet,
-    int reps,
-    double weight,
-    String weightUnit,
-  ) {
-    if (_workout == null) return;
-
-    setState(() {
-      final updatedExercises =
-          _workout!.exercises.map((exercise) {
-            if (exercise.sets.any((s) => s.id == oldSet.id)) {
-              final updatedSets =
-                  exercise.sets.map((s) {
-                    if (s.id == oldSet.id) {
-                      return WorkoutSet(
-                        id: s.id,
-                        exerciseInstanceId: s.exerciseInstanceId,
-                        setNumber: s.setNumber,
-                        reps: reps,
-                        weight: weight,
-                        weightUnit: weightUnit,
-                        durationSeconds: s.durationSeconds,
-                        isCompleted: s.isCompleted,
-                        notes: s.notes,
-                      );
-                    }
-                    return s;
-                  }).toList();
-
-              return WorkoutExercise(
-                id: exercise.id,
-                workoutId: exercise.workoutId,
-                exerciseId: exercise.exerciseId,
-                orderPosition: exercise.orderPosition,
-                exercise: exercise.exercise,
-                sets: updatedSets,
-                notes: exercise.notes,
-              );
-            }
-            return exercise;
-          }).toList();
-
-      _workout = Workout(
-        id: _workout!.id,
-        name: _workout!.name,
-        description: _workout!.description,
-        difficulty: _workout!.difficulty,
-        estimatedDurationMinutes: _workout!.estimatedDurationMinutes,
-        isTemplate: _workout!.isTemplate,
-        scheduledDate: _workout!.scheduledDate,
-        completedDate: _workout!.completedDate,
-        exercises: updatedExercises,
-      );
-    });
+  Widget _buildCreatePlanButton() {
+    return FloatingActionButton(
+      onPressed: _createNewWorkoutPlan,
+      tooltip: 'Create new workout plan',
+      child: const Icon(Icons.add),
+    );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    if (_loading) {
-      return Scaffold(
-        appBar: AppBar(title: Text(l10n.editWorkout)),
-        body: const Center(child: CircularProgressIndicator()),
+  Future<void> _createNewWorkoutPlan() async {
+    final planNameController = TextEditingController();
+
+    final result = await showDialog<String>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Create Workout Plan'),
+            content: TextField(
+              controller: planNameController,
+              decoration: const InputDecoration(
+                labelText: 'Plan Name',
+                hintText: 'e.g., Beginner Strength Program',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed:
+                    () => Navigator.pop(context, planNameController.text),
+                child: const Text('Create'),
+              ),
+            ],
+          ),
+    );
+
+    if (result != null && result.trim().isNotEmpty) {
+      try {
+        final newPlan = WorkoutPlan(
+          name: result.trim(),
+          startDate: DateTime.now(),
+          workouts: [], // Start with empty workouts
+          isActive: false,
+        );
+
+        await sl<AppDatabase>().workoutPlanDao.saveWorkoutPlan(newPlan);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Workout plan "${result.trim()}" created')),
+        );
+
+        _loadPlans(); // Refresh the list
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to create workout plan: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _addWorkoutToPlanForSpecificPlan(WorkoutPlan plan) async {
+    final dao = sl<AppDatabase>().workoutDao;
+    final allWorkouts = await dao.getAllWorkouts();
+
+    // Filter out workouts that are already in this plan
+    final existingWorkoutIds =
+        plan.workouts.map((w) => w.id).whereType<int>().toSet();
+    final availableWorkouts =
+        allWorkouts.where((w) => !existingWorkoutIds.contains(w.id)).toList();
+
+    if (availableWorkouts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No workouts available to add')),
       );
+      return;
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.editWorkout),
-        actions: [
-          if (_saving)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+    // Show dialog to select workout
+    final selectedWorkout = await showDialog<WorkoutTableData>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Add Workout to Plan'),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: 300,
+              child: ListView.builder(
+                itemCount: availableWorkouts.length,
+                itemBuilder: (context, index) {
+                  final workout = availableWorkouts[index];
+                  return ListTile(
+                    title: Text(workout.name),
+                    subtitle: Text(
+                      'Template workout', // Since these are from getAllWorkouts, they're templates
+                    ),
+                    onTap: () => Navigator.pop(context, workout),
+                  );
+                },
               ),
-            )
-          else
-            IconButton(icon: const Icon(Icons.save), onPressed: _saveWorkout),
-        ],
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16.0),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+    );
+
+    if (selectedWorkout != null) {
+      try {
+        // Add the workout to the plan
+        await _addWorkoutToPlanById(selectedWorkout.id);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Added "${selectedWorkout.name}" to plan')),
+        );
+
+        _loadPlans(); // Refresh the view
+      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to add workout: $e')));
+      }
+    }
+  }
+
+  Future<void> _deletePlan(WorkoutPlan plan) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Delete Workout Plan'),
+            content: Text(
+              'Are you sure you want to delete "${plan.name}"? This will remove the plan but keep the workouts.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await sl<AppDatabase>().workoutPlanDao.deleteWorkoutPlan(plan.id!);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Deleted workout plan "${plan.name}"')),
+        );
+        _loadPlans(); // Refresh the view
+      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to delete plan: $e')));
+      }
+    }
+  }
+
+  Widget _buildExpandableWorkoutCardForPlan(WorkoutPlan plan, Workout workout) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        child: Row(
           children: [
-            TextFormField(
-              controller: _nameController,
-              decoration: InputDecoration(labelText: l10n.workoutName),
-              validator: (value) {
-                if (value?.isEmpty ?? true) {
-                  return l10n.pleaseEnterWorkoutName;
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _descriptionController,
-              decoration: InputDecoration(labelText: l10n.description),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<WorkoutDifficulty>(
-              value: _difficulty,
-              decoration: InputDecoration(labelText: l10n.difficulty),
-              items:
-                  WorkoutDifficulty.values.map((difficulty) {
-                    return DropdownMenuItem(
-                      value: difficulty,
-                      child: Text(difficulty.name),
-                    );
-                  }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _difficulty = value);
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _durationController,
-              decoration: InputDecoration(
-                labelText: l10n.duration,
-                suffixText: 'minutes',
-              ),
-              keyboardType: TextInputType.number,
-              validator: (value) {
-                if (value?.isEmpty ?? true) {
-                  return 'Please enter duration';
-                }
-                final duration = int.tryParse(value!);
-                if (duration == null || duration <= 0) {
-                  return 'Please enter a valid duration';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
-            Text(
-              l10n.exercises,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            if (_workout?.exercises.isEmpty ?? true)
-              Text(l10n.noExercisesInWorkout)
-            else
-              ..._workout!.exercises.map(
-                (exercise) => Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ExpansionTile(
-                    initiallyExpanded: true,
-                    title: Text(exercise.exercise?.name ?? 'Unknown Exercise'),
-                    subtitle: Text('${exercise.sets.length} ${l10n.setsLabel}'),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  '${l10n.setsLabel}:',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.add),
-                                      onPressed:
-                                          () => _addSetToExercise(exercise),
-                                      tooltip: l10n.addSet,
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete),
-                                      onPressed:
-                                          () => _removeExercise(exercise),
-                                      tooltip: l10n.delete,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '${l10n.setsLabel} (${exercise.sets.length}):',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 4),
-                            ...exercise.sets.map(
-                              (set) => Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      'Set ${set.setNumber}: ${set.reps ?? 0} ${l10n.repsLabel} @ ${set.weight ?? 0}${set.weightUnit ?? 'kg'}',
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.edit),
-                                    onPressed: () => _editSet(set),
-                                    tooltip: l10n.edit,
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete),
-                                    onPressed: () => _removeSet(set),
-                                    tooltip: l10n.delete,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (exercise.sets.isEmpty) Text(l10n.noSetsFound),
-                          ],
-                        ),
-                      ),
-                    ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    workout.name,
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${workout.exercises.length} exercises, ${workout.exercises.fold<int>(0, (sum, ex) => sum + ex.sets.length)} sets',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
               ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _addExercise,
-              icon: const Icon(Icons.add),
-              label: Text(l10n.addExercise),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  tooltip: 'Edit workout details',
+                  onPressed: () {
+                    if (workout.id != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (_) =>
+                                  EditSingleWorkoutView(workoutId: workout.id!),
+                        ),
+                      ).then((result) {
+                        _loadPlans();
+                      });
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  tooltip: 'Remove workout from plan',
+                  onPressed:
+                      () => _showDeleteWorkoutDialogForPlan(plan, workout),
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _showDeleteWorkoutDialogForPlan(
+    WorkoutPlan plan,
+    Workout workout,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Remove Workout from Plan'),
+            content: Text(
+              'Remove "${workout.name}" from "${plan.name}"? The workout will still exist but won\'t be part of this plan.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Remove'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await sl<AppDatabase>().workoutPlanDao.removeWorkoutFromPlan(
+          plan.id!,
+          workout.id!,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Removed "${workout.name}" from plan')),
+        );
+        _loadPlans(); // Refresh the view
+      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to remove workout: $e')));
+      }
+    }
   }
 }

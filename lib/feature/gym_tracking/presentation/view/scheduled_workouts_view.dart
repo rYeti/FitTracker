@@ -244,6 +244,9 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                             final isRestDay = workout?.name == 'Rest Day';
 
                             return Card(
+                              key: ValueKey(
+                                '${item.scheduled.id}_${_rebuildKey}',
+                              ),
                               margin: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 8,
@@ -288,176 +291,177 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                                           ),
                                       ],
                                     ),
-                                    // Exercises list will go here
-                                    SizedBox(height: 16),
+                                    if (!isRestDay && workout != null)
+                                      FutureBuilder(
+                                        key: ValueKey(
+                                          '${workout.id}_${item.scheduled.id}_${_rebuildKey}',
+                                        ),
+                                        future: _loadExercisesForWorkout(
+                                          workout.id,
+                                          selectedDate,
+                                          item.scheduled.id,
+                                          item.scheduled.templateWorkoutId!,
+                                        ),
+                                        builder: (context, snapshot) {
+                                          if (snapshot.connectionState ==
+                                              ConnectionState.waiting) {
+                                            return const Center(
+                                              child:
+                                                  CircularProgressIndicator(),
+                                            );
+                                          }
 
-                                    FutureBuilder(
-                                      future: _loadExercisesForWorkout(
-                                        workout!.id,
-                                        selectedDate,
-                                        item.scheduled.id,
-                                        item.scheduled.templateWorkoutId!,
-                                      ),
-                                      builder: (context, snapshot) {
-                                        if (snapshot.connectionState ==
-                                            ConnectionState.waiting) {
-                                          return const Center(
-                                            child: CircularProgressIndicator(),
-                                          );
-                                        }
+                                          if (snapshot.hasError) {
+                                            return Text(
+                                              "Error: ${snapshot.error}",
+                                            );
+                                          }
 
-                                        if (snapshot.hasError) {
-                                          return Text(
-                                            "Error: ${snapshot.error}",
-                                          );
-                                        }
+                                          final exercises = snapshot.data ?? [];
 
-                                        final exercises = snapshot.data ?? [];
+                                          if (exercises.isEmpty) {
+                                            return Text(
+                                              l10n.noExercisesForWorkout,
+                                            );
+                                          }
 
-                                        if (exercises.isEmpty) {
-                                          return Text(
-                                            l10n.noExercisesForWorkout,
-                                          );
-                                        }
-
-                                        return Column(
-                                          children: [
-                                            ...exercises.map((exerciseData) {
-                                              final exercise = exerciseData.$1;
-                                              final sets = exerciseData.$2;
-                                              final previousSetsMap =
-                                                  exerciseData.$3;
-                                              return ExpansionTile(
-                                                title: Text(exercise.name),
-                                                children: [
-                                                  Column(
-                                                    children: [
-                                                      Row(
-                                                        children: [
-                                                          Expanded(
-                                                            flex: 1,
-                                                            child: Text(
-                                                              l10n.setLabel,
-                                                            ),
-                                                          ),
-                                                          Expanded(
-                                                            flex: 2,
-                                                            child: Text(
-                                                              l10n.previous,
-                                                            ),
-                                                          ),
-                                                          Expanded(
-                                                            flex: 2,
-                                                            child: Text(
-                                                              l10n.kg,
-                                                            ),
-                                                          ),
-                                                          Expanded(
-                                                            flex: 2,
-                                                            child: Text(
-                                                              l10n.reps,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                      ...sets.map((
-                                                        setTemplate,
-                                                      ) {
-                                                        final previousSet =
-                                                            previousSetsMap[setTemplate
-                                                                .setNumber];
-                                                        return Row(
+                                          return Column(
+                                            children: [
+                                              ...exercises.map((exerciseData) {
+                                                final exercise =
+                                                    exerciseData.$1;
+                                                final sets = exerciseData.$2;
+                                                final previousSetsMap =
+                                                    exerciseData.$3;
+                                                return ExpansionTile(
+                                                  title: Text(exercise.name),
+                                                  children: [
+                                                    Column(
+                                                      children: [
+                                                        Row(
                                                           children: [
                                                             Expanded(
                                                               flex: 1,
                                                               child: Text(
-                                                                '${setTemplate.setNumber}',
+                                                                l10n.setLabel,
                                                               ),
                                                             ),
-
-                                                            // Column 2: Previous
                                                             Expanded(
                                                               flex: 2,
                                                               child: Text(
-                                                                '${previousSet?.weight?.toStringAsFixed(0) ?? '--'} kg × ${previousSet?.reps ?? '--'}',
+                                                                l10n.previous,
                                                               ),
                                                             ),
                                                             Expanded(
                                                               flex: 2,
-                                                              child: TextField(
-                                                                controller:
-                                                                    _getController(
-                                                                      exercise
-                                                                          .id,
-                                                                      setTemplate
-                                                                          .setNumber,
-                                                                      'weight',
-                                                                    ),
-                                                                decoration: InputDecoration(
-                                                                  hintText:
-                                                                      'Weight',
-                                                                  contentPadding:
-                                                                      EdgeInsets.all(
-                                                                        8,
-                                                                      ),
-                                                                ),
-                                                                keyboardType:
-                                                                    TextInputType
-                                                                        .number,
+                                                              child: Text(
+                                                                l10n.kg,
                                                               ),
                                                             ),
                                                             Expanded(
                                                               flex: 2,
-                                                              child: TextField(
-                                                                controller:
-                                                                    _getController(
-                                                                      exercise
-                                                                          .id,
-                                                                      setTemplate
-                                                                          .setNumber,
-                                                                      'reps',
-                                                                    ),
-                                                                decoration: InputDecoration(
-                                                                  hintText:
-                                                                      'Reps',
-                                                                  contentPadding:
-                                                                      EdgeInsets.all(
-                                                                        8,
-                                                                      ),
-                                                                ),
-                                                                keyboardType:
-                                                                    TextInputType
-                                                                        .number,
+                                                              child: Text(
+                                                                l10n.reps,
                                                               ),
                                                             ),
                                                           ],
-                                                        );
-                                                      }),
-                                                    ],
-                                                  ),
-                                                ],
-                                              );
-                                            }),
-                                            Padding(
-                                              padding: const EdgeInsets.all(
-                                                16.0,
+                                                        ),
+                                                        ...sets.map((
+                                                          setTemplate,
+                                                        ) {
+                                                          final previousSet =
+                                                              previousSetsMap[setTemplate
+                                                                  .setNumber];
+                                                          return Row(
+                                                            children: [
+                                                              Expanded(
+                                                                flex: 1,
+                                                                child: Text(
+                                                                  '${setTemplate.setNumber}',
+                                                                ),
+                                                              ),
+
+                                                              // Column 2: Previous
+                                                              Expanded(
+                                                                flex: 2,
+                                                                child: Text(
+                                                                  '${previousSet?.weight?.toStringAsFixed(0) ?? '--'} kg × ${previousSet?.reps ?? '--'}',
+                                                                ),
+                                                              ),
+                                                              Expanded(
+                                                                flex: 2,
+                                                                child: TextField(
+                                                                  controller: _getController(
+                                                                    exercise.id,
+                                                                    setTemplate
+                                                                        .setNumber,
+                                                                    'weight',
+                                                                  ),
+                                                                  decoration: InputDecoration(
+                                                                    hintText:
+                                                                        'Weight',
+                                                                    contentPadding:
+                                                                        EdgeInsets.all(
+                                                                          8,
+                                                                        ),
+                                                                  ),
+                                                                  keyboardType:
+                                                                      TextInputType
+                                                                          .number,
+                                                                ),
+                                                              ),
+                                                              Expanded(
+                                                                flex: 2,
+                                                                child: TextField(
+                                                                  controller:
+                                                                      _getController(
+                                                                        exercise
+                                                                            .id,
+                                                                        setTemplate
+                                                                            .setNumber,
+                                                                        'reps',
+                                                                      ),
+                                                                  decoration: InputDecoration(
+                                                                    hintText:
+                                                                        'Reps',
+                                                                    contentPadding:
+                                                                        EdgeInsets.all(
+                                                                          8,
+                                                                        ),
+                                                                  ),
+                                                                  keyboardType:
+                                                                      TextInputType
+                                                                          .number,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          );
+                                                        }),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                );
+                                              }),
+                                              Padding(
+                                                padding: const EdgeInsets.all(
+                                                  16.0,
+                                                ),
+                                                child: ElevatedButton.icon(
+                                                  icon: Icon(Icons.save),
+                                                  label: Text(l10n.saveWorkout),
+                                                  onPressed: () {
+                                                    _saveWorkout(
+                                                      workout.id,
+                                                      item.scheduled.id,
+                                                      exercises,
+                                                    );
+                                                  },
+                                                ),
                                               ),
-                                              child: ElevatedButton.icon(
-                                                icon: Icon(Icons.save),
-                                                label: Text(l10n.saveWorkout),
-                                                onPressed: () {
-                                                  _saveWorkout(
-                                                    workout.id,
-                                                    item.scheduled.id,
-                                                    exercises,
-                                                  );
-                                                },
-                                              ),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    ),
+                                            ],
+                                          );
+                                        },
+                                      ),
                                   ],
                                 ),
                               ),
@@ -508,6 +512,10 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                               );
                               if (result == true) {
                                 context.read<WorkoutProvider>().loadTemplates();
+                                // Refresh scheduled workouts to show updated templates
+                                provider.refresh();
+                                // Force rebuild of list items to refresh exercise data
+                                setState(() => _rebuildKey++);
                               }
                             },
                           ),
