@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ForgeForm/feature/workout_planning/data/models/exercise.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 /// Widget that displays a grid of muscle groups for selection
 class MuscleGroupSelector extends StatelessWidget {
@@ -48,9 +49,9 @@ class _MuscleGroupCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              _getMuscleGroupIcon(muscleGroup),
-              size: 48,
+            muscleGroupIcon(
+              muscleGroup,
+              size: 96,
               color: theme.colorScheme.primary,
             ),
             const SizedBox(height: 8),
@@ -65,25 +66,67 @@ class _MuscleGroupCard extends StatelessWidget {
     );
   }
 
-  IconData _getMuscleGroupIcon(MuscleGroup muscleGroup) {
+  Widget muscleGroupIcon(
+    MuscleGroup muscleGroup, {
+    double size = 48,
+    Color? color,
+  }) {
+    String assetName;
     switch (muscleGroup) {
       case MuscleGroup.chest:
-        return Icons.fitness_center;
+        assetName = 'assets/icons/Chest.png';
+        break;
       case MuscleGroup.back:
-        return Icons.accessibility_new;
+        assetName = 'assets/icons/back.png';
+        break;
       case MuscleGroup.shoulders:
-        return Icons.sledding;
+        assetName = 'assets/icons/Shoulder.png';
+        break;
       case MuscleGroup.biceps:
-        return Icons.sports_gymnastics;
+        assetName = 'assets/icons/Biceps.png';
+        break;
       case MuscleGroup.triceps:
-        return Icons.sports_martial_arts;
+        assetName = 'assets/icons/Triceps.png';
+        break;
       case MuscleGroup.legs:
-        return Icons.directions_run;
+        assetName = 'assets/icons/Hamstrings.png';
+        break;
       case MuscleGroup.abs:
-        return Icons.self_improvement;
+        assetName = 'assets/icons/muscles/abs.svg';
+        break;
       case MuscleGroup.fullBody:
-        return Icons.accessibility;
+        assetName = 'assets/icons/muscles/fullbody.svg';
+        break;
     }
+    // switch (muscleGroup) {
+    //   case MuscleGroup.chest:
+    //     return const Icon(Icons.fitness_center, size: 48);
+    //   case MuscleGroup.back:
+    //     return Image.asset(
+    //       'assets/icons/muscles/back.png',
+    //       width: 48,
+    //       height: 48,
+    //     );
+    //   case MuscleGroup.shoulders:
+    //     return const Icon(Icons.sledding, size: 48);
+    //   case MuscleGroup.biceps:
+    //     return const Icon(Icons.sports_gymnastics, size: 48);
+    //   case MuscleGroup.triceps:
+    //     return const Icon(Icons.sports_martial_arts, size: 48);
+    //   case MuscleGroup.legs:
+    //     return const Icon(Icons.directions_run, size: 48);
+    //   case MuscleGroup.abs:
+    //     return const Icon(Icons.self_improvement, size: 48);
+    //   case MuscleGroup.fullBody:
+    //     return const Icon(Icons.accessibility, size: 48);
+    // }
+
+    return SvgPicture.asset(
+      assetName,
+      width: size,
+      height: size,
+      color: color, // dynamically apply the color
+    );
   }
 
   String _getMuscleGroupName(MuscleGroup muscleGroup) {
@@ -103,7 +146,7 @@ class _MuscleGroupCard extends StatelessWidget {
       case MuscleGroup.abs:
         return 'Abs';
       case MuscleGroup.fullBody:
-        return 'Full Body';
+        return 'Full body';
     }
   }
 }

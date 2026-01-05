@@ -91,13 +91,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get pleaseEnterValidAgeAndHeight => 'Please enter valid age and height';
+  String get pleaseEnterValidAgeAndHeight =>
+      'Please enter valid age and height';
 
   @override
   String get pleaseEnterValidNumber => 'Please enter a valid number';
 
   @override
-  String get calculatedAndSavedCalorieGoal => 'Calculated and saved calorie goal';
+  String get calculatedAndSavedCalorieGoal =>
+      'Calculated and saved calorie goal';
 
   @override
   String failedToSaveProfile(Object error) {
@@ -231,7 +233,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pleaseEnterWorkoutName => 'Please enter a workout name';
 
   @override
-  String get pleaseEnterAtLeastOneWorkoutDay => 'Please enter at least one workout day in the cycle';
+  String get pleaseEnterAtLeastOneWorkoutDay =>
+      'Please enter at least one workout day in the cycle';
 
   @override
   String get pleaseSelectStartDate => 'Please select a start date';
@@ -357,7 +360,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get weight => 'Weight';
 
   @override
-  String get noExercisesForWorkout => 'No exercises configured for this workout';
+  String get noExercisesForWorkout =>
+      'No exercises configured for this workout';
 
   @override
   String errorLoadingExercises(Object error) {
