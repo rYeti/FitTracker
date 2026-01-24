@@ -805,14 +805,6 @@ Future<void> seedExercisesIfEmpty(AppDatabase db) async {
       isCustom: false,
     ),
     Exercise(
-      name: 'Romanian Deadlift',
-      description: 'Hip hinge movement with slight knee bend.',
-      type: ExerciseType.strength,
-      targetMuscleGroups: [MuscleGroup.legs, MuscleGroup.back],
-      imageUrl: null,
-      isCustom: false,
-    ),
-    Exercise(
       name: 'Stiff-Leg Deadlift',
       description: 'Deadlift with straight legs for hamstring emphasis.',
       type: ExerciseType.strength,

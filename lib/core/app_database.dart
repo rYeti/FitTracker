@@ -28,10 +28,10 @@ part 'app_database.g.dart';
     WorkoutPlanTable,
     WorkoutExerciseTable,
     WorkoutSetTable,
-    WorkoutPlanTable,
     WorkoutPlanWorkoutTable,
     ScheduledWorkoutTable,
     WorkoutSetTemplateTable,
+    ScheduledWorkoutExerciseTable,
   ],
   daos: [
     FoodItemDao,
@@ -44,6 +44,7 @@ part 'app_database.g.dart';
     WorkoutDao,
     WorkoutPlanDao,
     ScheduledWorkoutDao,
+    ScheduledWorkoutExerciseDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -56,7 +57,7 @@ class AppDatabase extends _$AppDatabase {
   // Workout planning DAOs will be added here after code generation
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -215,6 +216,35 @@ class AppDatabase extends _$AppDatabase {
           scheduledWorkoutTable.templateWorkoutId,
         );
       }
+      if (from < 13) {
+        await m.createTable(scheduledWorkoutExerciseTable);
+      }
+      if (from < 14) {
+        await m.alterTable(
+          TableMigration(
+            workoutSetTable,
+            newColumns: [workoutSetTable.scheduledWorkoutExerciseId],
+            columnTransformer: {
+              workoutSetTable.scheduledWorkoutExerciseId:
+                  workoutSetTable.scheduledWorkoutExerciseId.cast<int>(),
+            },
+          ),
+        );
+      }
+      if (from < 15) {
+        await m.alterTable(
+          TableMigration(
+            workoutExerciseTable,
+            columnTransformer: {
+              workoutExerciseTable.id: workoutExerciseTable.id,
+              workoutExerciseTable.workoutId: workoutExerciseTable.workoutId,
+              workoutExerciseTable.exerciseId: workoutExerciseTable.exerciseId,
+              workoutExerciseTable.orderPosition:
+                  workoutExerciseTable.orderPosition,
+            },
+          ),
+        );
+      }
     },
   );
 
@@ -366,22 +396,6 @@ class ScheduledWorkoutDao extends DatabaseAccessor<AppDatabase>
           );
         } else {
           workout = null;
-        }
-
-        // Helpful debug output to understand why a scheduled entry may
-        // not have a resolved workout row. This prints when the
-        // scheduled row references ids but no workout row could be
-        // resolved for either the primary or the template.
-        try {
-          final wId = row.readNullable<int>('w_id');
-          final twId = row.readNullable<int>('tw_id');
-          if (workout == null) {
-            print(
-              'Debug: scheduled sw.id=${scheduled.id} workoutId=${scheduled.workoutId} templateWorkoutId=${scheduled.templateWorkoutId} -> joined w_id=$wId tw_id=$twId',
-            );
-          }
-        } catch (e) {
-          print('Debug: failed to log scheduled row mapping: $e');
         }
 
         return ScheduledWorkoutWithDetails(
@@ -747,11 +761,25 @@ class WorkoutExerciseTable extends Table {
   TextColumn get notes => text().nullable()();
 }
 
+class ScheduledWorkoutExerciseTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  /// The scheduled workout (this is the date!)
+  IntColumn get scheduledWorkoutId =>
+      integer().references(ScheduledWorkoutTable, #id)();
+
+  /// The exercise inside the workout template
+  IntColumn get workoutExerciseId =>
+      integer().references(WorkoutExerciseTable, #id)();
+
+  BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
+}
+
 /// Table for storing individual sets within a workout exercise
 class WorkoutSetTable extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get exerciseInstanceId =>
-      integer().references(WorkoutExerciseTable, #id)();
+  IntColumn get scheduledWorkoutExerciseId =>
+      integer().references(ScheduledWorkoutExerciseTable, #id)();
   IntColumn get setNumber => integer()();
   IntColumn get reps => integer().nullable()();
   RealColumn get weight => real().nullable()();
@@ -1056,7 +1084,10 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
       // Get the sets for this exercise instance
       final sets =
           await (select(workoutSetTable)
-                ..where((s) => s.exerciseInstanceId.equals(exerciseInstance.id))
+                ..where(
+                  (s) =>
+                      s.scheduledWorkoutExerciseId.equals(exerciseInstance.id),
+                )
                 ..orderBy([(s) => OrderingTerm.asc(s.setNumber)]))
               .get();
 
@@ -1065,7 +1096,7 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
               .map(
                 (set) => WorkoutSet(
                   id: set.id,
-                  exerciseInstanceId: set.exerciseInstanceId,
+                  exerciseInstanceId: set.scheduledWorkoutExerciseId,
                   setNumber: set.setNumber,
                   reps: set.reps,
                   weight: set.weight,
@@ -1177,8 +1208,9 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
 
         // Delete sets for each exercise instance
         for (final exercise in existingExercises) {
-          await (delete(workoutSetTable)
-            ..where((s) => s.exerciseInstanceId.equals(exercise.id))).go();
+          await (delete(workoutSetTable)..where(
+            (s) => s.scheduledWorkoutExerciseId.equals(exercise.id),
+          )).go();
         }
 
         // Delete exercise instances
@@ -1207,7 +1239,7 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
         for (final set in exercise.sets) {
           final setCompanion = WorkoutSetTableCompanion(
             id: set.id == null ? const Value.absent() : Value(set.id!),
-            exerciseInstanceId: Value(exerciseInstanceId),
+            scheduledWorkoutExerciseId: Value(exerciseInstanceId),
             setNumber: Value(set.setNumber),
             reps: Value(set.reps),
             weight: Value(set.weight),
@@ -1254,8 +1286,9 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
 
       // Delete sets for each exercise instance
       for (final exercise in exerciseInstances) {
-        await (delete(workoutSetTable)
-          ..where((s) => s.exerciseInstanceId.equals(exercise.id))).go();
+        await (delete(
+          workoutSetTable,
+        )..where((s) => s.scheduledWorkoutExerciseId.equals(exercise.id))).go();
       }
 
       // Delete exercise instances
@@ -1312,7 +1345,8 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
       final sets =
           await (select(workoutSetTable)
                 ..where(
-                  (ws) => ws.exerciseInstanceId.equals(workoutExercise.id),
+                  (ws) =>
+                      ws.scheduledWorkoutExerciseId.equals(workoutExercise.id),
                 )
                 ..orderBy([(ws) => OrderingTerm.asc(ws.setNumber)]))
               .get();
@@ -1471,7 +1505,7 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
                 int.tryParse(row.length > 5 ? row[5].toString() : '') ?? 0;
 
             final setCompanion = WorkoutSetTableCompanion(
-              exerciseInstanceId: Value(exerciseInstanceId),
+              scheduledWorkoutExerciseId: Value(exerciseInstanceId),
               setNumber: Value(setNumber++),
               reps: Value(reps),
               weight: Value(weight),
@@ -1495,6 +1529,24 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
     });
 
     return createdPlanId;
+  }
+}
+
+@DriftAccessor(tables: [ScheduledWorkoutExerciseTable])
+class ScheduledWorkoutExerciseDao extends DatabaseAccessor<AppDatabase>
+    with _$ScheduledWorkoutExerciseDaoMixin {
+  ScheduledWorkoutExerciseDao(AppDatabase db) : super(db);
+
+  Future<int> insert(ScheduledWorkoutExerciseTableCompanion data) {
+    return into(scheduledWorkoutExerciseTable).insert(data);
+  }
+
+  Future<List<ScheduledWorkoutExerciseTableData>> getAll() {
+    return select(scheduledWorkoutExerciseTable).get();
+  }
+
+  Stream<List<ScheduledWorkoutExerciseTableData>> watchAll() {
+    return select(scheduledWorkoutExerciseTable).watch();
   }
 }
 

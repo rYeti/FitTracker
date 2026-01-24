@@ -19,6 +19,8 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
   DateTime selectedDate = DateTime.now();
   int _rebuildKey = 0;
   Map<String, TextEditingController> _controllers = {};
+  Map<String, TextEditingController> _exerciseNotesControllers = {};
+  TextEditingController _workoutNoteController = TextEditingController();
 
   @override
   void initState() {
@@ -133,22 +135,34 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
           template.setNumber,
           'reps',
         );
+        //TODO save notes
+        final workoutNote = _workoutNoteController.text;
+
+        final exerciseNotes =
+            exercises.map((exerciseData) {
+              final exercise = exerciseData.$1;
+              final note = _getExerciseNoteController(exercise.id).text;
+
+              return {'exerciseId': exercise.id, 'note': note};
+            }).toList();
 
         final weight = double.tryParse(weightController.text);
         final reps = int.tryParse(repsController.text);
         if (weight != null && reps != null) {
           final workout = WorkoutSetTableCompanion(
             id: const Value.absent(),
-            exerciseInstanceId: Value(instanceId),
+            scheduledWorkoutExerciseId: Value(instanceId),
             setNumber: Value(template.setNumber),
             weight: Value(weight),
             reps: Value(reps),
             isCompleted: Value(true),
+            notes: Value(workoutNote),
           );
           await db.into(db.workoutSetTable).insert(workout);
         }
       }
     }
+
     await (db.update(db.scheduledWorkoutTable)..where(
       (tbl) => tbl.id.equals(scheduledWorkoutId),
     )).write(const ScheduledWorkoutTableCompanion(isCompleted: Value(true)));
@@ -158,9 +172,21 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
     ).showSnackBar(SnackBar(content: Text(l10n.workoutSaved)));
   }
 
+  TextEditingController _getExerciseNoteController(int exerciseId) {
+    final key = 'note_$exerciseId';
+    if (_exerciseNotesControllers.containsKey(key)) {
+      return _exerciseNotesControllers[key]!;
+    }
+
+    final controller = TextEditingController();
+    _exerciseNotesControllers[key] = controller;
+    return controller;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+
     return Consumer<ScheduleWorkoutProvider>(
       key: ValueKey(_rebuildKey),
       builder: (context, provider, _) {
@@ -175,11 +201,6 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(l10n.seedingTemplates)),
                   );
-                  try {} catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(l10n.seedingFailed(e))),
-                    );
-                  }
                 },
               ),
               IconButton(
@@ -212,11 +233,13 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                           firstDate: DateTime(2000),
                           lastDate: DateTime(2100),
                         );
+
                         if (d != null) {
                           for (final controller in _controllers.values) {
                             controller.dispose();
                           }
                           _controllers = {};
+
                           setState(() => selectedDate = d);
                           await provider.loadForDate(d);
                         }
@@ -256,7 +279,6 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Workout header
                                     Row(
                                       children: [
                                         Icon(
@@ -268,7 +290,7 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                                                   ? Colors.blue
                                                   : Colors.orange,
                                         ),
-                                        SizedBox(width: 12),
+                                        const SizedBox(width: 12),
                                         Expanded(
                                           child: Text(
                                             workout?.name ??
@@ -291,6 +313,7 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                                           ),
                                       ],
                                     ),
+
                                     if (!isRestDay && workout != null)
                                       FutureBuilder(
                                         key: ValueKey(
@@ -324,19 +347,29 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                                               l10n.noExercisesForWorkout,
                                             );
                                           }
-
                                           return Column(
+                                            mainAxisSize: MainAxisSize.min,
                                             children: [
+                                              const SizedBox(height: 5),
+
                                               ...exercises.map((exerciseData) {
                                                 final exercise =
                                                     exerciseData.$1;
                                                 final sets = exerciseData.$2;
                                                 final previousSetsMap =
                                                     exerciseData.$3;
+
                                                 return ExpansionTile(
                                                   title: Text(exercise.name),
+                                                  childrenPadding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 16.0,
+                                                        vertical: 8.0,
+                                                      ),
                                                   children: [
                                                     Column(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
                                                       children: [
                                                         Row(
                                                           children: [
@@ -366,88 +399,131 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                                                             ),
                                                           ],
                                                         ),
+
                                                         ...sets.map((
                                                           setTemplate,
                                                         ) {
                                                           final previousSet =
                                                               previousSetsMap[setTemplate
                                                                   .setNumber];
-                                                          return Row(
-                                                            children: [
-                                                              Expanded(
-                                                                flex: 1,
-                                                                child: Text(
-                                                                  '${setTemplate.setNumber}',
-                                                                ),
-                                                              ),
 
-                                                              // Column 2: Previous
-                                                              Expanded(
-                                                                flex: 2,
-                                                                child: Text(
-                                                                  '${previousSet?.weight?.toStringAsFixed(0) ?? '--'} kg × ${previousSet?.reps ?? '--'}',
+                                                          return Padding(
+                                                            padding:
+                                                                const EdgeInsets.only(
+                                                                  bottom: 12.0,
                                                                 ),
-                                                              ),
-                                                              Expanded(
-                                                                flex: 2,
-                                                                child: TextField(
-                                                                  controller: _getController(
-                                                                    exercise.id,
-                                                                    setTemplate
-                                                                        .setNumber,
-                                                                    'weight',
+                                                            child: Row(
+                                                              children: [
+                                                                Expanded(
+                                                                  flex: 1,
+                                                                  child: Text(
+                                                                    '${setTemplate.setNumber}',
                                                                   ),
-                                                                  decoration: InputDecoration(
-                                                                    hintText:
-                                                                        'Weight',
-                                                                    contentPadding:
-                                                                        EdgeInsets.all(
-                                                                          8,
-                                                                        ),
-                                                                  ),
-                                                                  keyboardType:
-                                                                      TextInputType
-                                                                          .number,
                                                                 ),
-                                                              ),
-                                                              Expanded(
-                                                                flex: 2,
-                                                                child: TextField(
-                                                                  controller:
-                                                                      _getController(
-                                                                        exercise
-                                                                            .id,
-                                                                        setTemplate
-                                                                            .setNumber,
-                                                                        'reps',
-                                                                      ),
-                                                                  decoration: InputDecoration(
-                                                                    hintText:
-                                                                        'Reps',
-                                                                    contentPadding:
-                                                                        EdgeInsets.all(
-                                                                          8,
-                                                                        ),
+                                                                Expanded(
+                                                                  flex: 2,
+                                                                  child: Text(
+                                                                    '${previousSet?.weight?.toStringAsFixed(0) ?? '--'} kg × ${previousSet?.reps ?? '--'}',
                                                                   ),
-                                                                  keyboardType:
-                                                                      TextInputType
-                                                                          .number,
                                                                 ),
-                                                              ),
-                                                            ],
+                                                                Expanded(
+                                                                  flex: 2,
+                                                                  child: TextField(
+                                                                    controller: _getController(
+                                                                      exercise
+                                                                          .id,
+                                                                      setTemplate
+                                                                          .setNumber,
+                                                                      'weight',
+                                                                    ),
+                                                                    decoration: const InputDecoration(
+                                                                      hintText:
+                                                                          'Weight',
+                                                                      contentPadding:
+                                                                          EdgeInsets.all(
+                                                                            8,
+                                                                          ),
+                                                                    ),
+                                                                    keyboardType:
+                                                                        TextInputType
+                                                                            .number,
+                                                                  ),
+                                                                ),
+                                                                Expanded(
+                                                                  flex: 2,
+                                                                  child: TextField(
+                                                                    controller: _getController(
+                                                                      exercise
+                                                                          .id,
+                                                                      setTemplate
+                                                                          .setNumber,
+                                                                      'reps',
+                                                                    ),
+                                                                    decoration: const InputDecoration(
+                                                                      hintText:
+                                                                          'Reps',
+                                                                      contentPadding:
+                                                                          EdgeInsets.all(
+                                                                            8,
+                                                                          ),
+                                                                    ),
+                                                                    keyboardType:
+                                                                        TextInputType
+                                                                            .number,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
                                                           );
-                                                        }),
+                                                        }).toList(),
+
+                                                        // ✅ Exercise Note Field
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets.only(
+                                                                top: 8.0,
+                                                              ),
+                                                          child: TextField(
+                                                            controller:
+                                                                _getExerciseNoteController(
+                                                                  exercise.id,
+                                                                ),
+                                                            decoration: const InputDecoration(
+                                                              hintText:
+                                                                  'Note for this exercise',
+                                                              border:
+                                                                  OutlineInputBorder(),
+                                                            ),
+                                                            maxLines: 2,
+                                                          ),
+                                                        ),
                                                       ],
                                                     ),
                                                   ],
                                                 );
-                                              }),
+                                              }).toList(),
+
+                                              const SizedBox(height: 16),
+
+                                              TextField(
+                                                controller:
+                                                    _workoutNoteController,
+                                                decoration: const InputDecoration(
+                                                  hintText:
+                                                      'Note for this workout',
+                                                  border: OutlineInputBorder(),
+                                                ),
+                                                maxLines: 3,
+                                              ),
+
+                                              const SizedBox(height: 16),
+
                                               Padding(
                                                 padding: const EdgeInsets.all(
                                                   16.0,
                                                 ),
                                                 child: ElevatedButton.icon(
-                                                  icon: Icon(Icons.save),
+                                                  icon: const Icon(Icons.save),
                                                   label: Text(l10n.saveWorkout),
                                                   onPressed: () {
                                                     _saveWorkout(
@@ -475,9 +551,9 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
             tooltip: l10n.createOrEditWorkouts,
             child: const Icon(Icons.add),
             onPressed: () async {
-              // Capture the navigator and provider before showing the bottom sheet
               final navigator = Navigator.of(context);
               final provider = context.read<ScheduleWorkoutProvider>();
+
               showModalBottomSheet(
                 context: context,
                 builder:
@@ -486,35 +562,32 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           ListTile(
-                            leading: Icon(Icons.schedule),
+                            leading: const Icon(Icons.schedule),
                             title: Text(l10n.newWorkout),
                             onTap: () async {
-                              // Close the bottom sheet first
                               Navigator.of(bottomSheetContext).pop();
-                              // Navigate to CreateWorkoutView using the captured navigator
                               await navigator.push(
                                 MaterialPageRoute(
                                   builder: (_) => CreateWorkoutView(),
                                 ),
                               );
-                              // Refresh the provider after returning
                               provider.refresh();
                             },
                           ),
                           ListTile(
-                            leading: Icon(Icons.remove_red_eye),
+                            leading: const Icon(Icons.remove_red_eye),
                             title: Text(l10n.viewWorkouts),
                             onTap: () async {
-                              final result = await Navigator.of(context).push(
+                              Navigator.of(bottomSheetContext).pop();
+                              final result = await navigator.push(
                                 MaterialPageRoute(
                                   builder: (_) => WorkoutsListView(),
                                 ),
                               );
+
                               if (result == true) {
                                 context.read<WorkoutProvider>().loadTemplates();
-                                // Refresh scheduled workouts to show updated templates
                                 provider.refresh();
-                                // Force rebuild of list items to refresh exercise data
                                 setState(() => _rebuildKey++);
                               }
                             },
@@ -523,7 +596,6 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                       ),
                     ),
               );
-              setState(() => _rebuildKey++);
             },
           ),
         );
