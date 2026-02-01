@@ -4667,12 +4667,22 @@ class $ScheduledWorkoutExerciseTableTable extends ScheduledWorkoutExerciseTable
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     scheduledWorkoutId,
     workoutExerciseId,
     isCompleted,
+    notes,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4720,6 +4730,12 @@ class $ScheduledWorkoutExerciseTableTable extends ScheduledWorkoutExerciseTable
         ),
       );
     }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
     return context;
   }
 
@@ -4752,6 +4768,10 @@ class $ScheduledWorkoutExerciseTableTable extends ScheduledWorkoutExerciseTable
             DriftSqlType.bool,
             data['${effectivePrefix}is_completed'],
           )!,
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
     );
   }
 
@@ -4771,11 +4791,13 @@ class ScheduledWorkoutExerciseTableData extends DataClass
   /// The exercise inside the workout template
   final int workoutExerciseId;
   final bool isCompleted;
+  final String? notes;
   const ScheduledWorkoutExerciseTableData({
     required this.id,
     required this.scheduledWorkoutId,
     required this.workoutExerciseId,
     required this.isCompleted,
+    this.notes,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4784,6 +4806,9 @@ class ScheduledWorkoutExerciseTableData extends DataClass
     map['scheduled_workout_id'] = Variable<int>(scheduledWorkoutId);
     map['workout_exercise_id'] = Variable<int>(workoutExerciseId);
     map['is_completed'] = Variable<bool>(isCompleted);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
     return map;
   }
 
@@ -4793,6 +4818,8 @@ class ScheduledWorkoutExerciseTableData extends DataClass
       scheduledWorkoutId: Value(scheduledWorkoutId),
       workoutExerciseId: Value(workoutExerciseId),
       isCompleted: Value(isCompleted),
+      notes:
+          notes == null && nullToAbsent ? const Value.absent() : Value(notes),
     );
   }
 
@@ -4806,6 +4833,7 @@ class ScheduledWorkoutExerciseTableData extends DataClass
       scheduledWorkoutId: serializer.fromJson<int>(json['scheduledWorkoutId']),
       workoutExerciseId: serializer.fromJson<int>(json['workoutExerciseId']),
       isCompleted: serializer.fromJson<bool>(json['isCompleted']),
+      notes: serializer.fromJson<String?>(json['notes']),
     );
   }
   @override
@@ -4816,6 +4844,7 @@ class ScheduledWorkoutExerciseTableData extends DataClass
       'scheduledWorkoutId': serializer.toJson<int>(scheduledWorkoutId),
       'workoutExerciseId': serializer.toJson<int>(workoutExerciseId),
       'isCompleted': serializer.toJson<bool>(isCompleted),
+      'notes': serializer.toJson<String?>(notes),
     };
   }
 
@@ -4824,11 +4853,13 @@ class ScheduledWorkoutExerciseTableData extends DataClass
     int? scheduledWorkoutId,
     int? workoutExerciseId,
     bool? isCompleted,
+    Value<String?> notes = const Value.absent(),
   }) => ScheduledWorkoutExerciseTableData(
     id: id ?? this.id,
     scheduledWorkoutId: scheduledWorkoutId ?? this.scheduledWorkoutId,
     workoutExerciseId: workoutExerciseId ?? this.workoutExerciseId,
     isCompleted: isCompleted ?? this.isCompleted,
+    notes: notes.present ? notes.value : this.notes,
   );
   ScheduledWorkoutExerciseTableData copyWithCompanion(
     ScheduledWorkoutExerciseTableCompanion data,
@@ -4845,6 +4876,7 @@ class ScheduledWorkoutExerciseTableData extends DataClass
               : this.workoutExerciseId,
       isCompleted:
           data.isCompleted.present ? data.isCompleted.value : this.isCompleted,
+      notes: data.notes.present ? data.notes.value : this.notes,
     );
   }
 
@@ -4854,14 +4886,20 @@ class ScheduledWorkoutExerciseTableData extends DataClass
           ..write('id: $id, ')
           ..write('scheduledWorkoutId: $scheduledWorkoutId, ')
           ..write('workoutExerciseId: $workoutExerciseId, ')
-          ..write('isCompleted: $isCompleted')
+          ..write('isCompleted: $isCompleted, ')
+          ..write('notes: $notes')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, scheduledWorkoutId, workoutExerciseId, isCompleted);
+  int get hashCode => Object.hash(
+    id,
+    scheduledWorkoutId,
+    workoutExerciseId,
+    isCompleted,
+    notes,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4869,7 +4907,8 @@ class ScheduledWorkoutExerciseTableData extends DataClass
           other.id == this.id &&
           other.scheduledWorkoutId == this.scheduledWorkoutId &&
           other.workoutExerciseId == this.workoutExerciseId &&
-          other.isCompleted == this.isCompleted);
+          other.isCompleted == this.isCompleted &&
+          other.notes == this.notes);
 }
 
 class ScheduledWorkoutExerciseTableCompanion
@@ -4878,17 +4917,20 @@ class ScheduledWorkoutExerciseTableCompanion
   final Value<int> scheduledWorkoutId;
   final Value<int> workoutExerciseId;
   final Value<bool> isCompleted;
+  final Value<String?> notes;
   const ScheduledWorkoutExerciseTableCompanion({
     this.id = const Value.absent(),
     this.scheduledWorkoutId = const Value.absent(),
     this.workoutExerciseId = const Value.absent(),
     this.isCompleted = const Value.absent(),
+    this.notes = const Value.absent(),
   });
   ScheduledWorkoutExerciseTableCompanion.insert({
     this.id = const Value.absent(),
     required int scheduledWorkoutId,
     required int workoutExerciseId,
     this.isCompleted = const Value.absent(),
+    this.notes = const Value.absent(),
   }) : scheduledWorkoutId = Value(scheduledWorkoutId),
        workoutExerciseId = Value(workoutExerciseId);
   static Insertable<ScheduledWorkoutExerciseTableData> custom({
@@ -4896,6 +4938,7 @@ class ScheduledWorkoutExerciseTableCompanion
     Expression<int>? scheduledWorkoutId,
     Expression<int>? workoutExerciseId,
     Expression<bool>? isCompleted,
+    Expression<String>? notes,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4903,6 +4946,7 @@ class ScheduledWorkoutExerciseTableCompanion
         'scheduled_workout_id': scheduledWorkoutId,
       if (workoutExerciseId != null) 'workout_exercise_id': workoutExerciseId,
       if (isCompleted != null) 'is_completed': isCompleted,
+      if (notes != null) 'notes': notes,
     });
   }
 
@@ -4911,12 +4955,14 @@ class ScheduledWorkoutExerciseTableCompanion
     Value<int>? scheduledWorkoutId,
     Value<int>? workoutExerciseId,
     Value<bool>? isCompleted,
+    Value<String?>? notes,
   }) {
     return ScheduledWorkoutExerciseTableCompanion(
       id: id ?? this.id,
       scheduledWorkoutId: scheduledWorkoutId ?? this.scheduledWorkoutId,
       workoutExerciseId: workoutExerciseId ?? this.workoutExerciseId,
       isCompleted: isCompleted ?? this.isCompleted,
+      notes: notes ?? this.notes,
     );
   }
 
@@ -4935,6 +4981,9 @@ class ScheduledWorkoutExerciseTableCompanion
     if (isCompleted.present) {
       map['is_completed'] = Variable<bool>(isCompleted.value);
     }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
     return map;
   }
 
@@ -4944,7 +4993,8 @@ class ScheduledWorkoutExerciseTableCompanion
           ..write('id: $id, ')
           ..write('scheduledWorkoutId: $scheduledWorkoutId, ')
           ..write('workoutExerciseId: $workoutExerciseId, ')
-          ..write('isCompleted: $isCompleted')
+          ..write('isCompleted: $isCompleted, ')
+          ..write('notes: $notes')
           ..write(')'))
         .toString();
   }
@@ -6231,6 +6281,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final ScheduledWorkoutExerciseDao scheduledWorkoutExerciseDao =
       ScheduledWorkoutExerciseDao(this as AppDatabase);
+  late final WorkoutSetTemplateTableDao workoutSetTemplateTableDao =
+      WorkoutSetTemplateTableDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -10675,6 +10727,7 @@ typedef $$ScheduledWorkoutExerciseTableTableCreateCompanionBuilder =
       required int scheduledWorkoutId,
       required int workoutExerciseId,
       Value<bool> isCompleted,
+      Value<String?> notes,
     });
 typedef $$ScheduledWorkoutExerciseTableTableUpdateCompanionBuilder =
     ScheduledWorkoutExerciseTableCompanion Function({
@@ -10682,6 +10735,7 @@ typedef $$ScheduledWorkoutExerciseTableTableUpdateCompanionBuilder =
       Value<int> scheduledWorkoutId,
       Value<int> workoutExerciseId,
       Value<bool> isCompleted,
+      Value<String?> notes,
     });
 
 final class $$ScheduledWorkoutExerciseTableTableReferences
@@ -10788,6 +10842,11 @@ class $$ScheduledWorkoutExerciseTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$ScheduledWorkoutTableTableFilterComposer get scheduledWorkoutId {
     final $$ScheduledWorkoutTableTableFilterComposer composer =
         $composerBuilder(
@@ -10880,6 +10939,11 @@ class $$ScheduledWorkoutExerciseTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$ScheduledWorkoutTableTableOrderingComposer get scheduledWorkoutId {
     final $$ScheduledWorkoutTableTableOrderingComposer composer =
         $composerBuilder(
@@ -10945,6 +11009,9 @@ class $$ScheduledWorkoutExerciseTableTableAnnotationComposer
     column: $table.isCompleted,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
 
   $$ScheduledWorkoutTableTableAnnotationComposer get scheduledWorkoutId {
     final $$ScheduledWorkoutTableTableAnnotationComposer composer =
@@ -11070,11 +11137,13 @@ class $$ScheduledWorkoutExerciseTableTableTableManager
                 Value<int> scheduledWorkoutId = const Value.absent(),
                 Value<int> workoutExerciseId = const Value.absent(),
                 Value<bool> isCompleted = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
               }) => ScheduledWorkoutExerciseTableCompanion(
                 id: id,
                 scheduledWorkoutId: scheduledWorkoutId,
                 workoutExerciseId: workoutExerciseId,
                 isCompleted: isCompleted,
+                notes: notes,
               ),
           createCompanionCallback:
               ({
@@ -11082,11 +11151,13 @@ class $$ScheduledWorkoutExerciseTableTableTableManager
                 required int scheduledWorkoutId,
                 required int workoutExerciseId,
                 Value<bool> isCompleted = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
               }) => ScheduledWorkoutExerciseTableCompanion.insert(
                 id: id,
                 scheduledWorkoutId: scheduledWorkoutId,
                 workoutExerciseId: workoutExerciseId,
                 isCompleted: isCompleted,
+                notes: notes,
               ),
           withReferenceMapper:
               (p0) =>
@@ -12501,4 +12572,12 @@ mixin _$ScheduledWorkoutExerciseDaoMixin on DatabaseAccessor<AppDatabase> {
       attachedDatabase.workoutExerciseTable;
   $ScheduledWorkoutExerciseTableTable get scheduledWorkoutExerciseTable =>
       attachedDatabase.scheduledWorkoutExerciseTable;
+}
+mixin _$WorkoutSetTemplateTableDaoMixin on DatabaseAccessor<AppDatabase> {
+  $WorkoutTableTable get workoutTable => attachedDatabase.workoutTable;
+  $ExerciseTableTable get exerciseTable => attachedDatabase.exerciseTable;
+  $WorkoutExerciseTableTable get workoutExerciseTable =>
+      attachedDatabase.workoutExerciseTable;
+  $WorkoutSetTemplateTableTable get workoutSetTemplateTable =>
+      attachedDatabase.workoutSetTemplateTable;
 }

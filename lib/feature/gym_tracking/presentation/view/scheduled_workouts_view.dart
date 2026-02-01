@@ -69,15 +69,19 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
       )
     >
     result = [];
+
     for (final exerciseData in exercises) {
       final exercise = exerciseData.$1;
       final templates = exerciseData.$2;
       final workoutExercise = exerciseData.$3;
+
       final normalizedDate = DateTime(
         referenceDate.year,
         referenceDate.month,
         referenceDate.day,
       );
+
+      // load previous sets for this exercise
       final previousSets = await db.workoutDao
           .getPreviousWorkoutSetsForExercise(
             exerciseId: exercise.id,
@@ -85,11 +89,25 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
             templateWorkoutId: templateWorkoutId,
             excludeScheduledWorkoutId: excludeScheduledWorkoutId,
           );
+
       final previousSetsMap = {
         for (var set in previousSets) set.setNumber: set,
       };
+
+      // After fetching the scheduled workout exercise
+      final scheduledExercise =
+          await (db.select(db.scheduledWorkoutExerciseTable)..where(
+            (tbl) => tbl.id.equals(workoutExercise.id),
+          )).getSingleOrNull();
+
+      if (scheduledExercise?.notes != null) {
+        _getExerciseNoteController(workoutExercise.id).text =
+            scheduledExercise!.notes!;
+      }
+
       result.add((exercise, templates, previousSetsMap, workoutExercise));
     }
+
     return result;
   }
 
@@ -104,6 +122,73 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
     }
     return _controllers[key]!;
   }
+
+  // Future<void> _saveWorkout(
+  //   int workoutId,
+  //   int scheduledWorkoutId,
+  //   List<
+  //     (
+  //       ExerciseTableData,
+  //       List<WorkoutSetTemplateData>,
+  //       Map<int, WorkoutSetTableData>,
+  //       WorkoutExerciseTableData,
+  //     )
+  //   >
+  //   exercises,
+  // ) async {
+  //   final db = context.read<AppDatabase>();
+  //   final l10n = AppLocalizations.of(context)!;
+  //   for (final exercise in exercises) {
+  //     final exerciseData = exercise.$1;
+  //     final templates = exercise.$2;
+  //     final instanceId = exercise.$4.id;
+  //     for (final template in templates) {
+  //       final weightController = _getController(
+  //         exerciseData.id,
+  //         template.setNumber,
+  //         'weight',
+  //       );
+  //       final repsController = _getController(
+  //         exerciseData.id,
+  //         template.setNumber,
+  //         'reps',
+  //       );
+  //       //TODO save notes
+  //       final workoutNote = _workoutNoteController.text;
+
+  //       final exerciseNotes =
+  //           exercises.map((exerciseData) {
+  //             final exercise = exerciseData.$1;
+  //             final note = _getExerciseNoteController(exercise.id).text;
+
+  //             return {'exerciseId': exercise.id, 'note': note};
+  //           }).toList();
+
+  //       final weight = double.tryParse(weightController.text);
+  //       final reps = int.tryParse(repsController.text);
+  //       if (weight != null && reps != null) {
+  //         final workout = WorkoutSetTableCompanion(
+  //           id: const Value.absent(),
+  //           scheduledWorkoutExerciseId: Value(instanceId),
+  //           setNumber: Value(template.setNumber),
+  //           weight: Value(weight),
+  //           reps: Value(reps),
+  //           isCompleted: Value(true),
+  //           notes: Value(workoutNote),
+  //         );
+  //         await db.into(db.workoutSetTable).insert(workout);
+  //       }
+  //     }
+  //   }
+
+  //   await (db.update(db.scheduledWorkoutTable)..where(
+  //     (tbl) => tbl.id.equals(scheduledWorkoutId),
+  //   )).write(const ScheduledWorkoutTableCompanion(isCompleted: Value(true)));
+  //   print('Workout saved successfully');
+  //   ScaffoldMessenger.of(
+  //     context,
+  //   ).showSnackBar(SnackBar(content: Text(l10n.workoutSaved)));
+  // }
 
   Future<void> _saveWorkout(
     int workoutId,
@@ -120,10 +205,15 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
   ) async {
     final db = context.read<AppDatabase>();
     final l10n = AppLocalizations.of(context)!;
+
     for (final exercise in exercises) {
       final exerciseData = exercise.$1;
       final templates = exercise.$2;
-      final instanceId = exercise.$4.id;
+      final workoutExercise = exercise.$4;
+
+      final exerciseNote = _getExerciseNoteController(workoutExercise.id).text;
+
+      // 1️⃣ Save sets
       for (final template in templates) {
         final weightController = _getController(
           exerciseData.id,
@@ -135,38 +225,58 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
           template.setNumber,
           'reps',
         );
-        //TODO save notes
-        final workoutNote = _workoutNoteController.text;
-
-        final exerciseNotes =
-            exercises.map((exerciseData) {
-              final exercise = exerciseData.$1;
-              final note = _getExerciseNoteController(exercise.id).text;
-
-              return {'exerciseId': exercise.id, 'note': note};
-            }).toList();
 
         final weight = double.tryParse(weightController.text);
         final reps = int.tryParse(repsController.text);
+
         if (weight != null && reps != null) {
-          final workout = WorkoutSetTableCompanion(
+          final workoutSet = WorkoutSetTableCompanion(
             id: const Value.absent(),
-            scheduledWorkoutExerciseId: Value(instanceId),
+            scheduledWorkoutExerciseId: Value(workoutExercise.id),
             setNumber: Value(template.setNumber),
             weight: Value(weight),
             reps: Value(reps),
             isCompleted: Value(true),
-            notes: Value(workoutNote),
           );
-          await db.into(db.workoutSetTable).insert(workout);
+          await db.into(db.workoutSetTable).insert(workoutSet);
         }
       }
-    }
 
-    await (db.update(db.scheduledWorkoutTable)..where(
-      (tbl) => tbl.id.equals(scheduledWorkoutId),
-    )).write(const ScheduledWorkoutTableCompanion(isCompleted: Value(true)));
-    print('Workout saved successfully');
+      // 2️⃣ Save exercise note
+// 2️⃣ Save exercise note (upsert)
+final existingExerciseRow = await db.scheduledWorkoutExerciseTable
+    .getSingleOrNull(workoutExercise.id);
+
+if (existingExerciseRow != null) {
+  // Row exists → update
+  await (db.update(db.scheduledWorkoutExerciseTable)
+        ..where((tbl) => tbl.id.equals(workoutExercise.id)))
+      .write(ScheduledWorkoutExerciseTableCompanion(
+        notes: Value(exerciseNote.isEmpty ? null : exerciseNote),
+        isCompleted: Value(true),
+      ));
+} else {
+  // Row doesn’t exist → insert
+  await db.into(db.scheduledWorkoutExerciseTable).insert(
+    ScheduledWorkoutExerciseTableCompanion(
+      scheduledWorkoutId: Value(scheduledWorkoutId),
+      workoutExerciseId: Value(workoutExercise.id),
+      notes: Value(exerciseNote.isEmpty ? null : exerciseNote),
+      isCompleted: Value(true),
+    ),
+  );
+}
+
+    // 3️⃣ Save workout note
+    final workoutNote = _workoutNoteController.text;
+    await (db.update(db.scheduledWorkoutTable)
+      ..where((tbl) => tbl.id.equals(scheduledWorkoutId))).write(
+      ScheduledWorkoutTableCompanion(
+        notes: Value(workoutNote.isEmpty ? null : workoutNote),
+        isCompleted: Value(true),
+      ),
+    );
+
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(l10n.workoutSaved)));
@@ -235,10 +345,21 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                         );
 
                         if (d != null) {
+                          // dispose old set/reps controllers
                           for (final controller in _controllers.values) {
                             controller.dispose();
                           }
                           _controllers = {};
+
+                          // dispose old exercise note controllers
+                          for (final controller
+                              in _exerciseNotesControllers.values) {
+                            controller.dispose();
+                          }
+                          _exerciseNotesControllers = {};
+
+                          // clear workout note
+                          _workoutNoteController.clear();
 
                           setState(() => selectedDate = d);
                           await provider.loadForDate(d);
@@ -248,7 +369,7 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                     const Spacer(),
                     IconButton(
                       icon: const Icon(Icons.refresh),
-                      onPressed: () => provider.loadForDate(selectedDate),
+                      onPressed: () => provider,
                     ),
                   ],
                 ),

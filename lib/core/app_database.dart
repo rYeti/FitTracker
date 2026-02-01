@@ -45,6 +45,7 @@ part 'app_database.g.dart';
     WorkoutPlanDao,
     ScheduledWorkoutDao,
     ScheduledWorkoutExerciseDao,
+    WorkoutSetTemplateTableDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -773,6 +774,8 @@ class ScheduledWorkoutExerciseTable extends Table {
       integer().references(WorkoutExerciseTable, #id)();
 
   BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
+
+  TextColumn get notes => text().nullable()();
 }
 
 /// Table for storing individual sets within a workout exercise
@@ -1007,6 +1010,15 @@ class ExerciseDao extends DatabaseAccessor<AppDatabase>
 )
 class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
   WorkoutDao(AppDatabase db) : super(db);
+
+  Future<List<WorkoutSetTemplateData>> getSetTemplatesForWorkoutExercise(
+    int workoutExerciseId,
+  ) {
+    return (select(workoutSetTemplateTable)
+          ..where((t) => t.workoutExerciseId.equals(workoutExerciseId))
+          ..orderBy([(t) => OrderingTerm.asc(t.setNumber)]))
+        .get();
+  }
 
   // Get all workouts (templates and scheduled)
   Future<List<WorkoutTableData>> getAllWorkouts() => select(workoutTable).get();
@@ -1532,21 +1544,133 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
   }
 }
 
+class ScheduledWorkoutExerciseFull {
+  final ScheduledWorkoutExerciseTableData scheduled;
+  final WorkoutExerciseTableData workoutExercise;
+  final ExerciseTableData exercise;
+
+  ScheduledWorkoutExerciseFull({
+    required this.scheduled,
+    required this.workoutExercise,
+    required this.exercise,
+  });
+}
+
+@DriftAccessor(tables: [WorkoutSetTemplateTable])
+class WorkoutSetTemplateTableDao extends DatabaseAccessor<AppDatabase>
+    with _$WorkoutSetTemplateTableDaoMixin {
+  WorkoutSetTemplateTableDao(AppDatabase db) : super(db);
+
+  Future<List<WorkoutSetTemplateData>> getForWorkoutExercise(
+    int workoutExerciseId,
+  ) {
+    return (select(workoutSetTemplateTable)
+      ..where((t) => t.workoutExerciseId.equals(workoutExerciseId))).get();
+  }
+}
+
 @DriftAccessor(tables: [ScheduledWorkoutExerciseTable])
 class ScheduledWorkoutExerciseDao extends DatabaseAccessor<AppDatabase>
     with _$ScheduledWorkoutExerciseDaoMixin {
   ScheduledWorkoutExerciseDao(AppDatabase db) : super(db);
 
-  Future<int> insert(ScheduledWorkoutExerciseTableCompanion data) {
-    return into(scheduledWorkoutExerciseTable).insert(data);
+  /// Create scheduled exercises when a workout is scheduled
+  Future<void> createForScheduledWorkout({
+    required int scheduledWorkoutId,
+    required List<int> workoutExerciseIds,
+  }) async {
+    await batch((batch) {
+      batch.insertAll(
+        scheduledWorkoutExerciseTable,
+        workoutExerciseIds.map(
+          (id) => ScheduledWorkoutExerciseTableCompanion.insert(
+            scheduledWorkoutId: scheduledWorkoutId,
+            workoutExerciseId: id,
+          ),
+        ),
+      );
+    });
   }
 
-  Future<List<ScheduledWorkoutExerciseTableData>> getAll() {
-    return select(scheduledWorkoutExerciseTable).get();
+  /// Watch exercises for ONE scheduled workout (selected date)
+  Stream<List<ScheduledWorkoutExerciseFull>> watchForScheduledWorkout(
+    int scheduledWorkoutId,
+  ) {
+    final query =
+        select(scheduledWorkoutExerciseTable).join([
+            innerJoin(
+              workoutExerciseTable,
+              workoutExerciseTable.id.equalsExp(
+                scheduledWorkoutExerciseTable.workoutExerciseId,
+              ),
+            ),
+            innerJoin(
+              exerciseTable,
+              exerciseTable.id.equalsExp(workoutExerciseTable.exerciseId),
+            ),
+          ])
+          ..where(
+            scheduledWorkoutExerciseTable.scheduledWorkoutId.equals(
+              scheduledWorkoutId,
+            ),
+          )
+          ..orderBy([OrderingTerm.asc(workoutExerciseTable.orderPosition)]);
+
+    return query.watch().map((rows) {
+      return rows.map((row) {
+        return ScheduledWorkoutExerciseFull(
+          scheduled: row.readTable(scheduledWorkoutExerciseTable),
+          workoutExercise: row.readTable(workoutExerciseTable),
+          exercise: row.readTable(exerciseTable),
+        );
+      }).toList();
+    });
   }
 
-  Stream<List<ScheduledWorkoutExerciseTableData>> watchAll() {
-    return select(scheduledWorkoutExerciseTable).watch();
+  Future<List<ScheduledWorkoutExerciseFull>> getForScheduledWorkout(
+    int scheduledWorkoutId,
+  ) async {
+    final query = select(scheduledWorkoutExerciseTable).join([
+      leftOuterJoin(
+        workoutExerciseTable,
+        workoutExerciseTable.id.equalsExp(
+          scheduledWorkoutExerciseTable.workoutExerciseId,
+        ),
+      ),
+      leftOuterJoin(
+        exerciseTable,
+        exerciseTable.id.equalsExp(workoutExerciseTable.exerciseId),
+      ),
+    ])..where(
+      scheduledWorkoutExerciseTable.scheduledWorkoutId.equals(
+        scheduledWorkoutId,
+      ),
+    );
+
+    final rows = await query.get();
+
+    return rows.map((row) {
+      return ScheduledWorkoutExerciseFull(
+        scheduled: row.readTable(scheduledWorkoutExerciseTable),
+        workoutExercise: row.readTable(workoutExerciseTable),
+        exercise: row.readTable(exerciseTable),
+      );
+    }).toList();
+  }
+
+  /// 3️⃣ Update exercise notes (date-specific!)
+  Future<void> updateNotes(int id, String? notes) {
+    return (update(scheduledWorkoutExerciseTable)..where(
+      (tbl) => tbl.id.equals(id),
+    )).write(ScheduledWorkoutExerciseTableCompanion(notes: Value(notes)));
+  }
+
+  /// 4️⃣ Mark exercise completed
+  Future<void> setCompleted(int id, bool completed) {
+    return (update(scheduledWorkoutExerciseTable)
+      ..where((tbl) => tbl.id.equals(id))).write(
+      ScheduledWorkoutExerciseTableCompanion(isCompleted: Value(completed)),
+    );
   }
 }
 
