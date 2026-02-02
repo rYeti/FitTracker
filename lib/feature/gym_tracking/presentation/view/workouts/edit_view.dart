@@ -41,7 +41,6 @@ class _EditWorkoutViewState extends State<EditWorkoutView> {
       // Load only the specific plan
       final plan = await dao.getCompletePlanById(widget.planId!);
       if (plan != null) {
-
         // If the plan has no workouts, dump the junction table and
         // referenced workout rows to help diagnose missing/stale links.
         if (plan.workouts.isEmpty) {
@@ -54,12 +53,10 @@ class _EditWorkoutViewState extends State<EditWorkoutView> {
                       variables: [drift.Variable.withInt(plan.id!)],
                     )
                     .get();
-           
           } catch (e) {
             print('Debug(Edit): failed to inspect junction: $e');
           }
         }
-
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -113,7 +110,6 @@ class _EditWorkoutViewState extends State<EditWorkoutView> {
     } else {
       // Load all plans
       final planData = await (sl<AppDatabase>().workoutPlanDao).getAllPlans();
-
 
       final plans = await Future.wait(
         planData.map(
