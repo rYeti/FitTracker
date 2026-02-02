@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/reset_timer_widget.dart';
 
-/// Enhanced version with visible exercise notes and workout review
+/// Final fixed version with proper controller isolation and workout overview
 class ActiveWorkoutScreen extends StatefulWidget {
   final ScheduledWorkoutWithDetails scheduledWorkout;
   final DateTime scheduledDate;
@@ -54,7 +54,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     int setNumber,
     String field,
   ) {
-    return '${widget.scheduledWorkout.scheduled.id}_{workoutExerciseId}_{setNumber}_field';
+    final scheduledId = widget.scheduledWorkout.scheduled.id;
+
+    return '${scheduledId}_${workoutExerciseId}_${setNumber}_$field';
   }
 
   Future<void> _loadWorkoutData() async {
@@ -94,6 +96,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         final exercise = exerciseData.$1;
         final templates = exerciseData.$2;
         final workoutExercise = exerciseData.$3;
+
+        print(
+          'Loading exercise: ${exercise.name} (workoutExerciseId: ${workoutExercise.id})',
+        );
 
         final previousSets = await _loadPreviousWorkoutSets(
           db: db,
@@ -136,6 +142,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           for (var set in existingSets) set.setNumber: set,
         };
 
+        // FIX #1: Create controllers with unique keys
         for (final template in templates) {
           final existingSet = existingSetsMap[template.setNumber];
 
@@ -150,12 +157,22 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             'reps',
           );
 
-          _setControllers[weightKey] = TextEditingController(
-            text: existingSet?.weight?.toStringAsFixed(1) ?? '',
+          print(
+            'Creating controller - Weight key: $weightKey, Reps key: $repsKey',
           );
 
-          _setControllers[repsKey] = TextEditingController(
+          final weightController = TextEditingController(
+            text: existingSet?.weight?.toStringAsFixed(1) ?? '',
+          );
+          final repsController = TextEditingController(
             text: existingSet?.reps?.toString() ?? '',
+          );
+
+          _setControllers[weightKey] = weightController;
+          _setControllers[repsKey] = repsController;
+
+          print(
+            '  Weight value: "${weightController.text}", Reps value: "${repsController.text}"',
           );
         }
 
@@ -174,6 +191,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         _exercises = exercises;
         _isLoading = false;
       });
+
+      print('=== WORKOUT DATA LOADED: ${exercises.length} exercises ===');
     } catch (e, stackTrace) {
       print('ERROR loading workout data: $e');
       print('Stack trace: $stackTrace');
@@ -253,6 +272,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     final controller = _setControllers[key];
     if (controller == null) {
       print('WARNING: Controller not found for key: $key');
+      print('Available keys: ${_setControllers.keys.take(5)}');
       return TextEditingController();
     }
 
@@ -386,7 +406,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     }
   }
 
-  /// FEATURE #2: Show workout summary after completion
+  /// Show workout summary after completion
   Future<bool?> _showWorkoutSummary() async {
     return showDialog<bool>(
       context: context,
@@ -488,6 +508,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       );
     }
 
+    // FIX #2: Show overview for read-only (completed) workouts
+    if (widget.isReadOnly) {
+      return _buildWorkoutOverview(theme);
+    }
+
+    // Regular workout execution view
     final currentExercise = _exercises[_currentExerciseIndex];
     final totalExercises = _exercises.length;
     final totalSets = _exercises.fold<int>(
@@ -503,31 +529,13 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.scheduledWorkout.workout?.name ?? 'Workout'),
-            if (widget.isReadOnly)
-              Text(
-                'Completed Workout',
-                style: theme.textTheme.bodySmall?.copyWith(color: Colors.green),
-              ),
-          ],
-        ),
+        title: Text(widget.scheduledWorkout.workout?.name ?? 'Workout'),
         actions: [
-          if (!widget.isReadOnly)
-            IconButton(
-              icon: const Icon(Icons.timer),
-              tooltip: 'Rest Timer',
-              onPressed: () => showRestTimer(context),
-            ),
-          // FEATURE #2: View workout summary button
-          if (widget.isReadOnly)
-            IconButton(
-              icon: const Icon(Icons.summarize),
-              tooltip: 'Workout Summary',
-              onPressed: _showWorkoutSummary,
-            ),
+          IconButton(
+            icon: const Icon(Icons.timer),
+            tooltip: 'Rest Timer',
+            onPressed: () => showRestTimer(context),
+          ),
           IconButton(
             icon: const Icon(Icons.note_add),
             tooltip: 'Workout Notes',
@@ -537,13 +545,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       ),
       body: Column(
         children: [
-          if (!widget.isReadOnly)
-            LinearProgressIndicator(
-              value: progress,
-              minHeight: 8,
-              backgroundColor: theme.colorScheme.surfaceVariant,
-              valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
-            ),
+          LinearProgressIndicator(
+            value: progress,
+            minHeight: 8,
+            backgroundColor: theme.colorScheme.surfaceVariant,
+            valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+          ),
 
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -576,8 +583,268 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
           Expanded(child: _buildSetFocusedView(currentExercise, theme)),
 
-          if (!widget.isReadOnly) _buildNavigationButtons(theme, l10n),
+          _buildNavigationButtons(theme, l10n),
         ],
+      ),
+    );
+  }
+
+  /// FIX #2: Build workout overview for completed workouts
+  Widget _buildWorkoutOverview(ThemeData theme) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.scheduledWorkout.workout?.name ?? 'Workout'),
+            Text(
+              'Completed Workout',
+              style: theme.textTheme.bodySmall?.copyWith(color: Colors.green),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.summarize),
+            tooltip: 'Workout Summary',
+            onPressed: _showWorkoutSummary,
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Workout note
+            if (_workoutNoteController.text.isNotEmpty) ...[
+              Card(
+                color: theme.colorScheme.secondaryContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.notes,
+                            color: theme.colorScheme.onSecondaryContainer,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Workout Notes',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSecondaryContainer,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _workoutNoteController.text,
+                        style: TextStyle(
+                          color: theme.colorScheme.onSecondaryContainer,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            // Exercise summaries
+            ..._exercises.map((exercise) {
+              final exerciseNoteKey = _getExerciseNoteKey(
+                exercise.workoutExercise.id,
+              );
+              final exerciseNoteController =
+                  _exerciseNoteControllers[exerciseNoteKey];
+              final hasNote =
+                  exerciseNoteController != null &&
+                  exerciseNoteController.text.isNotEmpty;
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        exercise.exercise.name,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (exercise.exercise.description != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          exercise.exercise.description!,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+
+                      // Sets table header
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 8,
+                          horizontal: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceVariant,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(8),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 50,
+                              child: Text(
+                                'Set',
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                'Weight (kg)',
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                'Reps',
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Sets data
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: theme.dividerColor),
+                          borderRadius: const BorderRadius.vertical(
+                            bottom: Radius.circular(8),
+                          ),
+                        ),
+                        child: Column(
+                          children:
+                              exercise.templates.map((template) {
+                                final weightController = _getController(
+                                  exercise.workoutExercise.id,
+                                  template.setNumber,
+                                  'weight',
+                                );
+                                final repsController = _getController(
+                                  exercise.workoutExercise.id,
+                                  template.setNumber,
+                                  'reps',
+                                );
+
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                    horizontal: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      bottom: BorderSide(
+                                        color: theme.dividerColor.withOpacity(
+                                          0.5,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 50,
+                                        child: Text(
+                                          '${template.setNumber}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          weightController.text.isNotEmpty
+                                              ? '${weightController.text} kg'
+                                              : '--',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          repsController.text.isNotEmpty
+                                              ? '${repsController.text} reps'
+                                              : '--',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                        ),
+                      ),
+
+                      // Exercise note
+                      if (hasNote) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceVariant.withOpacity(
+                              0.5,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.note,
+                                size: 16,
+                                color: theme.colorScheme.primary,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  exerciseNoteController.text,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ],
+        ),
       ),
     );
   }
@@ -704,68 +971,6 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               ),
             ),
           const SizedBox(height: 24),
-
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Weight (kg)', style: theme.textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _getController(
-                      exerciseData.workoutExercise.id,
-                      currentTemplate.setNumber,
-                      'weight',
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    style: theme.textTheme.headlineMedium,
-                    textAlign: TextAlign.center,
-                    enabled: !widget.isReadOnly,
-                    decoration: const InputDecoration(
-                      hintText: '0.0',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Reps', style: theme.textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _getController(
-                      exerciseData.workoutExercise.id,
-                      currentTemplate.setNumber,
-                      'reps',
-                    ),
-                    keyboardType: TextInputType.number,
-                    style: theme.textTheme.headlineMedium,
-                    textAlign: TextAlign.center,
-                    enabled: !widget.isReadOnly,
-                    decoration: const InputDecoration(
-                      hintText: '0',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // FEATURE #1: Exercise Notes prominently displayed
-          const SizedBox(height: 24),
           Card(
             elevation: 2,
             child: Padding(
@@ -798,7 +1003,6 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       ),
                     ),
                     maxLines: 3,
-                    enabled: !widget.isReadOnly,
                   ),
                 ],
               ),
@@ -806,6 +1010,66 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           ),
 
           const SizedBox(height: 24),
+
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Weight (kg)', style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _getController(
+                      exerciseData.workoutExercise.id,
+                      currentTemplate.setNumber,
+                      'weight',
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    style: theme.textTheme.headlineMedium,
+                    textAlign: TextAlign.center,
+                    decoration: const InputDecoration(
+                      hintText: '0.0',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Reps', style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _getController(
+                      exerciseData.workoutExercise.id,
+                      currentTemplate.setNumber,
+                      'reps',
+                    ),
+                    keyboardType: TextInputType.number,
+                    style: theme.textTheme.headlineMedium,
+                    textAlign: TextAlign.center,
+                    decoration: const InputDecoration(
+                      hintText: '0',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -868,7 +1132,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              (isPast || widget.isReadOnly) &&
+                              isPast &&
                                       weightController.text.isNotEmpty &&
                                       repsController.text.isNotEmpty
                                   ? '${weightController.text} kg × ${repsController.text} reps'
@@ -877,8 +1141,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                   : 'Upcoming',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color:
-                                    (isPast || widget.isReadOnly) &&
-                                            weightController.text.isNotEmpty
+                                    isPast && weightController.text.isNotEmpty
                                         ? null
                                         : theme.colorScheme.onSurfaceVariant,
                               ),
@@ -981,7 +1244,6 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 border: OutlineInputBorder(),
               ),
               maxLines: 5,
-              enabled: !widget.isReadOnly,
             ),
             actions: [
               TextButton(
@@ -1017,17 +1279,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   ),
                 ),
                 subtitle: Text('${exercise.templates.length} sets'),
-                onTap:
-                    widget.isReadOnly
-                        ? null
-                        : () {
-                          _saveCurrentExercise();
-                          setState(() {
-                            _currentExerciseIndex = index;
-                            _currentSetIndex = 0;
-                          });
-                          Navigator.pop(context);
-                        },
+                onTap: () {
+                  _saveCurrentExercise();
+                  setState(() {
+                    _currentExerciseIndex = index;
+                    _currentSetIndex = 0;
+                  });
+                  Navigator.pop(context);
+                },
               );
             },
           ),
@@ -1035,7 +1294,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   }
 }
 
-/// FEATURE #2: Workout Summary Dialog
+/// Workout Summary Dialog - Using Column/Row layout
 class WorkoutSummaryDialog extends StatelessWidget {
   final String workoutName;
   final List<_ExerciseWithSets> exercises;
