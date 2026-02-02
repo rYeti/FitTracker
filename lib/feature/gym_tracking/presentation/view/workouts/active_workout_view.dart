@@ -12,7 +12,7 @@ class ActiveWorkoutScreen extends StatefulWidget {
   const ActiveWorkoutScreen({
     super.key,
     required this.scheduledWorkout,
-    required this.scheduledDate,
+    required this.scheduledDate, required bool isReadOnly,
   });
   @override
   State<ActiveWorkoutScreen> createState() => _ActiveWorkoutScreenState();

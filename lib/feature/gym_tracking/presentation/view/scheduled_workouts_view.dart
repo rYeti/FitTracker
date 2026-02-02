@@ -1,13 +1,13 @@
-
 import 'package:ForgeForm/core/app_database.dart';
 import 'package:ForgeForm/feature/gym_tracking/presentation/providers/workout_provider.dart';
 import 'package:ForgeForm/feature/gym_tracking/presentation/view/workouts/create_view.dart';
 import 'package:ForgeForm/feature/gym_tracking/presentation/view/workouts/workouts_list_view.dart';
 import 'package:ForgeForm/l10n/app_localizations.dart';
+import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/scheduled_workout_provider.dart'; // Import the new ActiveWorkoutScreen
-import 'workouts/active_workout_view.dart';
+import '../view/workouts/active_workout_view.dart';
 
 class ScheduledWorkoutsView extends StatefulWidget {
   const ScheduledWorkoutsView({super.key});
@@ -68,7 +68,7 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                     TextButton.icon(
                       icon: const Icon(Icons.calendar_today),
                       label: Text(
-                        '${selectedDate.year}-${selectedDate.month}-${selectedDate.day}',
+                        '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}',
                       ),
                       onPressed: () async {
                         final d = await showDatePicker(
@@ -77,13 +77,45 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                           firstDate: DateTime(2000),
                           lastDate: DateTime(2100),
                         );
-                        if (d != null) {
+                        if (d != null && d != selectedDate) {
                           setState(() => selectedDate = d);
                           await provider.loadForDate(d);
                         }
                       },
                     ),
                     const Spacer(),
+                    // Quick navigation buttons
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () async {
+                        setState(() {
+                          selectedDate = selectedDate.subtract(
+                            const Duration(days: 1),
+                          );
+                        });
+                        await provider.loadForDate(selectedDate);
+                      },
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        setState(() {
+                          selectedDate = DateTime.now();
+                        });
+                        await provider.loadForDate(selectedDate);
+                      },
+                      child: const Text('Today'),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_forward),
+                      onPressed: () async {
+                        setState(() {
+                          selectedDate = selectedDate.add(
+                            const Duration(days: 1),
+                          );
+                        });
+                        await provider.loadForDate(selectedDate);
+                      },
+                    ),
                     IconButton(
                       icon: const Icon(Icons.refresh),
                       onPressed: () => provider.refresh(),
@@ -96,7 +128,26 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                     provider.isRefreshing
                         ? const Center(child: CircularProgressIndicator())
                         : provider.scheduled.isEmpty
-                        ? Center(child: Text(l10n.noScheduledWorkouts))
+                        ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.fitness_center,
+                                size: 64,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                l10n.noScheduledWorkouts,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
                         : ListView.builder(
                           itemCount: provider.scheduled.length,
                           itemBuilder: (context, index) {
@@ -177,7 +228,14 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
               ? theme.colorScheme.surfaceVariant.withOpacity(0.5)
               : null,
       child: InkWell(
-        onTap: isRestDay || isCompleted ? null : () => _startWorkout(item),
+        onTap: () {
+          // FIX #4: Allow viewing completed workouts in read-only mode
+          if (isCompleted) {
+            _viewCompletedWorkout(item);
+          } else if (!isRestDay) {
+            _startWorkout(item);
+          }
+        },
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -187,7 +245,12 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                 children: [
                   Icon(
                     isRestDay ? Icons.hotel : Icons.fitness_center,
-                    color: isRestDay ? Colors.blue : Colors.orange,
+                    color:
+                        isRestDay
+                            ? Colors.blue
+                            : isCompleted
+                            ? Colors.green
+                            : Colors.orange,
                     size: 32,
                   ),
                   const SizedBox(width: 12),
@@ -245,15 +308,35 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                   ),
                 ),
               ],
-              if (!isRestDay && !isCompleted) ...[
+              if (!isRestDay) ...[
                 const SizedBox(height: 12),
-                ElevatedButton.icon(
-                  onPressed: () => _startWorkout(item),
-                  icon: const Icon(Icons.play_arrow),
-                  label: const Text('Start Workout'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          if (isCompleted) {
+                            _viewCompletedWorkout(item);
+                          } else {
+                            _startWorkout(item);
+                          }
+                        },
+                        icon: Icon(
+                          isCompleted ? Icons.visibility : Icons.play_arrow,
+                        ),
+                        label: Text(
+                          isCompleted ? 'View Workout' : 'Start Workout',
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 48),
+                          backgroundColor:
+                              isCompleted
+                                  ? theme.colorScheme.secondary
+                                  : theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ],
@@ -263,15 +346,16 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
     );
   }
 
-  /// Navigate to the new ActiveWorkoutScreen
+  /// Navigate to the ActiveWorkoutScreen for starting a workout
   Future<void> _startWorkout(ScheduledWorkoutWithDetails item) async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder:
-            ( context) => ActiveWorkoutScreen(
+            (context) => ActiveWorkoutScreen(
               scheduledWorkout: item,
               scheduledDate: selectedDate,
+              isReadOnly: false,
             ),
       ),
     ); // Refresh the list if the workout was completed
@@ -279,5 +363,20 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
       final provider = context.read<ScheduleWorkoutProvider>();
       provider.refresh();
     }
+  }
+
+  /// FIX #4: View completed workout in read-only mode
+  Future<void> _viewCompletedWorkout(ScheduledWorkoutWithDetails item) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => ActiveWorkoutScreen(
+              scheduledWorkout: item,
+              scheduledDate: selectedDate,
+              isReadOnly: true,
+            ),
+      ),
+    );
   }
 }
