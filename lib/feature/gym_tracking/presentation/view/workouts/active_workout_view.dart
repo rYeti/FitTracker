@@ -1,12 +1,11 @@
 import 'package:ForgeForm/core/app_database.dart';
-import 'package:ForgeForm/feature/gym_tracking/presentation/widgets/reset_timer_widget.dart';
 import 'package:ForgeForm/l10n/app_localizations.dart';
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/reset_timer_widget.dart';
 
-/// Completely fixed version addressing all 6 reported issues
+/// Enhanced version with visible exercise notes and workout review
 class ActiveWorkoutScreen extends StatefulWidget {
   final ScheduledWorkoutWithDetails scheduledWorkout;
   final DateTime scheduledDate;
@@ -27,11 +26,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   bool _isLoading = true;
   bool _isSaving = false;
   final TextEditingController _workoutNoteController = TextEditingController();
-  // FIX #1 & #2: Store controllers by UNIQUE composite key
-  // Key format: "scheduledWorkoutId_workoutExerciseId"
   final Map<String, TextEditingController> _exerciseNoteControllers = {};
-  // FIX #1: Store set controllers by UNIQUE composite key
-  // Key format: "scheduledWorkoutId_workoutExerciseId_setNumber_field"
   final Map<String, TextEditingController> _setControllers = {};
   List<_ExerciseWithSets> _exercises = [];
   @override
@@ -48,43 +43,23 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     super.dispose();
   }
 
-  /// FIX #1 & #2: Generate unique key for exercise notes
   String _getExerciseNoteKey(int workoutExerciseId) {
-    final scheduledId = widget.scheduledWorkout.scheduled?.id;
-
-    if (scheduledId == null) {
-      throw StateError('Scheduled workout ID is null');
-    }
+    final scheduledId = widget.scheduledWorkout.scheduled.id;
 
     return '${scheduledId}_$workoutExerciseId';
   }
 
-  /// FIX #1: Generate unique key for set controllers
   String _getSetControllerKey(
     int workoutExerciseId,
     int setNumber,
     String field,
   ) {
-    final scheduledId = widget.scheduledWorkout.scheduled.id;
-
-    return '${scheduledId}_${workoutExerciseId}_${setNumber}_$field';
-  }
-
-  String _getExerciseNoteController(int workoutExerciseId, String field) {
-    final scheduledId = widget.scheduledWorkout.scheduled.id;
-
-    return '${scheduledId}_${workoutExerciseId}_$field';
+    return '${widget.scheduledWorkout.scheduled.id}_{workoutExerciseId}_{setNumber}_field';
   }
 
   Future<void> _loadWorkoutData() async {
     print('=== LOADING WORKOUT DATA ===');
-    print('Scheduled Workout ID: ${widget.scheduledWorkout.scheduled.id}');
-    print(
-      'Template Workout ID: ${widget.scheduledWorkout.scheduled.templateWorkoutId}',
-    );
-    print('Scheduled Date: ${widget.scheduledDate}');
     setState(() => _isLoading = true);
-
     try {
       final db = context.read<AppDatabase>();
       final workout = widget.scheduledWorkout.workout;
@@ -93,25 +68,19 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         throw Exception('Workout not found');
       }
 
-      // Load workout note for THIS SPECIFIC DATE
       final scheduledWorkoutData =
           await (db.select(db.scheduledWorkoutTable)..where(
             (t) => t.id.equals(widget.scheduledWorkout.scheduled.id),
-          )).getSingle(); // Use getSingle since we know it exists
+          )).getSingle();
 
       if (scheduledWorkoutData.notes != null) {
         _workoutNoteController.text = scheduledWorkoutData.notes!;
       }
 
-      // Load exercises with templates
       final exercisesData = await db.workoutDao
           .getWorkoutExercisesWithTemplates(workout.id);
 
-      print('Found ${exercisesData.length} exercises in template');
-
-      // FIX #3: Handle empty exercises gracefully
       if (exercisesData.isEmpty) {
-        print('WARNING: No exercises found for workout ${workout.name}');
         setState(() {
           _exercises = [];
           _isLoading = false;
@@ -126,26 +95,15 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         final templates = exerciseData.$2;
         final workoutExercise = exerciseData.$3;
 
-        print(
-          'Processing exercise: ${exercise.name} (workoutExerciseId: ${workoutExercise.id})',
-        );
-
-        // FIX #6: Load previous sets from most recent COMPLETED workout
         final previousSets = await _loadPreviousWorkoutSets(
           db: db,
           workoutExerciseId: workoutExercise.id,
-        );
-
-        print(
-          'Found ${previousSets.length} previous sets for ${exercise.name}',
         );
 
         final previousSetsMap = {
           for (var set in previousSets) set.setNumber: set,
         };
 
-        // FIX #2 & #4: Load exercise note ONLY for this specific scheduled workout
-        // Use getSingleOrNull to avoid "too many elements" error
         final scheduledExercise =
             await (db.select(db.scheduledWorkoutExerciseTable)
                   ..where((t) => t.workoutExerciseId.equals(workoutExercise.id))
@@ -156,18 +114,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   ))
                 .getSingleOrNull();
 
-        print(
-          'Scheduled exercise exists: ${scheduledExercise != null}, notes: ${scheduledExercise?.notes}',
-        );
-
-        // FIX #2: Use unique key for exercise notes
         final exerciseNoteKey = _getExerciseNoteKey(workoutExercise.id);
         final noteController = TextEditingController(
           text: scheduledExercise?.notes ?? '',
         );
         _exerciseNoteControllers[exerciseNoteKey] = noteController;
 
-        // FIX #5: Load existing set data for THIS DATE
         final existingSets =
             scheduledExercise != null
                 ? await (db.select(db.workoutSetTable)
@@ -180,13 +132,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     .get()
                 : <WorkoutSetTableData>[];
 
-        print('Found ${existingSets.length} existing sets for this date');
-
         final existingSetsMap = {
           for (var set in existingSets) set.setNumber: set,
         };
 
-        // FIX #1 & #5: Initialize controllers with unique keys
         for (final template in templates) {
           final existingSet = existingSetsMap[template.setNumber];
 
@@ -201,26 +150,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             'reps',
           );
 
-          final exerciseNote = _getExerciseNoteController(
-            workoutExercise.id,
-            'note',
-          );
-
-          // FIX #5: Load existing data if available
           _setControllers[weightKey] = TextEditingController(
             text: existingSet?.weight?.toStringAsFixed(1) ?? '',
           );
 
           _setControllers[repsKey] = TextEditingController(
             text: existingSet?.reps?.toString() ?? '',
-          );
-
-          _exerciseNoteControllers[exerciseNote] = TextEditingController(
-            text: existingSet?.notes?.toString() ?? '',
-          );
-
-          print(
-            'Set ${template.setNumber}: weight=${existingSet?.weight}, reps=${existingSet?.reps}',
           );
         }
 
@@ -239,8 +174,6 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         _exercises = exercises;
         _isLoading = false;
       });
-
-      print('=== WORKOUT DATA LOADED SUCCESSFULLY ===');
     } catch (e, stackTrace) {
       print('ERROR loading workout data: $e');
       print('Stack trace: $stackTrace');
@@ -254,16 +187,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     }
   }
 
-  /// FIX #6: Load previous workout sets from the most recent COMPLETED workout
   Future<List<WorkoutSetTableData>> _loadPreviousWorkoutSets({
     required AppDatabase db,
     required int workoutExerciseId,
   }) async {
     try {
-      print(
-        'Looking for previous sets for workoutExerciseId: $workoutExerciseId',
-      );
-      // Find all previous scheduled workouts for the same template that are completed
       final previousScheduledWorkouts =
           await (db.select(db.scheduledWorkoutTable)
                 ..where(
@@ -281,20 +209,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 )
                 ..orderBy([(t) => OrderingTerm.desc(t.scheduledDate)]))
               .get();
-
-      print(
-        'Found ${previousScheduledWorkouts.length} previous completed workouts',
-      );
-
       if (previousScheduledWorkouts.isEmpty) {
         return [];
       }
 
-      // Get the most recent one
       final mostRecentWorkout = previousScheduledWorkouts.first;
-      print('Most recent workout date: ${mostRecentWorkout.scheduledDate}');
 
-      // Find the corresponding scheduled exercise
       final previousScheduledExercise =
           await (db.select(db.scheduledWorkoutExerciseTable)
                 ..where(
@@ -304,15 +224,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               .getSingleOrNull();
 
       if (previousScheduledExercise == null) {
-        print('No matching exercise found in previous workout');
         return [];
       }
 
-      print(
-        'Found previous scheduled exercise: ${previousScheduledExercise.id}',
-      );
-
-      // Get the sets
       final sets =
           await (db.select(db.workoutSetTable)
                 ..where(
@@ -322,8 +236,6 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 )
                 ..orderBy([(t) => OrderingTerm.asc(t.setNumber)]))
               .get();
-
-      print('Found ${sets.length} sets from previous workout');
 
       return sets;
     } catch (e) {
@@ -341,7 +253,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     final controller = _setControllers[key];
     if (controller == null) {
       print('WARNING: Controller not found for key: $key');
-      return TextEditingController(); // Return empty controller as fallback
+      return TextEditingController();
     }
 
     return controller;
@@ -354,24 +266,16 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     final exerciseData = _exercises[_currentExerciseIndex];
 
     try {
-      print('Saving exercise: ${exerciseData.exercise.name}');
-
-      // FIX #2: Get note controller using unique key
       final exerciseNoteKey = _getExerciseNoteKey(
         exerciseData.workoutExercise.id,
       );
       final noteController = _exerciseNoteControllers[exerciseNoteKey];
-
-      if (noteController == null) {
-        print('WARNING: Note controller not found for key: $exerciseNoteKey');
-      }
 
       int scheduledExerciseId;
 
       if (exerciseData.scheduledExerciseId != null) {
         scheduledExerciseId = exerciseData.scheduledExerciseId!;
 
-        // Update existing
         await (db.update(db.scheduledWorkoutExerciseTable)
           ..where((t) => t.id.equals(scheduledExerciseId))).write(
           ScheduledWorkoutExerciseTableCompanion(
@@ -382,10 +286,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             ),
           ),
         );
-
-        print('Updated existing scheduled exercise: $scheduledExerciseId');
       } else {
-        // Create new
         scheduledExerciseId = await db
             .into(db.scheduledWorkoutExerciseTable)
             .insert(
@@ -401,16 +302,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             );
 
         exerciseData.scheduledExerciseId = scheduledExerciseId;
-        print('Created new scheduled exercise: $scheduledExerciseId');
       }
 
-      // Delete existing sets for this exercise
       await (db.delete(db.workoutSetTable)..where(
         (t) => t.scheduledWorkoutExerciseId.equals(scheduledExerciseId),
       )).go();
 
-      // Save sets
-      int savedCount = 0;
       for (final template in exerciseData.templates) {
         final weightController = _getController(
           exerciseData.workoutExercise.id,
@@ -438,27 +335,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   isCompleted: const Value(true),
                 ),
               );
-          savedCount++;
         }
-      }
-
-      print('Saved $savedCount sets');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Exercise saved'),
-            duration: Duration(seconds: 1),
-          ),
-        );
       }
     } catch (e) {
       print('Error saving exercise: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error saving exercise: $e')));
-      }
     }
   }
 
@@ -487,13 +367,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         ),
       );
 
-      print('Workout completed successfully');
-
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Workout completed! 🎉')));
-        Navigator.pop(context, true);
+        // Show workout summary
+        final shouldReturn = await _showWorkoutSummary();
+        if (shouldReturn ?? true) {
+          Navigator.pop(context, true);
+        }
       }
     } catch (e) {
       print('Error completing workout: $e');
@@ -505,6 +384,25 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     } finally {
       setState(() => _isSaving = false);
     }
+  }
+
+  /// FEATURE #2: Show workout summary after completion
+  Future<bool?> _showWorkoutSummary() async {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => WorkoutSummaryDialog(
+            workoutName: widget.scheduledWorkout.workout?.name ?? 'Workout',
+            exercises: _exercises,
+            workoutNote: _workoutNoteController.text,
+            getController: _getController,
+            getExerciseNoteController: (workoutExerciseId) {
+              final key = _getExerciseNoteKey(workoutExerciseId);
+              return _exerciseNoteControllers[key];
+            },
+          ),
+    );
   }
 
   void _nextSet() {
@@ -553,7 +451,6 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       );
     }
 
-    // FIX #3: Show helpful message when no exercises
     if (_exercises.isEmpty) {
       return Scaffold(
         appBar: AppBar(
@@ -612,7 +509,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             Text(widget.scheduledWorkout.workout?.name ?? 'Workout'),
             if (widget.isReadOnly)
               Text(
-                'Completed Workout (Read-Only)',
+                'Completed Workout',
                 style: theme.textTheme.bodySmall?.copyWith(color: Colors.green),
               ),
           ],
@@ -623,6 +520,13 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               icon: const Icon(Icons.timer),
               tooltip: 'Rest Timer',
               onPressed: () => showRestTimer(context),
+            ),
+          // FEATURE #2: View workout summary button
+          if (widget.isReadOnly)
+            IconButton(
+              icon: const Icon(Icons.summarize),
+              tooltip: 'Workout Summary',
+              onPressed: _showWorkoutSummary,
             ),
           IconButton(
             icon: const Icon(Icons.note_add),
@@ -681,6 +585,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   Widget _buildSetFocusedView(_ExerciseWithSets exerciseData, ThemeData theme) {
     final currentTemplate = exerciseData.templates[_currentSetIndex];
     final previousSet = exerciseData.previousSets[currentTemplate.setNumber];
+    final exerciseNoteKey = _getExerciseNoteKey(
+      exerciseData.workoutExercise.id,
+    );
+    final exerciseNoteController = _exerciseNoteControllers[exerciseNoteKey];
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -736,7 +644,6 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           ),
           const SizedBox(height: 24),
 
-          // FIX #6: Display previous performance
           if (previousSet != null)
             Card(
               color: theme.colorScheme.surfaceVariant,
@@ -775,7 +682,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             )
           else
             Card(
-              color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+              color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -797,25 +704,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               ),
             ),
           const SizedBox(height: 24),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: _workoutNoteController,
-                    decoration: const InputDecoration(
-                      hintText: 'How was the feeling of the exercise',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
 
-          // Weight input
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -847,7 +736,6 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Reps input
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -870,6 +758,47 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       hintText: '0',
                       border: OutlineInputBorder(),
                     ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // FEATURE #1: Exercise Notes prominently displayed
+          const SizedBox(height: 24),
+          Card(
+            elevation: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.note_alt, color: theme.colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Exercise Notes',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: exerciseNoteController,
+                    decoration: InputDecoration(
+                      hintText: 'How did this exercise feel? Any observations?',
+                      border: const OutlineInputBorder(),
+                      filled: true,
+                      fillColor: theme.colorScheme.surfaceVariant.withOpacity(
+                        0.3,
+                      ),
+                    ),
+                    maxLines: 3,
+                    enabled: !widget.isReadOnly,
                   ),
                 ],
               ),
@@ -1102,6 +1031,332 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               );
             },
           ),
+    );
+  }
+}
+
+/// FEATURE #2: Workout Summary Dialog
+class WorkoutSummaryDialog extends StatelessWidget {
+  final String workoutName;
+  final List<_ExerciseWithSets> exercises;
+  final String workoutNote;
+  final TextEditingController? Function(
+    int workoutExerciseId,
+    int setNumber,
+    String field,
+  )
+  getController;
+  final TextEditingController? Function(int workoutExerciseId)
+  getExerciseNoteController;
+  const WorkoutSummaryDialog({
+    super.key,
+    required this.workoutName,
+    required this.exercises,
+    required this.workoutNote,
+    required this.getController,
+    required this.getExerciseNoteController,
+  });
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Dialog(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(28),
+                  topRight: Radius.circular(28),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.green, size: 32),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Workout Complete!',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(workoutName, style: theme.textTheme.bodyLarge),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context, true),
+                  ),
+                ],
+              ),
+            ),
+
+            // Scrollable content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Workout note
+                    if (workoutNote.isNotEmpty) ...[
+                      Card(
+                        color: theme.colorScheme.secondaryContainer,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.notes,
+                                    color:
+                                        theme.colorScheme.onSecondaryContainer,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Workout Notes',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color:
+                                              theme
+                                                  .colorScheme
+                                                  .onSecondaryContainer,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                workoutNote,
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSecondaryContainer,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    Text(
+                      'Exercises Summary',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Exercise summaries
+                    ...exercises.map((exercise) {
+                      final exerciseNoteController = getExerciseNoteController(
+                        exercise.workoutExercise.id,
+                      );
+                      final hasNote =
+                          exerciseNoteController != null &&
+                          exerciseNoteController.text.isNotEmpty;
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                exercise.exercise.name,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Sets table header
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                  horizontal: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.surfaceVariant,
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(8),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 50,
+                                      child: Text(
+                                        'Set',
+                                        style: theme.textTheme.labelMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        'Weight (kg)',
+                                        style: theme.textTheme.labelMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        'Reps',
+                                        style: theme.textTheme.labelMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // Sets data
+                              Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: theme.dividerColor),
+                                  borderRadius: const BorderRadius.vertical(
+                                    bottom: Radius.circular(8),
+                                  ),
+                                ),
+                                child: Column(
+                                  children:
+                                      exercise.templates.map((template) {
+                                        final weightController = getController(
+                                          exercise.workoutExercise.id,
+                                          template.setNumber,
+                                          'weight',
+                                        );
+                                        final repsController = getController(
+                                          exercise.workoutExercise.id,
+                                          template.setNumber,
+                                          'reps',
+                                        );
+
+                                        return Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 8,
+                                            horizontal: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            border: Border(
+                                              bottom: BorderSide(
+                                                color: theme.dividerColor
+                                                    .withOpacity(0.5),
+                                              ),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              SizedBox(
+                                                width: 50,
+                                                child: Text(
+                                                  '${template.setNumber}',
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: Text(
+                                                  weightController?.text ??
+                                                      '--',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: Text(
+                                                  repsController?.text ?? '--',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                ),
+                              ),
+
+                              // Exercise note
+                              if (hasNote) ...[
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.surfaceVariant
+                                        .withOpacity(0.5),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        Icons.note,
+                                        size: 16,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          exerciseNoteController!.text,
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ),
+            ),
+
+            // Footer
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context, true),
+                  icon: const Icon(Icons.check),
+                  label: const Text('Done'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
