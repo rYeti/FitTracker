@@ -65,13 +65,15 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     int setNumber,
     String field,
   ) {
-    final scheduledId = widget.scheduledWorkout.scheduled?.id;
-
-    if (scheduledId == null) {
-      throw StateError('Scheduled workout ID is null');
-    }
+    final scheduledId = widget.scheduledWorkout.scheduled.id;
 
     return '${scheduledId}_${workoutExerciseId}_${setNumber}_$field';
+  }
+
+  String _getExerciseNoteController(int workoutExerciseId, String field) {
+    final scheduledId = widget.scheduledWorkout.scheduled.id;
+
+    return '${scheduledId}_${workoutExerciseId}_$field';
   }
 
   Future<void> _loadWorkoutData() async {
@@ -199,6 +201,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             'reps',
           );
 
+          final exerciseNote = _getExerciseNoteController(
+            workoutExercise.id,
+            'note',
+          );
+
           // FIX #5: Load existing data if available
           _setControllers[weightKey] = TextEditingController(
             text: existingSet?.weight?.toStringAsFixed(1) ?? '',
@@ -206,6 +213,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
           _setControllers[repsKey] = TextEditingController(
             text: existingSet?.reps?.toString() ?? '',
+          );
+
+          _exerciseNoteControllers[exerciseNote] = TextEditingController(
+            text: existingSet?.notes?.toString() ?? '',
           );
 
           print(
@@ -764,7 +775,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             )
           else
             Card(
-              color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+              color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
