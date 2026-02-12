@@ -60,7 +60,6 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   }
 
   Future<void> _loadWorkoutData() async {
-    print('=== LOADING WORKOUT DATA ===');
     setState(() => _isLoading = true);
     try {
       final db = context.read<AppDatabase>();

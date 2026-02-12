@@ -240,7 +240,6 @@
     }
   },
   "addExercise": "Add Exercise",
-  "cancel": "Cancel",
   "editSet": "Edit Set {setNumber}",
   "@editSet": {
     "placeholders": {
@@ -265,5 +264,6 @@
   "addSet": "Add Set",
   "addButton": "Add",
   "saveButton": "Save",
-  "exercises": "Exercises"
+  "exercises": "Exercises",
+  "noWorkoutsFound": "No workouts found"
 }

@@ -137,7 +137,6 @@
     "addWorkout": "Training hinzufügen",
     "addRestDay": "Ruhetag hinzufügen",
     "workoutNameLabel": "Trainingsname",
-    "cancel": "Abbrechen",
     "add": "Hinzufügen",
     "selectStartDate": "Startdatum wählen",
     "back": "Zurück",
@@ -261,5 +260,6 @@
   "edit": "Bearbeiten",
   "addButton": "Hinzufügen",
   "saveButton": "Speichern",
-  "workoutSaved": "Training wurde gespeichert."
+  "workoutSaved": "Training wurde gespeichert.",
+  "noWorkoutsFound": "Kein Wokrout gefunden."
 }

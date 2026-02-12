@@ -113,6 +113,7 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
                             const Duration(days: 1),
                           );
                         });
+                        provider.refresh();
                         await provider.loadForDate(selectedDate);
                       },
                     ),
