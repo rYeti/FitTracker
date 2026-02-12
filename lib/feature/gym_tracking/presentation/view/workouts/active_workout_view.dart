@@ -998,7 +998,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       hintText: 'How did this exercise feel? Any observations?',
                       border: const OutlineInputBorder(),
                       filled: true,
-                      fillColor: theme.colorScheme.surfaceVariant.withOpacity(
+                      fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(
                         0.3,
                       ),
                     ),
