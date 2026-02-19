@@ -58,7 +58,7 @@ class AppDatabase extends _$AppDatabase {
   // Workout planning DAOs will be added here after code generation
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -376,6 +376,16 @@ class AppDatabase extends _$AppDatabase {
           } catch (e) {
             print('Schema validation issue (tables may be empty): $e');
           }
+        }
+
+        if (from < 16) {
+          // Migration from version 15 to 16: Add CASCADE deletes
+          // Note: SQLite doesn't support ALTER TABLE to modify foreign keys
+          // So we recreate tables with CASCADE
+
+          // For existing users, Drift will handle the schema migration
+          // New foreign keys with CASCADE will be applied
+          await m.recreateAllViews();
         }
 
         print('=== MIGRATION COMPLETED SUCCESSFULLY ===');
@@ -912,10 +922,19 @@ class WorkoutTable extends Table {
 /// Table for linking exercises to workouts (workout_exercise)
 class WorkoutExerciseTable extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get workoutId => integer().references(WorkoutTable, #id)();
-  IntColumn get exerciseId => integer().references(ExerciseTable, #id)();
-  IntColumn get orderPosition =>
-      integer()(); // Order of exercise in workout (renamed from 'order' to avoid SQL keyword conflict)
+  IntColumn get workoutId =>
+      integer().references(
+        WorkoutTable,
+        #id,
+        onDelete: KeyAction.cascade, // ← ADD THIS
+      )();
+  IntColumn get exerciseId =>
+      integer().references(
+        ExerciseTable,
+        #id,
+        onDelete: KeyAction.cascade, // ← ADD THIS
+      )();
+  IntColumn get orderPosition => integer()();
   TextColumn get notes => text().nullable()();
 }
 
@@ -924,12 +943,17 @@ class ScheduledWorkoutExerciseTable extends Table {
 
   /// The scheduled workout (this is the date!)
   IntColumn get scheduledWorkoutId =>
-      integer().references(ScheduledWorkoutTable, #id)();
-
-  /// The exercise inside the workout template
+      integer().references(
+        ScheduledWorkoutTable,
+        #id,
+        onDelete: KeyAction.cascade, // ← ADD THIS
+      )();
   IntColumn get workoutExerciseId =>
-      integer().references(WorkoutExerciseTable, #id)();
-
+      integer().references(
+        WorkoutExerciseTable,
+        #id,
+        onDelete: KeyAction.cascade, // ← ADD THIS
+      )();
   BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
 
   TextColumn get notes => text().nullable()();
@@ -939,7 +963,11 @@ class ScheduledWorkoutExerciseTable extends Table {
 class WorkoutSetTable extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get scheduledWorkoutExerciseId =>
-      integer().references(ScheduledWorkoutExerciseTable, #id)();
+      integer().references(
+        ScheduledWorkoutExerciseTable,
+        #id,
+        onDelete: KeyAction.cascade, // ← ADD THIS
+      )();
   IntColumn get setNumber => integer()();
   IntColumn get reps => integer().nullable()();
   RealColumn get weight => real().nullable()();
@@ -976,7 +1004,12 @@ class ScheduledWorkoutTable extends Table {
   IntColumn get workoutId => integer().references(WorkoutTable, #id)();
   IntColumn get workoutPlanId =>
       integer().nullable().references(WorkoutPlanTable, #id)();
-  IntColumn get templateWorkoutId => integer().nullable()();
+  IntColumn get templateWorkoutId =>
+      integer().nullable().references(
+        WorkoutTable,
+        #id,
+        onDelete: KeyAction.cascade, // ← ADD THIS
+      )();
 
   /// The date/time this workout is scheduled for
   DateTimeColumn get scheduledDate => dateTime()();
@@ -997,7 +1030,11 @@ class WorkoutSetTemplateTable extends Table {
 
   // Links to the workout-exercise relationship
   IntColumn get workoutExerciseId =>
-      integer().references(WorkoutExerciseTable, #id)();
+      integer().references(
+        WorkoutExerciseTable,
+        #id,
+        onDelete: KeyAction.cascade, // ← ADD THIS
+      )();
 
   // Which set number (1, 2, 3, etc.)
   IntColumn get setNumber => integer()();

@@ -3702,7 +3702,7 @@ class $WorkoutExerciseTableTable extends WorkoutExerciseTable
     type: DriftSqlType.int,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES workout_table (id)',
+      'REFERENCES workout_table (id) ON DELETE CASCADE',
     ),
   );
   static const VerificationMeta _exerciseIdMeta = const VerificationMeta(
@@ -3716,7 +3716,7 @@ class $WorkoutExerciseTableTable extends WorkoutExerciseTable
     type: DriftSqlType.int,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES exercise_table (id)',
+      'REFERENCES exercise_table (id) ON DELETE CASCADE',
     ),
   );
   static const VerificationMeta _orderPositionMeta = const VerificationMeta(
@@ -4104,6 +4104,9 @@ class $ScheduledWorkoutTableTable extends ScheduledWorkoutTable
     true,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES workout_table (id) ON DELETE CASCADE',
+    ),
   );
   static const VerificationMeta _scheduledDateMeta = const VerificationMeta(
     'scheduledDate',
@@ -4635,7 +4638,7 @@ class $ScheduledWorkoutExerciseTableTable extends ScheduledWorkoutExerciseTable
     type: DriftSqlType.int,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES scheduled_workout_table (id)',
+      'REFERENCES scheduled_workout_table (id) ON DELETE CASCADE',
     ),
   );
   static const VerificationMeta _workoutExerciseIdMeta = const VerificationMeta(
@@ -4649,7 +4652,7 @@ class $ScheduledWorkoutExerciseTableTable extends ScheduledWorkoutExerciseTable
     type: DriftSqlType.int,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES workout_exercise_table (id)',
+      'REFERENCES workout_exercise_table (id) ON DELETE CASCADE',
     ),
   );
   static const VerificationMeta _isCompletedMeta = const VerificationMeta(
@@ -4787,8 +4790,6 @@ class ScheduledWorkoutExerciseTableData extends DataClass
 
   /// The scheduled workout (this is the date!)
   final int scheduledWorkoutId;
-
-  /// The exercise inside the workout template
   final int workoutExerciseId;
   final bool isCompleted;
   final String? notes;
@@ -5030,7 +5031,7 @@ class $WorkoutSetTableTable extends WorkoutSetTable
         type: DriftSqlType.int,
         requiredDuringInsert: true,
         defaultConstraints: GeneratedColumn.constraintIsAlways(
-          'REFERENCES scheduled_workout_exercise_table (id)',
+          'REFERENCES scheduled_workout_exercise_table (id) ON DELETE CASCADE',
         ),
       );
   static const VerificationMeta _setNumberMeta = const VerificationMeta(
@@ -5883,7 +5884,7 @@ class $WorkoutSetTemplateTableTable extends WorkoutSetTemplateTable
     type: DriftSqlType.int,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES workout_exercise_table (id)',
+      'REFERENCES workout_exercise_table (id) ON DELETE CASCADE',
     ),
   );
   static const VerificationMeta _setNumberMeta = const VerificationMeta(
@@ -6304,6 +6305,70 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     workoutPlanWorkoutTable,
     workoutSetTemplateTable,
   ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'workout_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('workout_exercise_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'exercise_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('workout_exercise_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'workout_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('scheduled_workout_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'scheduled_workout_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate(
+          'scheduled_workout_exercise_table',
+          kind: UpdateKind.delete,
+        ),
+      ],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'workout_exercise_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate(
+          'scheduled_workout_exercise_table',
+          kind: UpdateKind.delete,
+        ),
+      ],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'scheduled_workout_exercise_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('workout_set_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'workout_exercise_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate('workout_set_template_table', kind: UpdateKind.delete),
+      ],
+    ),
+  ]);
 }
 
 typedef $$FoodItemTableCreateCompanionBuilder =
@@ -8403,34 +8468,6 @@ final class $$WorkoutTableTableReferences
   }
 
   static MultiTypedResultKey<
-    $ScheduledWorkoutTableTable,
-    List<ScheduledWorkoutTableData>
-  >
-  _scheduledWorkoutTableRefsTable(_$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(
-        db.scheduledWorkoutTable,
-        aliasName: $_aliasNameGenerator(
-          db.workoutTable.id,
-          db.scheduledWorkoutTable.workoutId,
-        ),
-      );
-
-  $$ScheduledWorkoutTableTableProcessedTableManager
-  get scheduledWorkoutTableRefs {
-    final manager = $$ScheduledWorkoutTableTableTableManager(
-      $_db,
-      $_db.scheduledWorkoutTable,
-    ).filter((f) => f.workoutId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(
-      _scheduledWorkoutTableRefsTable($_db),
-    );
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-
-  static MultiTypedResultKey<
     $WorkoutPlanWorkoutTableTable,
     List<WorkoutPlanWorkoutTableData>
   >
@@ -8530,32 +8567,6 @@ class $$WorkoutTableTableFilterComposer
                 $removeJoinBuilderFromRootComposer,
           ),
     );
-    return f(composer);
-  }
-
-  Expression<bool> scheduledWorkoutTableRefs(
-    Expression<bool> Function($$ScheduledWorkoutTableTableFilterComposer f) f,
-  ) {
-    final $$ScheduledWorkoutTableTableFilterComposer composer =
-        $composerBuilder(
-          composer: this,
-          getCurrentColumn: (t) => t.id,
-          referencedTable: $db.scheduledWorkoutTable,
-          getReferencedColumn: (t) => t.workoutId,
-          builder:
-              (
-                joinBuilder, {
-                $addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer,
-              }) => $$ScheduledWorkoutTableTableFilterComposer(
-                $db: $db,
-                $table: $db.scheduledWorkoutTable,
-                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                joinBuilder: joinBuilder,
-                $removeJoinBuilderFromRootComposer:
-                    $removeJoinBuilderFromRootComposer,
-              ),
-        );
     return f(composer);
   }
 
@@ -8707,32 +8718,6 @@ class $$WorkoutTableTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> scheduledWorkoutTableRefs<T extends Object>(
-    Expression<T> Function($$ScheduledWorkoutTableTableAnnotationComposer a) f,
-  ) {
-    final $$ScheduledWorkoutTableTableAnnotationComposer composer =
-        $composerBuilder(
-          composer: this,
-          getCurrentColumn: (t) => t.id,
-          referencedTable: $db.scheduledWorkoutTable,
-          getReferencedColumn: (t) => t.workoutId,
-          builder:
-              (
-                joinBuilder, {
-                $addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer,
-              }) => $$ScheduledWorkoutTableTableAnnotationComposer(
-                $db: $db,
-                $table: $db.scheduledWorkoutTable,
-                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                joinBuilder: joinBuilder,
-                $removeJoinBuilderFromRootComposer:
-                    $removeJoinBuilderFromRootComposer,
-              ),
-        );
-    return f(composer);
-  }
-
   Expression<T> workoutPlanWorkoutTableRefs<T extends Object>(
     Expression<T> Function($$WorkoutPlanWorkoutTableTableAnnotationComposer a)
     f,
@@ -8776,7 +8761,6 @@ class $$WorkoutTableTableTableManager
           WorkoutTableData,
           PrefetchHooks Function({
             bool workoutExerciseTableRefs,
-            bool scheduledWorkoutTableRefs,
             bool workoutPlanWorkoutTableRefs,
           })
         > {
@@ -8844,14 +8828,12 @@ class $$WorkoutTableTableTableManager
                       .toList(),
           prefetchHooksCallback: ({
             workoutExerciseTableRefs = false,
-            scheduledWorkoutTableRefs = false,
             workoutPlanWorkoutTableRefs = false,
           }) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
                 if (workoutExerciseTableRefs) db.workoutExerciseTable,
-                if (scheduledWorkoutTableRefs) db.scheduledWorkoutTable,
                 if (workoutPlanWorkoutTableRefs) db.workoutPlanWorkoutTable,
               ],
               addJoins: null,
@@ -8873,28 +8855,6 @@ class $$WorkoutTableTableTableManager
                                 table,
                                 p0,
                               ).workoutExerciseTableRefs,
-                      referencedItemsForCurrentItem:
-                          (item, referencedItems) => referencedItems.where(
-                            (e) => e.workoutId == item.id,
-                          ),
-                      typedResults: items,
-                    ),
-                  if (scheduledWorkoutTableRefs)
-                    await $_getPrefetchedData<
-                      WorkoutTableData,
-                      $WorkoutTableTable,
-                      ScheduledWorkoutTableData
-                    >(
-                      currentTable: table,
-                      referencedTable: $$WorkoutTableTableReferences
-                          ._scheduledWorkoutTableRefsTable(db),
-                      managerFromTypedResult:
-                          (p0) =>
-                              $$WorkoutTableTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).scheduledWorkoutTableRefs,
                       referencedItemsForCurrentItem:
                           (item, referencedItems) => referencedItems.where(
                             (e) => e.workoutId == item.id,
@@ -8945,7 +8905,6 @@ typedef $$WorkoutTableTableProcessedTableManager =
       WorkoutTableData,
       PrefetchHooks Function({
         bool workoutExerciseTableRefs,
-        bool scheduledWorkoutTableRefs,
         bool workoutPlanWorkoutTableRefs,
       })
     >;
@@ -10180,6 +10139,28 @@ final class $$ScheduledWorkoutTableTableReferences
     );
   }
 
+  static $WorkoutTableTable _templateWorkoutIdTable(_$AppDatabase db) =>
+      db.workoutTable.createAlias(
+        $_aliasNameGenerator(
+          db.scheduledWorkoutTable.templateWorkoutId,
+          db.workoutTable.id,
+        ),
+      );
+
+  $$WorkoutTableTableProcessedTableManager? get templateWorkoutId {
+    final $_column = $_itemColumn<int>('template_workout_id');
+    if ($_column == null) return null;
+    final manager = $$WorkoutTableTableTableManager(
+      $_db,
+      $_db.workoutTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_templateWorkoutIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
   static MultiTypedResultKey<
     $ScheduledWorkoutExerciseTableTable,
     List<ScheduledWorkoutExerciseTableData>
@@ -10222,11 +10203,6 @@ class $$ScheduledWorkoutTableTableFilterComposer
   });
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get templateWorkoutId => $composableBuilder(
-    column: $table.templateWorkoutId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10296,6 +10272,29 @@ class $$ScheduledWorkoutTableTableFilterComposer
     return composer;
   }
 
+  $$WorkoutTableTableFilterComposer get templateWorkoutId {
+    final $$WorkoutTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.templateWorkoutId,
+      referencedTable: $db.workoutTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WorkoutTableTableFilterComposer(
+            $db: $db,
+            $table: $db.workoutTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   Expression<bool> scheduledWorkoutExerciseTableRefs(
     Expression<bool> Function(
       $$ScheduledWorkoutExerciseTableTableFilterComposer f,
@@ -10337,11 +10336,6 @@ class $$ScheduledWorkoutTableTableOrderingComposer
   });
   ColumnOrderings<int> get id => $composableBuilder(
     column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get templateWorkoutId => $composableBuilder(
-    column: $table.templateWorkoutId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -10410,6 +10404,29 @@ class $$ScheduledWorkoutTableTableOrderingComposer
     );
     return composer;
   }
+
+  $$WorkoutTableTableOrderingComposer get templateWorkoutId {
+    final $$WorkoutTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.templateWorkoutId,
+      referencedTable: $db.workoutTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WorkoutTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.workoutTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$ScheduledWorkoutTableTableAnnotationComposer
@@ -10423,11 +10440,6 @@ class $$ScheduledWorkoutTableTableAnnotationComposer
   });
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<int> get templateWorkoutId => $composableBuilder(
-    column: $table.templateWorkoutId,
-    builder: (column) => column,
-  );
 
   GeneratedColumn<DateTime> get scheduledDate => $composableBuilder(
     column: $table.scheduledDate,
@@ -10491,6 +10503,29 @@ class $$ScheduledWorkoutTableTableAnnotationComposer
     return composer;
   }
 
+  $$WorkoutTableTableAnnotationComposer get templateWorkoutId {
+    final $$WorkoutTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.templateWorkoutId,
+      referencedTable: $db.workoutTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WorkoutTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.workoutTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   Expression<T> scheduledWorkoutExerciseTableRefs<T extends Object>(
     Expression<T> Function(
       $$ScheduledWorkoutExerciseTableTableAnnotationComposer a,
@@ -10537,6 +10572,7 @@ class $$ScheduledWorkoutTableTableTableManager
           PrefetchHooks Function({
             bool workoutId,
             bool workoutPlanId,
+            bool templateWorkoutId,
             bool scheduledWorkoutExerciseTableRefs,
           })
         > {
@@ -10615,6 +10651,7 @@ class $$ScheduledWorkoutTableTableTableManager
           prefetchHooksCallback: ({
             workoutId = false,
             workoutPlanId = false,
+            templateWorkoutId = false,
             scheduledWorkoutExerciseTableRefs = false,
           }) {
             return PrefetchHooks(
@@ -10664,6 +10701,21 @@ class $$ScheduledWorkoutTableTableTableManager
                             referencedColumn:
                                 $$ScheduledWorkoutTableTableReferences
                                     ._workoutPlanIdTable(db)
+                                    .id,
+                          )
+                          as T;
+                }
+                if (templateWorkoutId) {
+                  state =
+                      state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.templateWorkoutId,
+                            referencedTable:
+                                $$ScheduledWorkoutTableTableReferences
+                                    ._templateWorkoutIdTable(db),
+                            referencedColumn:
+                                $$ScheduledWorkoutTableTableReferences
+                                    ._templateWorkoutIdTable(db)
                                     .id,
                           )
                           as T;
@@ -10718,6 +10770,7 @@ typedef $$ScheduledWorkoutTableTableProcessedTableManager =
       PrefetchHooks Function({
         bool workoutId,
         bool workoutPlanId,
+        bool templateWorkoutId,
         bool scheduledWorkoutExerciseTableRefs,
       })
     >;
