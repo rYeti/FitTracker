@@ -446,26 +446,13 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
 
   /// Delete workout from database
   Future<void> _deleteWorkout(int workoutId) async {
-    try {
-      final db = context.read<AppDatabase>();
-      // Delete the workout (cascade should handle related records)
-      await (db.delete(db.workoutTable)
-        ..where((t) => t.id.equals(workoutId))).go();
+    final db = context.read<AppDatabase>();
 
-      // Refresh the list
-      if (mounted) {
-        context.read<WorkoutProvider>().loadTemplates();
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Workout deleted')));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error deleting workout: $e')));
-      }
-    }
+    await (db.delete(db.workoutTable)
+      ..where((t) => t.id.equals(workoutId))).go();
+
+    // Refresh UI
+    context.read<WorkoutProvider>().loadTemplates();
   }
 
   @override
