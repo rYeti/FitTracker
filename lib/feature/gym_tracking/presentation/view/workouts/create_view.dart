@@ -208,7 +208,9 @@ class _CreateWorkoutViewState extends State<CreateWorkoutView> {
       context,
     ).showSnackBar(SnackBar(content: Text(l10n.workoutSavedSuccessfully)));
     await Future.delayed(Duration(milliseconds: 500));
-    Navigator.pop(context);
+    if (context.mounted) {
+      Navigator.of(context).pop(true); // THIS is the missing part
+    }
   }
 
   @override
