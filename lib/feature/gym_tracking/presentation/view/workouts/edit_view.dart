@@ -3,7 +3,6 @@ import 'package:ForgeForm/core/di/service_locator.dart';
 import 'package:ForgeForm/feature/gym_tracking/presentation/view/workouts/edit_single_view.dart';
 import 'package:ForgeForm/feature/gym_tracking/presentation/view/workouts/workouts_list_view.dart';
 import 'package:ForgeForm/feature/gym_tracking/presentation/widgets/exercise_selection_modal.dart';
-import 'package:ForgeForm/feature/workout_planning/data/models/exercise.dart';
 import 'package:ForgeForm/feature/workout_planning/data/models/workout.dart';
 import 'package:ForgeForm/feature/workout_planning/data/models/workout_exercise.dart';
 import 'package:ForgeForm/feature/workout_planning/data/models/workout_plan.dart';

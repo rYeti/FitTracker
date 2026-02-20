@@ -1262,78 +1262,78 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
 
   // Get a specific workout with all related data
   Future<Workout?> getCompleteWorkoutById(int id) async {
+    // 1️⃣ Load workout row
     final workoutData =
         await (select(workoutTable)
           ..where((w) => w.id.equals(id))).getSingleOrNull();
 
     if (workoutData == null) return null;
 
-    // Get all exercises for this workout
+    // 2️⃣ Load exercise instances for this workout
     final exerciseInstances =
         await (select(workoutExerciseTable)
               ..where((we) => we.workoutId.equals(id))
-              ..orderBy([(we) => OrderingTerm.asc(we.orderPosition)]))
+              ..orderBy([(we) => OrderingTerm(expression: we.orderPosition)]))
             .get();
 
     final workoutExercises = <WorkoutExercise>[];
 
-    // For each exercise instance, get the exercise details and sets
+    // 3️⃣ For each exercise instance
     for (final exerciseInstance in exerciseInstances) {
-      // Get the exercise details
-      final exerciseDao = db.exerciseDao;
-      final exerciseData = await exerciseDao.getExerciseById(
-        exerciseInstance.exerciseId,
-      );
-      final exercise =
-          exerciseData != null ? exerciseDao.entityToModel(exerciseData) : null;
+      // 🔹 Load master exercise
+      final exerciseRow =
+          await (select(exerciseTable)..where(
+            (e) => e.id.equals(exerciseInstance.exerciseId),
+          )).getSingleOrNull();
 
-      // Get the sets for this exercise instance
-      final sets =
+      if (exerciseRow == null) continue;
+
+      final exerciseModel = db.exerciseDao.entityToModel(exerciseRow);
+
+      // 🔹 Load sets for this exercise instance
+      final setRows =
           await (select(workoutSetTable)
                 ..where(
                   (s) =>
                       s.scheduledWorkoutExerciseId.equals(exerciseInstance.id),
                 )
-                ..orderBy([(s) => OrderingTerm.asc(s.setNumber)]))
+                ..orderBy([(s) => OrderingTerm(expression: s.setNumber)]))
               .get();
 
       final workoutSets =
-          sets
-              .map(
-                (set) => WorkoutSet(
-                  id: set.id,
-                  exerciseInstanceId: set.scheduledWorkoutExerciseId,
-                  setNumber: set.setNumber,
-                  reps: set.reps,
-                  weight: set.weight,
-                  weightUnit: set.weightUnit,
-                  durationSeconds: set.durationSeconds,
-                  isCompleted: set.isCompleted,
-                  notes: set.notes,
-                ),
-              )
-              .toList();
+          setRows.map((set) {
+            return WorkoutSet(
+              id: set.id,
+              exerciseInstanceId: set.scheduledWorkoutExerciseId,
+              setNumber: set.setNumber,
+              reps: set.reps,
+              weight: set.weight,
+              weightUnit: set.weightUnit,
+              durationSeconds: set.durationSeconds,
+              isCompleted: set.isCompleted,
+              notes: set.notes,
+            );
+          }).toList();
 
-      // Create the workout exercise
+      // 🔹 Build workout exercise object
       workoutExercises.add(
         WorkoutExercise(
           id: exerciseInstance.id,
           workoutId: exerciseInstance.workoutId,
           exerciseId: exerciseInstance.exerciseId,
           orderPosition: exerciseInstance.orderPosition,
-          exercise: exercise,
+          exercise: exerciseModel,
           sets: workoutSets,
           notes: exerciseInstance.notes,
         ),
       );
     }
 
-    // Create and return the complete workout
+    // 4️⃣ Return fully built workout
     return Workout(
       id: workoutData.id,
       name: workoutData.name,
       description: workoutData.description,
-      difficulty: WorkoutDifficulty.values[workoutData.difficulty],
       estimatedDurationMinutes: workoutData.estimatedDurationMinutes,
       isTemplate: workoutData.isTemplate,
       scheduledDate: workoutData.scheduledDate,
@@ -1387,9 +1387,9 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
 
   // Save a complete workout with exercises and sets
   Future<int> saveCompleteWorkout(Workout workout) async {
-    // Start a transaction
     return transaction(() async {
-      // 1. Save the workout
+      int workoutId;
+
       final workoutCompanion = WorkoutTableCompanion(
         id: workout.id == null ? const Value.absent() : Value(workout.id!),
         name: Value(workout.name),
@@ -1401,36 +1401,37 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
         completedDate: Value(workout.completedDate),
       );
 
-      final workoutId = await into(
-        workoutTable,
-      ).insert(workoutCompanion, mode: InsertMode.insertOrReplace);
+      // 🔹 1️⃣ Insert or Update workout SAFELY
+      if (workout.id == null) {
+        // New workout → insert
+        workoutId = await into(workoutTable).insert(workoutCompanion);
+      } else {
+        // Existing workout → update (NOT replace)
+        await (update(workoutTable)
+          ..where((w) => w.id.equals(workout.id!))).write(workoutCompanion);
 
-      // If we're updating an existing workout, delete old exercises and sets
+        workoutId = workout.id!;
+      }
+
+      // 🔹 2️⃣ If updating, remove old exercises & sets
       if (workout.id != null) {
-        // Get existing exercise instances
         final existingExercises =
             await (select(workoutExerciseTable)
-              ..where((we) => we.workoutId.equals(workout.id!))).get();
+              ..where((we) => we.workoutId.equals(workoutId))).get();
 
-        // Delete sets for each exercise instance
         for (final exercise in existingExercises) {
           await (delete(workoutSetTable)..where(
             (s) => s.scheduledWorkoutExerciseId.equals(exercise.id),
           )).go();
         }
 
-        // Delete exercise instances
         await (delete(workoutExerciseTable)
-          ..where((we) => we.workoutId.equals(workout.id!))).go();
+          ..where((we) => we.workoutId.equals(workoutId))).go();
       }
 
-      // 2. Save each exercise and its sets
-      for (int i = 0; i < workout.exercises.length; i++) {
-        final exercise = workout.exercises[i];
-
-        // Save the exercise instance
+      // 🔹 3️⃣ Save exercises + sets
+      for (final exercise in workout.exercises) {
         final exerciseCompanion = WorkoutExerciseTableCompanion(
-          id: exercise.id == null ? const Value.absent() : Value(exercise.id!),
           workoutId: Value(workoutId),
           exerciseId: Value(exercise.exerciseId),
           orderPosition: Value(exercise.orderPosition),
@@ -1439,12 +1440,11 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
 
         final exerciseInstanceId = await into(
           workoutExerciseTable,
-        ).insert(exerciseCompanion, mode: InsertMode.insertOrReplace);
+        ).insert(exerciseCompanion);
 
-        // 3. Save each set for this exercise
+        // Save sets
         for (final set in exercise.sets) {
           final setCompanion = WorkoutSetTableCompanion(
-            id: set.id == null ? const Value.absent() : Value(set.id!),
             scheduledWorkoutExerciseId: Value(exerciseInstanceId),
             setNumber: Value(set.setNumber),
             reps: Value(set.reps),
@@ -1455,17 +1455,13 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
             notes: Value(set.notes),
           );
 
-          await into(
-            workoutSetTable,
-          ).insert(setCompanion, mode: InsertMode.insertOrReplace);
+          await into(workoutSetTable).insert(setCompanion);
         }
 
-        // 4. Update templates to match the sets
-        // First, delete existing templates for this exercise instance
+        // 🔹 4️⃣ Rebuild templates
         await (delete(workoutSetTemplateTable)
           ..where((t) => t.workoutExerciseId.equals(exerciseInstanceId))).go();
 
-        // Then create new templates based on the sets
         for (final set in exercise.sets) {
           final templateCompanion = WorkoutSetTemplateTableCompanion(
             workoutExerciseId: Value(exerciseInstanceId),

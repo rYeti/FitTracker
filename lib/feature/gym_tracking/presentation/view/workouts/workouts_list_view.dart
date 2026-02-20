@@ -20,31 +20,14 @@ class WorkoutsListView extends StatefulWidget {
 }
 
 class WorkoutsListViewState extends State<WorkoutsListView> {
-  List<WorkoutPlan>? _plans;
-  bool _loading = true;
   int? _activePlanId;
   @override
   void initState() {
     super.initState();
-    _loadPlans();
-  }
-
-  Future<void> _loadPlans() async {
-    final dao = sl<AppDatabase>().workoutPlanDao;
-    final planData = await dao.getAllPlans();
-
-    final plans = await Future.wait(
-      planData.map((p) => dao.getCompletePlanById(p.id)),
-    );
-
-    setState(() {
-      _plans = plans.whereType<WorkoutPlan>().toList();
-      _loading = false;
-
-      // Set active plan
-      final activePlan = _plans!.where((p) => p.isActive).firstOrNull;
-      _activePlanId = activePlan?.id;
+    Future.microtask(() {
+      context.read<WorkoutProvider>().loadCompletePlans();
     });
+    super.initState();
   }
 
   Future<void> _setActivePlan(int planId) async {
@@ -181,8 +164,6 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
               const SnackBar(content: Text('Workouts imported successfully')),
             );
           }
-
-          _loadPlans();
         }
       } catch (e) {
         if (mounted) {
@@ -195,7 +176,7 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
   }
 
   /// Show dialog to edit workout name
-  Future<void> _showEditNameDialog(WorkoutTableData workout) async {
+  Future<void> _showEditNameDialog(WorkoutPlan workout) async {
     final controller = TextEditingController(text: workout.name);
     final result = await showDialog<String>(
       context: context,
@@ -238,16 +219,16 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
   }
 
   /// Update workout name in database
-  Future<void> _updateWorkoutName(int workoutId, String newName) async {
+  Future<void> _updateWorkoutName(int? workoutId, String newName) async {
     try {
       final db = context.read<AppDatabase>();
       await (db.update(db.workoutTable)..where(
-        (t) => t.id.equals(workoutId),
+        (t) => t.id.equals(workoutId!),
       )).write(WorkoutTableCompanion(name: drift.Value(newName)));
 
       // Refresh the list
       if (mounted) {
-        context.read<WorkoutProvider>().loadTemplates();
+        context.read<WorkoutProvider>().loadCompletePlans();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Workout renamed to "$newName"')),
         );
@@ -262,13 +243,11 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
   }
 
   /// Show dialog to edit workout description and duration
-  Future<void> _showEditDetailsDialog(WorkoutTableData workout) async {
+  Future<void> _showEditDetailsDialog(WorkoutPlanTableData workout) async {
     final descriptionController = TextEditingController(
       text: workout.description ?? '',
     );
-    final durationController = TextEditingController(
-      text: workout.estimatedDurationMinutes.toString(),
-    );
+
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder:
@@ -287,14 +266,6 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
                     maxLines: 3,
                   ),
                   const SizedBox(height: 16),
-                  TextField(
-                    controller: durationController,
-                    decoration: const InputDecoration(
-                      labelText: 'Estimated Duration (minutes)',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
                 ],
               ),
             ),
@@ -302,24 +273,6 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  final duration = int.tryParse(durationController.text);
-                  if (duration != null && duration > 0) {
-                    Navigator.pop(context, {
-                      'description': descriptionController.text.trim(),
-                      'duration': duration,
-                    });
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please enter a valid duration'),
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Save'),
               ),
             ],
           ),
@@ -349,7 +302,7 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
 
       // Refresh the list
       if (mounted) {
-        context.read<WorkoutProvider>().loadTemplates();
+        context.read<WorkoutProvider>().loadCompletePlans();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Workout details updated')),
         );
@@ -364,7 +317,7 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
   }
 
   /// Show bottom sheet with edit options
-  void _showEditOptions(WorkoutTableData workout) {
+  void _showEditOptions(WorkoutPlan workout) {
     showModalBottomSheet(
       context: context,
       builder:
@@ -391,7 +344,6 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
                         builder: (_) => EditWorkoutView(planId: workout.id),
                       ),
                     ).then((result) {
-                      _loadPlans();
                       if (result == true) {
                         Navigator.pop(context, true);
                       }
@@ -417,7 +369,7 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
   }
 
   /// Show delete confirmation dialog
-  Future<void> _showDeleteConfirmation(WorkoutTableData workout) async {
+  Future<void> _showDeleteConfirmation(WorkoutPlan workout) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -445,14 +397,14 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
   }
 
   /// Delete workout from database
-  Future<void> _deleteWorkout(int workoutId) async {
+  Future<void> _deleteWorkout(int? workoutId) async {
     final db = context.read<AppDatabase>();
 
     await (db.delete(db.workoutTable)
-      ..where((t) => t.id.equals(workoutId))).go();
+      ..where((t) => t.id.equals(workoutId!))).go();
 
     // Refresh UI
-    context.read<WorkoutProvider>().loadTemplates();
+    context.read<WorkoutProvider>().loadCompletePlans();
   }
 
   @override
@@ -462,7 +414,10 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
       appBar: AppBar(title: Text(l10n.workouts)),
       body: Consumer<WorkoutProvider>(
         builder: (context, provider, _) {
-          if (provider.templates.isEmpty) {
+          if (provider.loading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (provider.plans.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -486,7 +441,7 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
                         MaterialPageRoute(builder: (_) => CreateWorkoutView()),
                       );
                       if (mounted) {
-                        provider.loadTemplates();
+                        provider.loadCompletePlans();
                       }
                     },
                     icon: const Icon(Icons.add),
@@ -499,10 +454,9 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: provider.templates.length,
+            itemCount: provider.plans.length,
             itemBuilder: (context, index) {
-              final workout = provider.templates[index];
-              // final plan = _plans![index];
+              final plan = provider.plans[index];
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: ListTile(
@@ -516,7 +470,7 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
                     ),
                   ),
                   title: Text(
-                    workout.name,
+                    plan.name,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
@@ -525,38 +479,29 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (workout.description != null) ...[
+                      if (plan.description != null) ...[
                         const SizedBox(height: 4),
                         Text(
-                          workout.description!,
+                          plan.description!,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
                       const SizedBox(height: 4),
-                      Text(
-                        '${workout.estimatedDurationMinutes} minutes',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
                     ],
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (_activePlanId == workout.id)
+                      if (_activePlanId == plan.id)
                         const Icon(Icons.check_circle, color: Colors.green),
                       TextButton(
-                        onPressed: () => _setActivePlan(workout.id!),
+                        onPressed: () => _setActivePlan(plan.id!),
                         child: Text(
-                          _activePlanId == workout.id ? 'Active' : 'Set Active',
+                          _activePlanId == plan.id ? 'Active' : 'Set Active',
                           style: TextStyle(
                             color:
-                                _activePlanId == workout.id
-                                    ? Colors.green
-                                    : null,
+                                _activePlanId == plan.id ? Colors.green : null,
                           ),
                         ),
                       ),
@@ -565,13 +510,13 @@ class WorkoutsListViewState extends State<WorkoutsListView> {
                       IconButton(
                         icon: const Icon(Icons.more_vert),
                         tooltip: 'More Options',
-                        onPressed: () => _showEditOptions(workout),
+                        onPressed: () => _showEditOptions(plan),
                       ),
                     ],
                   ),
                   onTap: () {
                     // Show workout details or navigate to edit view
-                    _showEditOptions(workout);
+                    _showEditOptions(plan);
                   },
                 ),
               );
