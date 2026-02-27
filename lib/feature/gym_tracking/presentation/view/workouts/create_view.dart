@@ -72,131 +72,120 @@ class _CreateWorkoutViewState extends State<CreateWorkoutView> {
   Future<void> _saveWorkout() async {
     final l10n = AppLocalizations.of(context)!;
     final db = context.read<AppDatabase>();
+
+    // Map to hold template IDs for workouts
     final Map<String, int> workoutMap = {};
 
-    final workouts =
-        _cyclePattern.where((name) => name != "Rest Day").toSet().toList();
-
-    await (db.update(db.workoutPlanTable)..where(
-      (t) => t.isActive.equals(true),
-    )).write(WorkoutPlanTableCompanion(isActive: drift.Value(false)));
-
-    final subWorkout = WorkoutPlanTableCompanion.insert(
-      name: _workoutNameController.text.trim(),
-      cyclePatternJson: jsonEncode(_cyclePattern),
-      startDate: _startDate!,
-      isActive: const drift.Value(true),
-    );
-    final planId = await db.into(db.workoutPlanTable).insert(subWorkout);
-
+    // Step 1️⃣: Save / ensure Rest Day template exists
     final existingRestDay = await db.workoutDao.getWorkoutByNameOrNull(
       "Rest Day",
     );
     if (existingRestDay == null) {
-      final workout = Workout(
+      final restWorkout = Workout(
         name: "Rest Day",
         isTemplate: true,
         exercises: [],
         difficulty: WorkoutDifficulty.beginner,
         estimatedDurationMinutes: 0,
       );
-      final savedWorkout = await db.workoutDao.saveCompleteWorkout(workout);
-      workoutMap["Rest Day"] = savedWorkout;
+      final restId = await db.workoutDao.saveCompleteWorkout(restWorkout);
+      workoutMap["Rest Day"] = restId;
     } else {
       workoutMap["Rest Day"] = existingRestDay.id;
     }
 
-    for (var workoutName in workouts) {
-      // Get exercises for this workout, or empty list if none added
+    // Step 2️⃣: Deactivate current active plans
+    await (db.update(db.workoutPlanTable)..where(
+      (t) => t.isActive.equals(true),
+    )).write(WorkoutPlanTableCompanion(isActive: const drift.Value(false)));
+
+    // Step 3️⃣: Create new workout plan
+    final planCompanion = WorkoutPlanTableCompanion.insert(
+      name: _workoutNameController.text.trim(),
+      cyclePatternJson: jsonEncode(_cyclePattern),
+      startDate: _startDate!,
+      isActive: const drift.Value(true),
+    );
+    final planId = await db.into(db.workoutPlanTable).insert(planCompanion);
+
+    // Step 4️⃣: Save templates for workouts (skip Rest Day)
+    for (var workoutName
+        in _cyclePattern.where((w) => w != "Rest Day").toSet()) {
       final exercises = _workoutExercises[workoutName] ?? [];
 
-      final workout = Workout(
+      final workoutTemplate = Workout(
         name: workoutName!,
         isTemplate: true,
-        exercises: [], // Will be populated after saving
+        exercises: [], // we save exercises separately
         difficulty: WorkoutDifficulty.intermediate,
         estimatedDurationMinutes: 60,
       );
-      final savedWorkout = await db.workoutDao.saveCompleteWorkout(workout);
-      workoutMap[workoutName] = savedWorkout;
 
-      // Link the newly created workout to the plan so it shows up in plan views
-      try {
-        await db
-            .into(db.workoutPlanWorkoutTable)
-            .insert(
-              WorkoutPlanWorkoutTableCompanion(
-                planId: drift.Value(planId),
-                workoutId: drift.Value(savedWorkout),
-              ),
-            );
-        print('Created junction: plan $planId -> workout $savedWorkout');
-      } catch (e) {
-        print(
-          'Failed to create plan->workout junction for plan $planId workout $savedWorkout: $e',
-        );
-      }
+      // Save workout template
+      final templateId = await db.workoutDao.saveCompleteWorkout(
+        workoutTemplate,
+      );
+      workoutMap[workoutName] = templateId;
 
-      // Now add exercises to the saved workout if any were selected
-      if (exercises.isNotEmpty) {
-        for (int i = 0; i < exercises.length; i++) {
-          final (exercise, sets) = exercises[i];
+      // Link template to plan
+      await db
+          .into(db.workoutPlanWorkoutTable)
+          .insert(
+            WorkoutPlanWorkoutTableCompanion(
+              planId: drift.Value(planId),
+              workoutId: drift.Value(templateId),
+            ),
+          );
 
-          // Save exercise if it doesn't have an ID yet
-          int exerciseId;
-          if (exercise.id == null) {
-            exerciseId = await db.exerciseDao.saveExercise(
+      // Step 4a️⃣: Save exercises for this template
+      for (int i = 0; i < exercises.length; i++) {
+        final (exercise, sets) = exercises[i];
+
+        final exerciseId =
+            exercise.id ??
+            await db.exerciseDao.saveExercise(
               db.exerciseDao.modelToEntity(exercise),
             );
-          } else {
-            exerciseId = exercise.id!;
-          }
 
-          final workoutExerciseId = await db
-              .into(db.workoutExerciseTable)
-              .insert(
-                WorkoutExerciseTableCompanion.insert(
-                  workoutId: savedWorkout,
-                  exerciseId: exerciseId,
-                  orderPosition: i,
+        final workoutExerciseId = await db
+            .into(db.workoutExerciseTable)
+            .insert(
+              WorkoutExerciseTableCompanion.insert(
+                workoutId: templateId,
+                exerciseId: exerciseId,
+                orderPosition: i,
+              ),
+            );
+
+        if (sets.isNotEmpty) {
+          await db.batch((batch) {
+            for (int setIndex = 0; setIndex < sets.length; setIndex++) {
+              final set = sets[setIndex];
+              batch.insert(
+                db.workoutSetTemplateTable,
+                WorkoutSetTemplateTableCompanion.insert(
+                  workoutExerciseId: workoutExerciseId,
+                  setNumber: set.setNumber,
+                  targetReps: set.targetReps,
+                  orderPosition: setIndex,
                 ),
               );
-
-          // Save set templates for this exercise
-          final exerciseSets = sets;
-          if (exerciseSets.isNotEmpty) {
-            await db.batch((batch) {
-              for (
-                int setIndex = 0;
-                setIndex < exerciseSets.length;
-                setIndex++
-              ) {
-                final set = exerciseSets[setIndex];
-                batch.insert(
-                  db.workoutSetTemplateTable,
-                  WorkoutSetTemplateTableCompanion.insert(
-                    workoutExerciseId: workoutExerciseId,
-                    setNumber: set.setNumber,
-                    targetReps: set.targetReps,
-                    orderPosition: setIndex,
-                  ),
-                );
-              }
-            });
-          }
+            }
+          });
         }
       }
     }
 
+    // Step 5️⃣: Schedule workouts for 360 days by referencing templates
     for (int day = 0; day < 360; day++) {
       final date = _startDate!.add(Duration(days: day));
       final cycleIndex = day % _cyclePattern.length;
       final workoutName = _cyclePattern[cycleIndex];
-      final workoutId = workoutMap[workoutName];
+      final templateId = workoutMap[workoutName]!; // 🔑 reference template
 
       final scheduledWorkout = ScheduledWorkoutTableCompanion.insert(
-        workoutId: workoutId!,
-        templateWorkoutId: drift.Value(workoutId),
+        workoutId: templateId,
+        templateWorkoutId: drift.Value(templateId),
         scheduledDate: date,
         workoutPlanId: drift.Value(planId),
       );
@@ -204,13 +193,12 @@ class _CreateWorkoutViewState extends State<CreateWorkoutView> {
       await db.scheduledWorkoutDao.scheduleWorkout(scheduledWorkout);
     }
 
+    // Step 6️⃣: Notify user and close
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(l10n.workoutSavedSuccessfully)));
-    await Future.delayed(Duration(milliseconds: 500));
-    if (context.mounted) {
-      Navigator.of(context).pop(true); // THIS is the missing part
-    }
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (context.mounted) Navigator.of(context).pop(true);
   }
 
   @override

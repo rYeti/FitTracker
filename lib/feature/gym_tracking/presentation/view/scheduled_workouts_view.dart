@@ -2,6 +2,7 @@ import 'package:ForgeForm/core/app_database.dart';
 import 'package:ForgeForm/feature/gym_tracking/presentation/providers/workout_provider.dart';
 import 'package:ForgeForm/feature/gym_tracking/presentation/view/workouts/create_view.dart';
 import 'package:ForgeForm/feature/gym_tracking/presentation/view/workouts/workouts_list_view.dart';
+import 'package:ForgeForm/feature/workout_planning/data/models/workout.dart';
 import 'package:ForgeForm/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -218,132 +219,147 @@ class _ScheduledWorkoutsViewState extends State<ScheduledWorkoutsView> {
   ) {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
-    final workout = item.workout;
-    final isRestDay = workout?.name == 'Rest Day';
+    final isRestDay = item.workout?.name == 'Rest Day';
     final isCompleted = item.scheduled.isCompleted;
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color:
-          isCompleted
-              ? theme.colorScheme.surfaceVariant.withOpacity(0.5)
-              : null,
-      child: InkWell(
-        onTap: () {
-          // FIX #4: Allow viewing completed workouts in read-only mode
-          if (isCompleted) {
-            _viewCompletedWorkout(item);
-          } else if (!isRestDay) {
-            _startWorkout(item);
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+
+    return FutureBuilder<Workout?>(
+      future: _fetchTemplateWorkout(item.workout!.id!),
+      builder: (context, snapshot) {
+        final workout = snapshot.data;
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color:
+              isCompleted
+                  ? theme.colorScheme.surfaceVariant.withOpacity(0.5)
+                  : null,
+          child: InkWell(
+            onTap: () {
+              if (isCompleted) {
+                _viewCompletedWorkout(item);
+              } else if (!isRestDay) {
+                _startWorkout(item);
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    isRestDay ? Icons.hotel : Icons.fitness_center,
-                    color:
-                        isRestDay
-                            ? Colors.blue
-                            : isCompleted
-                            ? Colors.green
-                            : Colors.orange,
-                    size: 32,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          workout?.name ?? l10n.unknownWorkout,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            decoration:
-                                isCompleted ? TextDecoration.lineThrough : null,
-                          ),
-                        ),
-                        if (!isRestDay && workout != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            l10n.minutesShort(workout.estimatedDurationMinutes),
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  if (isCompleted)
-                    const Icon(
-                      Icons.check_circle,
-                      color: Colors.green,
-                      size: 32,
-                    )
-                  else if (!isRestDay)
-                    const Icon(Icons.play_arrow, size: 32),
-                ],
-              ),
-              if (item.scheduled.notes != null &&
-                  item.scheduled.notes!.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
+                  Row(
                     children: [
-                      const Icon(Icons.note, size: 16),
-                      const SizedBox(width: 8),
+                      Icon(
+                        isRestDay ? Icons.hotel : Icons.fitness_center,
+                        color:
+                            isRestDay
+                                ? Colors.blue
+                                : isCompleted
+                                ? Colors.green
+                                : Colors.orange,
+                        size: 32,
+                      ),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          item.scheduled.notes!,
-                          style: theme.textTheme.bodySmall,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              workout?.name ?? l10n.unknownWorkout,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                decoration:
+                                    isCompleted
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                              ),
+                            ),
+                            if (!isRestDay && workout != null)
+                              const SizedBox(height: 4),
+                            if (!isRestDay && workout != null)
+                              Text(
+                                l10n.minutesShort(
+                                  workout.estimatedDurationMinutes!,
+                                ),
+                                style: theme.textTheme.bodySmall,
+                              ),
+                          ],
                         ),
                       ),
+                      if (isCompleted)
+                        const Icon(
+                          Icons.check_circle,
+                          color: Colors.green,
+                          size: 32,
+                        )
+                      else if (!isRestDay)
+                        const Icon(Icons.play_arrow, size: 32),
                     ],
                   ),
-                ),
-              ],
-              if (!isRestDay) ...[
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          if (isCompleted) {
-                            _viewCompletedWorkout(item);
-                          } else {
-                            _startWorkout(item);
-                          }
-                        },
-                        icon: Icon(
-                          isCompleted ? Icons.visibility : Icons.play_arrow,
-                        ),
-                        label: Text(
-                          isCompleted ? 'View Workout' : 'Start Workout',
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 48),
-                          backgroundColor:
-                              isCompleted
-                                  ? theme.colorScheme.secondary
-                                  : theme.colorScheme.primary,
-                        ),
+                  if (item.scheduled.notes != null &&
+                      item.scheduled.notes!.isNotEmpty)
+                    const SizedBox(height: 12),
+                  if (item.scheduled.notes != null &&
+                      item.scheduled.notes!.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceVariant,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.note, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              item.scheduled.notes!,
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ],
-            ],
+                  if (!isRestDay) const SizedBox(height: 12),
+                  if (!isRestDay)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              if (isCompleted) {
+                                _viewCompletedWorkout(item);
+                              } else {
+                                _startWorkout(item);
+                              }
+                            },
+                            icon: Icon(
+                              isCompleted ? Icons.visibility : Icons.play_arrow,
+                            ),
+                            label: Text(
+                              isCompleted ? 'View Workout' : 'Start Workout',
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 48),
+                              backgroundColor:
+                                  isCompleted
+                                      ? theme.colorScheme.secondary
+                                      : theme.colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
+  }
+
+  // Helper to fetch latest template from DB
+  Future<Workout?> _fetchTemplateWorkout(int templateId) async {
+    final db = context.read<AppDatabase>();
+    return await db.workoutDao.getWorkoutById(templateId);
   }
 
   /// Navigate to the ActiveWorkoutScreen for starting a workout

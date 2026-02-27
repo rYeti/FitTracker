@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:ForgeForm/feature/workout_planning/data/models/workout_template_models.dart';
 import 'package:csv/csv.dart';
 import 'package:drift/drift.dart';
 import 'app_database_connection.dart'
@@ -1205,6 +1206,56 @@ class ExerciseDao extends DatabaseAccessor<AppDatabase>
 class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
   WorkoutDao(AppDatabase db) : super(db);
 
+  // ✅ New method to get workout by ID
+  Future<Workout?> getWorkoutById(int id) async {
+    final query =
+        await (select(workoutTable)
+          ..where((t) => t.id.equals(id))).getSingleOrNull();
+
+    if (query == null) return null;
+
+    // If you need exercises as well, you can fetch them here or return the bare workout
+    final exercises = await getExercisesForWorkout(id);
+
+    return Workout(
+      id: query.id,
+      name: query.name,
+      isTemplate: query.isTemplate,
+      difficulty: WorkoutDifficulty.values[query.difficulty],
+      estimatedDurationMinutes: query.estimatedDurationMinutes,
+      exercises: exercises,
+    );
+  }
+
+  // Optional helper to fetch exercises for a workout
+  Future<List<WorkoutExercise>> getExercisesForWorkout(int workoutId) async {
+    final rows =
+        await (select(workoutExerciseTable)
+          ..where((t) => t.workoutId.equals(workoutId))).get();
+
+    List<WorkoutExercise> exercises = [];
+
+    for (var row in rows) {
+      final exerciseRow =
+          await (select(exerciseTable)
+            ..where((e) => e.id.equals(row.exerciseId))).getSingleOrNull();
+
+      if (exerciseRow != null) {
+        exercises.add(
+          WorkoutExercise(
+            id: row.id,
+            workoutId: workoutId,
+            exerciseId: row.exerciseId,
+            orderPosition: row.orderPosition,
+            notes: row.notes,
+          ),
+        );
+      }
+    }
+
+    return exercises;
+  }
+
   Future<List<WorkoutSetTemplateData>> getSetTemplatesForWorkoutExercise(
     int workoutExerciseId,
   ) {
@@ -1280,7 +1331,6 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
 
     // 3️⃣ For each exercise instance
     for (final exerciseInstance in exerciseInstances) {
-      // 🔹 Load master exercise
       final exerciseRow =
           await (select(exerciseTable)..where(
             (e) => e.id.equals(exerciseInstance.exerciseId),
@@ -1292,11 +1342,8 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
 
       // 🔹 Load sets for this exercise instance
       final setRows =
-          await (select(workoutSetTable)
-                ..where(
-                  (s) =>
-                      s.scheduledWorkoutExerciseId.equals(exerciseInstance.id),
-                )
+          await (select(workoutSetTemplateTable)
+                ..where((s) => s.workoutExerciseId.equals(exerciseInstance.id))
                 ..orderBy([(s) => OrderingTerm(expression: s.setNumber)]))
               .get();
 
@@ -1304,14 +1351,10 @@ class WorkoutDao extends DatabaseAccessor<AppDatabase> with _$WorkoutDaoMixin {
           setRows.map((set) {
             return WorkoutSet(
               id: set.id,
-              exerciseInstanceId: set.scheduledWorkoutExerciseId,
+              exerciseInstanceId: set.workoutExerciseId,
               setNumber: set.setNumber,
-              reps: set.reps,
-              weight: set.weight,
-              weightUnit: set.weightUnit,
-              durationSeconds: set.durationSeconds,
-              isCompleted: set.isCompleted,
-              notes: set.notes,
+              reps:
+                  set.targetReps, // Assuming targetReps is stored as a string but represents an int
             );
           }).toList();
 
@@ -1861,6 +1904,47 @@ class ScheduledWorkoutExerciseDao extends DatabaseAccessor<AppDatabase>
       ..where((tbl) => tbl.id.equals(id))).write(
       ScheduledWorkoutExerciseTableCompanion(isCompleted: Value(completed)),
     );
+  }
+
+  Future<List<WorkoutExerciseTemplate>> getTemplateWithExercises(
+    int workoutId,
+  ) async {
+    final driftExercises =
+        await (select(workoutExerciseTable)
+              ..where((e) => e.workoutId.equals(workoutId))
+              ..orderBy([(e) => OrderingTerm.asc(e.orderPosition)]))
+            .get();
+
+    List<WorkoutExerciseTemplate> result = [];
+
+    for (final driftExercise in driftExercises) {
+      final driftSets =
+          await (select(WorkoutSetTemplateTableDao(db).workoutSetTemplateTable)
+                ..where((s) => s.workoutExerciseId.equals(driftExercise.id))
+                ..orderBy([(s) => OrderingTerm.asc(s.orderPosition)]))
+              .get();
+
+      final sets =
+          driftSets.map((s) {
+            return WorkoutSetTemplate(
+              id: s.id,
+              setNumber: s.setNumber,
+              targetReps: s.targetReps,
+              orderPosition: s.orderPosition,
+            );
+          }).toList();
+
+      result.add(
+        WorkoutExerciseTemplate(
+          id: driftExercise.id,
+          exerciseId: driftExercise.exerciseId,
+          orderPosition: driftExercise.orderPosition,
+          sets: sets,
+        ),
+      );
+    }
+
+    return result;
   }
 }
 
